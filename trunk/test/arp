@@ -31,11 +31,13 @@
 
 require 5.002;
 use strict;
-use SNMP_Session;
+use SNMP_Session "0.57";	# needs map_table
 use BER;
 
-sub ether_hex($ );
-sub ifDescr($ $ );
+sub out_arp_entry ($$$);
+sub ether_hex ($);
+sub ifDescr ($$);
+sub usage ();
 
 #
 #  OIDs we know by name.
@@ -45,8 +47,8 @@ my %OIDS = (
             'ipNetToMediaType' => [1,3,6,1,2,1,4,22,1,4],
 	    );
 
-my $hostname = $ARGV[0] || 'popocatepetl';
-my $community = $ARGV[1] || 'public';
+my $hostname = $ARGV[0] || usage ();
+my $community = $ARGV[1] || "public";
 
 my $session;
 
@@ -97,12 +99,11 @@ sub out_arp_entry ($$$) {
 ## Ethernet addresses, e.g. "080020830069" becomes
 ## "08:00:20:83:00:69".
 ##
-sub ether_hex ($ )
-{
-    my ($string) = @_;
-    $string =~ s/([0-9a-f][0-9a-f])/$1:/g;
-    $string =~ s/:$//;
-    $string;
+sub ether_hex ($) {
+  my ($string) = @_;
+  $string =~ s/([0-9a-f][0-9a-f])/$1:/g;
+  $string =~ s/:$//;
+  $string;
 }
 
 my %ifDescrCache;
@@ -114,8 +115,7 @@ my %ifDescrCache;
 ## Results are cached in %ifDescrCache to avoid sending the same SNMP
 ## request more than once.
 ##
-sub ifDescr($ $ )
-{
+sub ifDescr ($$) {
     my @ifDescr = split ('\.','1.3.6.1.2.1.2.2.1.2');
     my ($ifIndex, $session) = @_;
 
@@ -133,4 +133,8 @@ sub ifDescr($ $ )
     } else {
 	return "if#".$ifIndex;
     }
+}
+
+sub usage () {
+  die "usage: $0 host [community]";
 }
