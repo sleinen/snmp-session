@@ -394,6 +394,13 @@ sub oid_diff ($$) {
   substr ($full_dotnot, length ($base_dotnot)+1);
 }
 
+sub pretty_address
+{
+    my($addr) = shift;
+    my($port,$ipaddr) = unpack_sockaddr_in($addr);
+    return sprintf ("[%s].%d",inet_ntoa($ipaddr),$port);
+}
+
 sub version { $VERSION; }
 
 package SNMPv1_Session;
@@ -562,7 +569,7 @@ sub receive_response_3
 	    .", not ".&pretty_address($this->{'remote_addr'})
 		unless $SNMP_Session::suppress_warnings;
     }
-
+    $this->{'last_sender_addr'} = $remote_addr;
     my @unwrapped = ();
     @unwrapped = $this->unwrap_response_6 ($response, $response_tag, $this->{"request_id"}, $oids, $errorp);
     if (!defined $unwrapped[0]) {
@@ -582,13 +589,6 @@ sub receive_trap
     ($port, $iaddr) = sockaddr_in($remote_addr);
     $trap = $this->{'pdu_buffer'};
     return ($trap, $iaddr, $port);
-}
-
-sub pretty_address
-{
-    my($addr) = shift;
-    my($port,$ipaddr) = unpack_sockaddr_in($addr);
-    return sprintf ("[%s].%d",inet_ntoa($ipaddr),$port);
 }
 
 sub describe
@@ -616,5 +616,14 @@ sub to_string
 ##	       &pretty_address ($this->remote_addr),$this->max_pdu_len,
 ##	       $this->timeout);
 }
+
+package SNMPv2c_Session;
+use strict qw(vars subs);	# see above
+use vars qw(@ISA);
+use SNMP_Session;
+
+@ISA = qw(SNMPv1_Session);
+
+sub snmp_version { 1 }
 
 1;
