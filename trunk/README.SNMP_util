@@ -43,7 +43,7 @@ The SNMP_utils.pm module contains the functions
   snmptrap(community@host:port:timeout:retries:backoff:version, enterpriseOID,
 	    agent, generalID, specificID, OID, type, value,
 	    [OID, type, value ...])
-  snmpmap_table(community@host:port:timeout:retries:backoff:version,
+  snmpmaptable(community@host:port:timeout:retries:backoff:version,
 		function, OID, [OID...])
 
 
@@ -160,7 +160,7 @@ SNMP version 2 or higher.
 The snmpset function is passed OID, type, and value triplets.  It
 returns an array with the result of the set.
 
-The snmpmap_table function can be used for walking tables.  The OID arguments
+The snmpmaptable function can be used for walking tables.  The OID arguments
 are the columns of the table sharing the same index, and the passed-in
 function is called once per row.  The passed-in function will be given
 the row index as a partial OID in dotted notation, e.g. "1.3", or
@@ -281,7 +281,7 @@ sub main {
   }
 
   print "Walking table of interface description and physical address\n";
-  $nrows = &snmpmap_table($host, \&printfun, "ifDescr", "ifPhysAddress");
+  $nrows = &snmpmaptable($host, \&printfun, "ifDescr", "ifPhysAddress");
   print "walked $nrows rows in the table\n";
 }
 main;
