@@ -1,4 +1,20 @@
 #!/logiciels/public/divers/bin/perl5
+######################################################################
+### Sample CGI script using the Perl 5 SNMP Module
+###
+### This script can be used as a CGI script with an HTTP Daemon, to
+### allow asking SNMP queries from a World-Wide Web client.
+###
+######################################################################
+### When called with an empty QUERY_STRING environment variable, a
+### form is generated that lets the user fill in a host and community
+### name.  When the filled-in form is submitted, the script will be
+### called again, this time with parameters passed through
+### $QUERY_STRING.  It will make an SNMP query to the selected
+### host/community and return the results as an HTML document
+### containing an HTML 3 table which shows the names and values of
+### some MIB variable instances.
+######################################################################
 
 require 5;
 
