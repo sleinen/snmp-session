@@ -105,7 +105,7 @@ require 'SNMP_Session.pm';
 # which you want to talk to the agent.	Set port to the UDP
 # port on which the agent listens (usually 161).
 
-$session = SNMP_Session::open ($host, $community, $port);
+$session = SNMP_Session->open ($host, $community, $port);
 
 # Set $oid1, $oid2... to the BER-encoded OIDs of the MIB
 # variables you want to get.
@@ -219,7 +219,7 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-Last modified: Tue Jan  7 17:35:41 MET 1997
+Last modified: Mon Feb 17 14:29:47 MET 1997
 <!-- hhmts end -->
 <A HREF="http://celeste.switch.ch/~leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
