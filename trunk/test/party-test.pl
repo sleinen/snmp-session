@@ -1,4 +1,4 @@
-#!/logiciels/public/divers/bin/perl5
+#!/usr/local/bin/perl
 ######################################################################
 # Check that we can read the CMU SNMPv2 party definition file in
 # /etc/party.conf.  Describe the party named "zeusmd5".  This is
