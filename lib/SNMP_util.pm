@@ -39,11 +39,11 @@ use vars qw(@ISA @EXPORT $VERSION);
 use Exporter;
 use Carp;
 
-use BER "0.95";
-use SNMP_Session "0.97";
+use BER "1.02";
+use SNMP_Session "1.00";
 use Socket;
 
-$VERSION = '1.02';
+$VERSION = '1.03';
 
 @ISA = qw(Exporter);
 
