@@ -44,6 +44,11 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 <ul>
 
+<li> SNMP_Session.pm 0.63: Fixed response matching logic to ignore
+ out-of-sequence responses.  This has been a long-standing bug which
+ made it very hard to use a single session object for multiple queries
+ to devices that are (sometimes) slow in responding.
+
 <li> SNMP_Session.pm 0.62: Scoping problem with pretty_address()
  fixed.
 
@@ -460,7 +465,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19981022
+19981116
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
