@@ -1,3 +1,72 @@
+1998-02-13  Simon Leinen  <simon@limmat.switch.ch>
+
+	* BER.pm: Removed forgotten diagnostic message.
+
+	Made spacing before parentheses consistent.
+
+1998-02-11  Simon Leinen  <simon@limmat.switch.ch>
+
+	* BER.pm: Use prototypes consistently.
+
+	Fixed two benign errors found by this.
+
+1998-01-30  Simon Leinen  <simon@limmat.switch.ch>
+
+	* README (Credits): Added Dan Cox and Iouri Pakhomenko.
+
+	* index.html: Mentioned that Iouri Pakhomenko also noted the
+ 	error_return bug.
+
+1998-01-29  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Mention Dan Cox' fix to return_error.
+
+	* SNMP_Session.pm ($VERSION): 0.55 -> 0.56.
+
+	* SNMP_Session.pm (request_response_4):
+	Call $this->error when no response is received.
+
+	(error_return): Converted to a method, so that SNMPv1_Session
+ 	inherits it.
+
+	* index.html: SNMPv2 -> SNMPv3.
+
+	* index.html: Noted that leading dots are now ignored in OIDs.
+
+1998-01-07  Simon Leinen  <simon@limmat.switch.ch>
+
+	* Makefile (INSTALL):
+	ginstall -> install.  GNU install is no longer installed in
+	our new environment.  However, Solaris 2.6 install seems to be
+	compatible enough to BSD install at last.
+
+	* BER.pm ($VERSION): Incremented to 0.52.
+
+	* BER.pm (encode_oid): Ignore leading dot.
+
+1997-12-22  Simon Leinen  <simon@limmat.switch.ch>
+
+	* SNMP_Session.pm ($errmsg, $suppress_warnings):
+	New variables for silent error
+	handling.
+
+1997-12-03  Simon Leinen  <simon@limmat.switch.ch>
+
+	* ChangeLog: *** empty log message ***
+
+	* index.html: Documented recent changes.
+
+	* SNMP_Session.pm: Upped version number.
+
+	* BER.pm: No longer use integer.
+
+	No longer call "warn".
+
+	* SNMP_Session.pm: Handle encoding errors in a sensible way.
+
+	($SNMP_Session::errmsg, $SNMP_Session::suppress_warnings): New
+ 	variables that give the caller more control about error messages.
+
 Wed Dec  3 20:05:50 1997  Simon Leinen  <simon@limmat.switch.ch>
 
 	* index.html: Documented recent changes.
