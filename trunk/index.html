@@ -49,6 +49,12 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_Session.pm 0.78: The <tt>map_table</tt> implementation for
+SNMPv2 sessions has been completely rewritten to reliably support
+tables with holes in them.  Note that this hasn't been completely
+validated or tested yet, but at least it has been found to handle
+common cases reasonably. </li>
+
 <li> BER.pm 0.77: Added support for long integers, so that
 <tt>Counter64</tt> values can be handled without risk of losing
 precision (due to automatic coercion to floating-point representation
@@ -63,9 +69,9 @@ exception is that they print with a leading ``<tt>+</tt>'' sign. </li>
 <li> SNMP_Session 0.77: The SNMPv2 implementation of
 <tt>map_table_start_end</tt> has been enhanced to cope with the case
 where a response PDU ends with a truncated table row, courtesy <a
-href="mailto:pee@gblx.net">Paul E. Erkkila</a>.  Note that
-tables with missing entries still aren't handled correctly when SNMPv2
-(and thus the <tt>get-bulk</tt> operator is used). </li>
+href="mailto:pee@gblx.net">Paul E. Erkkila</a>.  Note that tables with
+missing entries still aren't handled correctly when SNMPv2 (and thus
+the <tt>get-bulk</tt> operator is used). </li>
 
 <li> SNMP_util 0.73: Added a fix from <a
 href="mailto:mcm@unx.sas.com">Mike Mitchell</a> (originally <a
@@ -74,7 +80,7 @@ href="demel@zid.tuwien.ac.at">Johannes Demel</a>) to treat
 
 <li> SNMP_Session 0.76: Added some debugging support for
 <tt>map_table</tt>, which still doesn't work reliably when the SNMPv2
-<tt>getBulk</tt> operator is used. </li>
+<tt>get-bulk</tt> operator is used. </li>
 
 <li> <tt>test/if-counters.pl</tt>: Added <samp>-c</samp> option to
 enable Cisco-specific variables (which are no longer retrieved by
@@ -148,8 +154,8 @@ value greater than one. </li>
 href="mailto:mikem@open.com.au">Mike McCauley</a>. </li>
 
 <li> SNMP_Session.pm 0.67: Implement a <tt>map_table_start_end</tt>
-method for <tt>SNMPv2c_Session</tt> which uses <tt>getBulk</tt>.  See
-<a href="#map-table-4-use">Walking Tables With <tt>getBulk</tt></a>
+method for <tt>SNMPv2c_Session</tt> which uses <tt>get-bulk</tt>.  See
+<a href="#map-table-4-use">Walking Tables With <tt>get-bulk</tt></a>
 for more information. </li>
 
 <li> SNMP_Session.pm 0.66: Fix from <a
@@ -481,20 +487,20 @@ $n_rows = $session-&gt;map_table ($columns, \&amp;walk_function);
 </ol>
 
 <H3><a name="map-table-4-use">Walking Tables With
-<tt>getBulk</tt></a></H3>
+<tt>get-bulk</tt></a></H3>
 
 <p> Since version 0.67, <tt>SNMP_Session</tt> uses a different
 <tt>get_table</tt> implementation for <tt>SNMPv2c_Session</tt>s.  This
-version uses the ``powerful <tt>getBulk</tt> operator'' to retrieve
+version uses the ``powerful <tt>get-bulk</tt> operator'' to retrieve
 many table rows with each request.  In general, this will make table
 walking much faster under SNMPv2c, especially when round-trip times to
 the agent are long. </p>
 
-<p> There is one difficulty, however: With <tt>getBulk</tt>, a management
-application can specify the maximum number of rows to return in a
-single response.  <tt>SNMP_Session.pm</tt> provides a new function,
-<tt>map_table_4</tt>, in which this <tt>maxRepetitions</tt> value can
-be specified explicitly. </p>
+<p> There is one difficulty, however: With <tt>get-bulk</tt>, a
+management application can specify the maximum number of rows to
+return in a single response.  <tt>SNMP_Session.pm</tt> provides a new
+function, <tt>map_table_4</tt>, in which this <tt>maxRepetitions</tt>
+value can be specified explicitly. </p>
 
 <p> For maximum efficiency, it should be set to a value that is one
 greater than the number of rows in the table.  If it is smaller, then
@@ -647,29 +653,10 @@ while ($bindings ne '') {
 <P> The code could first be restructured to follow the modularization
  proposed in <a
  href="ftp://sunsite.cnlab-switch.ch/doc/standard/rfc/22xx/2271">RFC
- 2271</a> (An Architecture for Describing SNMP Management
- Frameworks).  Later, one could add support for SNMPv2c and SNMPv3
- encodings, and support for user-based security.  An interface to
- <samp>getBulk</samp> requests should be provided. </p>
-
-<H3>MIB parsing</H3>
-
-<P> Currently, users of the module must provide numeric object IDs,
- and should know the types of the variables they request.  It would be
- nice if we could read MIBs in some form, and provide the possibility
- to use symbolic variable names and do automatic decoding according to
- the variable types specified in the MIB. </P>
-
-<P> However, parsing MIBs in their full ASN.1 syntax looks like
- overkill for such a small package.  As a compromise, we could use the
- output of an existing MIB compiler as input.  I have done this in <A
- HREF="http://www.switch.ch/misc/leinen/snmp/lisp/">another project</A>
- with files from ISODE SNMP's MIB compiler.  A problem with ISODE SNMP
- is that it is itself part of a rather huge package, and I would
- prefer to use a small standalone MIB parser.  Ideally this MIB parser
- would handle all kinds of MIBs, also SNMPv2 ones, and be able to
- generate easily readable files with the information we need
- (name-to-oid and name-to-type or oid-to-type mappings). </P>
+ 2271</a> (An Architecture for Describing SNMP Management Frameworks).
+ The existing SNMPv1 and SNMPv2c support must somehow be retrofitted
+ to this framework.  Later, one could add support for SNMPv3 PDU
+ formats and for user-based security. </p>
 
 <H3>Higher-Level APIs</H3>
 
@@ -680,7 +667,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20000329
+20001005
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
