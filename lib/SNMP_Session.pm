@@ -34,7 +34,8 @@ use Socket;
 use BER;
 
 sub map_table ($$$);
-sub map_table_start_end ($$$$$);
+sub map_table_4 ($$$$);
+sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
@@ -65,14 +66,28 @@ my $default_retries = 5;
 ###
 my $default_backoff = 1.0;
 
+### Default value for maxRepetitions.  This specifies how many table
+### rows are requested in getBulk requests.  Used when walking tables
+### using getBulk (only available in SNMPv2(c) and later).  If this is
+### too small, then a table walk will need unnecessarily many
+### request/response exchanges.  If it is too big, the agent may
+### compute many variables after the end of the table.  It is
+### recommended to set this explicitly for each table walk by using
+### map_table_4().
+###
+my $default_max_repetitions = 12;
+
 $SNMP_Session::errmsg = '';
 $SNMP_Session::suppress_warnings = 0;
 
-sub get_request  { 0 | context_flag };
+sub get_request      { 0 | context_flag };
 sub getnext_request  { 1 | context_flag };
-sub get_response { 2 | context_flag };
-sub set_request { 3 | context_flag };
-sub trap_request { 4 | context_flag };
+sub get_response     { 2 | context_flag };
+sub set_request      { 3 | context_flag };
+sub trap_request     { 4 | context_flag };
+sub getbulk_request  { 5 | context_flag };
+sub inform_request   { 6 | context_flag };
+sub trap2_request    { 7 | context_flag };
 
 sub standard_udp_port { 161 };
 
@@ -102,14 +117,14 @@ sub set_backoff {
     $session->{'backoff'} = $backoff; 
 }
 
-sub encode_request ($$@)
+sub encode_request_3 ($$$@)
 {
-    my($this, $reqtype, @encoded_oids_or_pairs) = @_;
+    my($this, $reqtype, $encoded_oids_or_pairs, $i1, $i2) = @_;
     my($request);
     local($_);
 
     ++$this->{request_id};
-    foreach $_ (@encoded_oids_or_pairs) {
+    foreach $_ (@{$encoded_oids_or_pairs}) {
       if (ref ($_) eq 'ARRAY') {
 	$_ = &encode_sequence ($_->[0], $_->[1])
 	  || return $this->ber_error ("encoding pair");
@@ -121,8 +136,9 @@ sub encode_request ($$@)
     $request = encode_tagged_sequence
 	($reqtype,
 	 encode_int ($this->{request_id}),
-	 encode_int_0, encode_int_0,
-	 encode_sequence (@encoded_oids_or_pairs))
+	 defined $i1 ? encode_int ($i1) : encode_int_0,
+	 defined $i2 ? encode_int ($i2) : encode_int_0,
+	 encode_sequence (@{$encoded_oids_or_pairs}))
 	  || return $this->ber_error ("encoding request PDU");
     return $this->wrap_request ($request);
 }
@@ -130,19 +146,26 @@ sub encode_request ($$@)
 sub encode_get_request
 {
     my($this, @oids) = @_;
-    return encode_request ($this, get_request, @oids);
+    return encode_request_3 ($this, get_request, \@oids);
 }
 
 sub encode_getnext_request
 {
     my($this, @oids) = @_;
-    return encode_request ($this, getnext_request, @oids);
+    return encode_request_3 ($this, getnext_request, \@oids);
+}
+
+sub encode_getbulk_request
+{
+    my($this, $non_repeaters, $max_repetitions, @oids) = @_;
+    return encode_request_3 ($this, getbulk_request, \@oids,
+			     $non_repeaters, $max_repetitions);
 }
 
 sub encode_set_request
 {
     my($this, @encoded_pairs) = @_;
-    return encode_request ($this, set_request, @encoded_pairs);
+    return encode_request_3 ($this, set_request, \@encoded_pairs);
 }
 
 sub encode_trap_request ($$$$$$@)
@@ -218,6 +241,14 @@ sub getnext_request_response ($@)
     my($this,@oids) = @_;
     return $this->request_response_5 ($this->encode_getnext_request (@oids),
 				      get_response, \@oids, 1);
+}
+
+sub getbulk_request_response ($$$@)
+{
+    my($this,$non_repeaters,$max_repetitions,@oids) = @_;
+    return $this->request_response_5
+	($this->encode_getbulk_request ($non_repeaters,$max_repetitions,@oids),
+	 get_response, \@oids, 1);
 }
 
 sub trap_request_send ($$$$$$@)
@@ -309,11 +340,19 @@ sub ber_error ($$)
 
 sub map_table ($$$) {
     my ($session, $columns, $mapfn) = @_;
-    return map_table_start_end ($session, $columns, $mapfn, "", undef);
+    return $session->map_table_4 ($columns, $mapfn,
+				  $session->default_max_repetitions ());
 }
 
-sub map_table_start_end ($$$$$) {
-    my ($session, $columns, $mapfn, $start, $end) = @_;
+sub map_table_4 ($$$$) {
+    my ($session, $columns, $mapfn, $max_repetitions) = @_;
+    return $session->map_table_start_end ($columns, $mapfn,
+					  "", undef,
+					  $max_repetitions);
+}
+
+sub map_table_start_end ($$$$$$) {
+    my ($session, $columns, $mapfn, $start, $end, $max_repetitions) = @_;
 
     my @encoded_oids;
     my $call_counter = 0;
@@ -425,7 +464,8 @@ sub snmp_version { 0 }
 
 sub open
 {
-    my($this,$remote_hostname,$community,$port,$max_pdu_len,$bind_to_port) = @_;
+    my($this,$remote_hostname,$community,$port,
+       $max_pdu_len,$bind_to_port,$max_repetitions) = @_;
     my($name,$aliases,$remote_addr,$socket);
 
     my $udp_proto = 0;
@@ -433,7 +473,8 @@ sub open
     $community = 'public' unless defined $community;
     $port = SNMP_Session::standard_udp_port unless defined $port;
     $max_pdu_len = 8000 unless defined $max_pdu_len;
-
+    $max_repetitions = $default_max_repetitions
+	unless defined $max_repetitions;
     $remote_addr = inet_aton ($remote_hostname)
 	|| return $this->error_return ("can't resolve \"$remote_hostname\" to IP address");
     $socket = 'SNMP'.sprintf ("%s:%d", inet_ntoa ($remote_addr), $port);
@@ -463,6 +504,7 @@ sub open
 	   'debug' => $default_debug,
 	   'error_status' => 0,
 	   'error_index' => 0,
+	   'default_max_repetitions' => $max_repetitions,
 	  };
 }
 
@@ -477,6 +519,7 @@ sub sockfileno { $_[0]->{sockfileno} }
 sub remote_addr { $_[0]->{remote_addr} }
 sub pdu_buffer { $_[0]->{pdu_buffer} }
 sub max_pdu_len { $_[0]->{max_pdu_len} }
+sub default_max_repetitions { $_[0]->{default_max_repetitions} }
 
 sub close
 {
@@ -633,9 +676,88 @@ package SNMPv2c_Session;
 use strict qw(vars subs);	# see above
 use vars qw(@ISA);
 use SNMP_Session;
+use BER;
 
 @ISA = qw(SNMPv1_Session);
 
 sub snmp_version { 1 }
+
+sub open
+{
+    my $session = SNMPv1_Session::open (@_);
+    return bless $session;
+}
+
+sub map_table_start_end ($$$$$$) {
+    my ($session, $columns, $mapfn, $start, $end, $max_repetitions) = @_;
+
+    my @encoded_oids;
+    my $call_counter = 0;
+    my $base_index = $start;
+    $max_repetitions = $session->default_max_repetitions
+	unless defined $max_repetitions;
+
+    do {
+	foreach (@encoded_oids = @{$columns}) {
+	    $_=encode_oid (@{$_},split '\.',$base_index)
+		|| return $session->ber_error ("encoding OID $base_index");
+	}
+	if ($session->getbulk_request_response (0, $max_repetitions,
+						@encoded_oids)) {
+	    my $response = $session->pdu_buffer;
+	    my ($bindings) = $session->decode_get_response ($response);
+	    my $smallest_index = undef;
+	    my @collected_values = ();
+
+	    my @bases = @{$columns};
+	    my $n_bindings = 0;
+	    while ($bindings ne '') {
+		my ($binding, $oid, $value);
+		unless (defined $bases[0]) {
+		    @bases = @{$columns};
+		    (++$call_counter,
+		     &$mapfn ($smallest_index, @collected_values))
+			if defined $smallest_index;
+		    $base_index = $smallest_index;
+		    $smallest_index = undef;
+		    @collected_values = ();
+		}
+		my $base = shift @bases;
+
+		($binding, $bindings) = decode_sequence ($bindings);
+		($oid, $value) = decode_by_template ($binding, "%O%@");
+
+		my $out_index;
+
+		++$n_bindings;
+		$out_index = SNMP_Session::oid_diff ($base, $oid);
+		my $cmp;
+		if (!defined $smallest_index
+		    || ($cmp = SNMP_Session::index_compare
+			($out_index,$smallest_index)) == -1) {
+		    $smallest_index = $out_index;
+		    grep ($_=undef, @collected_values);
+		    push @collected_values, $value;
+		} elsif ($cmp == 1) {
+		    push @collected_values, undef;
+		} else {
+		    push @collected_values, $value;
+		}
+	    }
+	    @bases = @{$columns};
+	    (++$call_counter,
+	     &$mapfn ($smallest_index, @collected_values))
+		if defined $smallest_index;
+	    $base_index = $smallest_index;
+	    $smallest_index = undef;
+	    @collected_values = ();
+	} else {
+	    return undef;
+	}
+    }
+    while (defined $base_index
+	   && (!defined $end || index_compare ($base_index, $end) < 0));
+    $call_counter;
+}
 
 1;
