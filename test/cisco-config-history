@@ -67,6 +67,7 @@ $session->map_table ([$ccmHistoryEventTime,
 		      $ccmHistoryEventConfigDestination],
 		     sub () {
 			 my ($index, $time, $source, $dest) = @_;
+			 local ($BER::pretty_print_timeticks) = (0);
 			 grep (defined $_ && ($_=pretty_print $_),
 			       ($time, $source, $dest));
 			 my ($action);
@@ -152,6 +153,7 @@ sub router_boottime ($) {
 
 sub uptime_hundredths ($) {
     my ($session) = @_;
+    local ($BER::pretty_print_timeticks) = (0);
     if ($session->get_request_response (encode_oid (1,3,6,1,2,1,1,3,0))) {
 	my $response = $session->pdu_buffer;
 	my ($bindings) = $session->decode_get_response ($response);
