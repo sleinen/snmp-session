@@ -99,22 +99,35 @@ my %pretty_card_type =
 
 my $cardType = [1,3,6,1,4,1,9,3,6,11,1,2];
 my $cardDescr = [1,3,6,1,4,1,9,3,6,11,1,3];
+my $cardSerial = [1,3,6,1,4,1,9,3,6,11,1,4];
+my $cardHwVersion = [1,3,6,1,4,1,9,3,6,11,1,5];
+my $cardSwVersion = [1,3,6,1,4,1,9,3,6,11,1,6];
+my $cardSlotNumber = [1,3,6,1,4,1,9,3,6,11,1,7];
 my $cardContainedByIndex = [1,3,6,1,4,1,9,3,6,11,1,8];
+my $cardOperStatus = [1,3,6,1,4,1,9,3,6,11,1,9];
+my $cardSlots = [1,3,6,1,4,1,9,3,6,11,1,10];
 
 my $host = shift @ARGV || die "Usage: $0 host [community]";
 my $community = shift @ARGV || 'public';
 
 my $session = SNMP_Session->open ($host, $community, 161)
     || die "open SNMP session to $community\@$host: $!";
-my %card_index_to_indent;
-$session->map_table ([$cardType,$cardContainedByIndex,$cardDescr],
+$session->map_table ([$cardContainedByIndex,$cardType,$cardDescr,
+		      $cardSerial,$cardHwVersion,$cardSwVersion,
+		      $cardSlotNumber,$cardOperStatus,$cardSlots],
 		     sub () {
-			 my ($index, $type, $contained_by, $descr) = @_;
+			 my ($index, $contained_by,
+			     $type, $descr, $serial,
+			     $hw_version, $sw_version,
+			     $slot_number, $oper_status, $slots) = @_;
 			 grep (defined $_ && ($_=pretty_print $_),
-			       ($type, $contained_by, $descr));
-			 my $indent = $contained_by ? ($card_index_to_indent{$contained_by} || 0) + 2 : 0;
-			 $card_index_to_indent{$index} = $indent;
-			 note_card ($index, $contained_by, $type, $descr);
+			       ($contained_by, $type, $descr, $serial,
+				$hw_version, $sw_version,
+				$slot_number, $oper_status, $slots));
+			 note_card ($index, $contained_by, $type,
+				    $descr, $serial,
+				    $hw_version, $sw_version,
+				    $slot_number, $oper_status, $slots);
 		     });
 $session->close
     || warn "close SNMP session: $!";
@@ -132,12 +145,22 @@ sub card_descr ($) { defined $_[1] ? $_[0]->{descr} = $_[1] : $_[0]->{descr}; }
 sub card_children ($) { defined $_[1] ? $_[0]->{children} = $_[1] : $_[0]->{children}; }
 
 sub make_card ($$@) {
-    my ($index, $parent, $type, $descr) = @_;
+    my ($index, $parent,
+	$type, $descr,
+	$serial, $hw_version,
+	$sw_version, $slot_number,
+	$oper_status, $slots) = @_;
     {
 	idx => $index,
 	parent => $parent,
 	type => $type,
 	descr => $descr,
+	serial => $serial,
+	hw_version => $hw_version,
+	sw_version => $sw_version,
+	slot_number => $slot_number,
+	oper_status => $oper_status,
+	slots => $slots,
 	children => [],
     };
 }
@@ -158,21 +181,74 @@ sub note_card ($$@) {
 }
 
 sub list_cards () {
+    print_cards_table_header ();
     list_cards_with_children ('', @top_level_cards);
 }
 
 sub list_cards_with_children ($@) {
     my ($indent, @cards) = @_;
-    foreach my $card (@cards) {
+    foreach my $card (sort { $a->{slot_number} cmp $b->{slot_number} }
+		      @cards) {
 	my $index = card_index ($card);
 	my $type = card_type ($card);
-	my $pretty_type = ($pretty_card_type{$type}
-			   || $type);
-	printf STDOUT ("%03d%s %-20s%s\n",
-		       $index,
-		       $indent,
-		       $pretty_type,
-		       card_descr ($card));
+##	  my $pretty_type = ($pretty_card_type{$type}
+##			     || $type);
+	printf STDOUT ("%-49s %-4s %7d %4s %5s %2s %2s\n",
+		       $indent.card_descr ($card),
+		       pretty_card_oper_status ($card->{oper_status}),
+		       $card->{serial},
+		       $card->{hw_version},
+		       ($card->{sw_version} eq 'not available' 
+			? 'n/a' : $card->{sw_version}),
+		       pretty_card_slot_number ($card->{slot_number}),
+		       pretty_card_nslots ($card->{slots}));
 	list_cards_with_children ($indent.'  ',@{card_children $card});
+    }
+}
+
+sub print_cards_table_header () {
+    printf STDOUT ("%-49s %-4s %7s %4s %5s %2s %2s\n",
+		   "description",
+		   "stat",
+		   "serial",
+		   "hw",
+		   "sw",
+		   "sl",
+		   "#s");
+    print STDOUT (("=" x 79),"\n");
+}
+
+sub pretty_card_slot_number ($) {
+    my ($slot_number) = @_;
+    if ($slot_number == -1) {
+	return "";
+    } else {
+	return $slot_number;
+    }
+}
+
+sub pretty_card_nslots ($) {
+    my ($nslots) = @_;
+    if ($nslots == -1) {
+	return "?";
+    } elsif ($nslots == 0) {
+	return "";
+    } else {
+	return $nslots;
+    }
+}
+
+sub pretty_card_oper_status ($) {
+    my ($oper_status) = @_;
+    if ($oper_status == 1) {
+	return "-";
+    } elsif ($oper_status == 2) {
+	return "up";
+    } elsif ($oper_status == 3) {
+	return "down";
+    } elsif ($oper_status == 4) {
+	return "stby";
+    } else {
+	return "ILLEGAL".$oper_status;
     }
 }
