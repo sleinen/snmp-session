@@ -11,7 +11,8 @@ snmpmapOID ("slotCardName", "1.3.6.1.4.1.2522.1.1.2.1.1.2",
 	    "cardName", "1.3.6.1.4.1.2522.1.1.3.1.1.3");
 
 my %nestmasters =
-    qw(muxLS1 public@130.59.48.81
+    qw(muxCE1 public@130.59.48.16
+       muxLS1 public@130.59.48.81
        muxBA1 public@130.59.48.208
        muxEZ1 public@130.59.49.16);
 
