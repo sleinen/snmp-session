@@ -26,9 +26,9 @@ $session->map_table ([$bgpPeerState, $bgpPeerRemoteAs],
 			 my $pretty_state = (qw(? idle connect active
 						opensent openconfirm
 						established))[$state];
-			 print STDOUT ("AS",$as," ",
-				       pretty_addr ($index),
-				       " (",$pretty_state,")\n");
+			 printf "%-15s %-12s %32s AS%-5s\n",
+				 $index, $pretty_state,
+				 hostname ($index), $as;
 		     });
 $session->close ();
 
@@ -39,6 +39,13 @@ sub pretty_addr ($ ) {
     my ($hostname,$aliases,$addrtype,$length,@addrs)
 	= gethostbyaddr (inet_aton ($addr), AF_INET);
     $hostname ? $hostname." [".$addr."]" : $addr;
+}
+
+sub hostname ($ ) {
+    my ($addr) = @_;
+    my ($hostname,$aliases,$addrtype,$length,@addrs)
+	= gethostbyaddr (inet_aton ($addr), AF_INET);
+    $hostname || "[".$addr."]";
 }
 
 sub usage () {
