@@ -5,12 +5,12 @@ use strict;
 use SNMP_Session;
 use SNMP_util;
 
-sub make_html_page ($);
-sub show_light_trail (@);
+sub make_amp_html_page ($$);
+sub show_light_trail ($@);
 sub print_html_header ();
 sub print_html_trailer ();
 
-my $html_file = "/opt/www/htdocs/lan/switchlambda/status.html";
+my $html_file = "/opt/www/htdocs/lan/switchlambda/status-new.html";
 my $html_file_iv = "/opt/www/htdocs/lan/switchlambda/status-iv.html";
 
 my $inverse_video = 0;
@@ -21,7 +21,29 @@ snmpmapOID (qw(amplifierOperStatus 1.3.6.1.4.1.2522.1.5.1.1.0
 	       inputPowerStatus 1.3.6.1.4.1.2522.1.5.1.4.0
 	       inputPowerLevel 1.3.6.1.4.1.2522.1.5.1.5.0
 	       outputPowerStatus 1.3.6.1.4.1.2522.1.5.1.6.0
-	       outputPowerLevel 1.3.6.1.4.1.2522.1.5.1.7.0));
+	       outputPowerLevel 1.3.6.1.4.1.2522.1.5.1.7.0
+
+	       aType 1.3.6.1.4.1.2522.1.2.1.1.0
+	       aTypeValue 1.3.6.1.4.1.2522.1.2.1.2.0
+	       aChannel 1.3.6.1.4.1.2522.1.2.1.3.0
+	       aTxLaserOn 1.3.6.1.4.1.2522.1.2.1.4.0
+	       aTxLaserOutput 1.3.6.1.4.1.2522.1.2.1.5.0
+	       aTxLaserTemp 1.3.6.1.4.1.2522.1.2.1.6.0
+	       aTxLossOfSignal 1.3.6.1.4.1.2522.1.2.1.7.0
+	       aRxOpticalPower 1.3.6.1.4.1.2522.1.2.1.8.0
+	       aRxLossOfSignal 1.3.6.1.4.1.2522.1.2.1.9.0
+	       aRxAPDBias 1.3.6.1.4.1.2522.1.2.1.10.0
+	       bType 1.3.6.1.4.1.2522.1.2.2.1.0
+	       bTypeValue 1.3.6.1.4.1.2522.1.2.2.2.0
+	       bChannel 1.3.6.1.4.1.2522.1.2.2.3.0
+	       bTxLaserOn 1.3.6.1.4.1.2522.1.2.2.4.0
+	       bTxLaserOutput 1.3.6.1.4.1.2522.1.2.2.5.0
+	       bTxLaserTemp 1.3.6.1.4.1.2522.1.2.2.6.0
+	       bTxLossOfSignal 1.3.6.1.4.1.2522.1.2.2.7.0
+	       bRxOpticalPower 1.3.6.1.4.1.2522.1.2.2.8.0
+	       bRxLossOfSignal 1.3.6.1.4.1.2522.1.2.2.9.0
+	       bRxAPDBias 1.3.6.1.4.1.2522.1.2.2.10.0
+));
 
 my @eastbound_amps = qw(public@mCE11-A8  
 	      public@mLS11-A1  
@@ -43,25 +65,45 @@ my @westbound_amps = qw(public@mEZ11-A2
 my @amps = (@eastbound_amps, @westbound_amps);
 
 for (;;) {
+    my $amp_status = get_amp_status (@amps);
     $inverse_video = 0;
-    make_html_page ($html_file);
+    make_amp_html_page ($html_file, $amp_status);
     $inverse_video = 1;
-    make_html_page ($html_file_iv);
+    make_amp_html_page ($html_file_iv, $amp_status);
     sleep (292);
 }
 1;
 
-sub make_html_page ($) {
-    my ($out_file) = @_;
+sub get_amp_status (@) {
+    my (@amps) = @_;
+    my %status = ();
+    foreach my $amp (@amps) {
+	my ($amp_status,
+	    $in_status, $in,
+	    $out_status, $out)
+	    = snmpget ($amp, qw(amplifierOperStatus
+				inputPowerStatus inputPowerLevel
+				outputPowerStatus outputPowerLevel));
+	$status{$amp} = {amp_status => $amp_status,
+			 in_status => $in_status,
+			 in => $in,
+			 out_status => $out_status,
+			 out => $out};
+    }
+    return \%status;
+}
+
+sub make_amp_html_page ($$) {
+    my ($out_file, $status) = @_;
     open (HTML, ">$out_file.new");
     print_html_header ();
     my $localtime = localtime();
 
     print HTML "<table width=\"100%\"><tr><td align=\"left\" valign=\"top\" width=\"45%\"><h2> Eastbound </h2>\n";
-    show_light_trail (@eastbound_amps);
+    show_light_trail ($status, @eastbound_amps);
 
     print HTML "</td><td align=\"right\" valign=\"top\" width=\"45%\"><h2> Westbound </h2>";
-    show_light_trail (@westbound_amps);
+    show_light_trail ($status, @westbound_amps);
 
     print HTML "</td></tr></table>\n";
     print HTML "<p> Last updated: $localtime </p>\n";
@@ -70,18 +112,19 @@ sub make_html_page ($) {
     rename ($out_file.".new",$out_file);
 }
 
-sub show_light_trail (@) {
-    my @amps = @_;
+sub show_light_trail ($@) {
+    my ($status, @amps) = @_;
 
     print HTML "<table width=\"90%\">\n <tr>\n  <th>Amplifier</th>\n  <th>Input<br>Power<br>(dBm)</th>\n  <th>Output<br>Power<br>(dBm)</th>\n </tr>\n";
     foreach my $amp (@amps) {
 	my ($community,$nodename) = split (/@/,$amp);
+	my $values = $status->{$amp};
 	my ($amp_status,
 	    $in_status, $in,
 	    $out_status, $out)
-	    = snmpget ($amp, qw(amplifierOperStatus
-					   inputPowerStatus inputPowerLevel
-					   outputPowerStatus outputPowerLevel));
+	    = ($values->{amp_status},
+	       $values->{in_status},$values->{in},
+	       $values->{out_status},$values->{out});
 	my ($amp_class, $in_class, $out_class)
 	    = (class_for_amp_status ($amp_status),
 	       class_for_level_status ($in_status),
