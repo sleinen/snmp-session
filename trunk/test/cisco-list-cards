@@ -98,6 +98,7 @@ my %pretty_card_type =
 );
 
 my $cardType = [1,3,6,1,4,1,9,3,6,11,1,2];
+my $cardDescr = [1,3,6,1,4,1,9,3,6,11,1,3];
 my $cardContainedByIndex = [1,3,6,1,4,1,9,3,6,11,1,8];
 
 my $host = shift @ARGV || die "Usage: $0 host [community]";
@@ -106,14 +107,14 @@ my $community = shift @ARGV || 'public';
 my $session = SNMP_Session->open ($host, $community, 161)
     || die "open SNMP session to $community\@$host: $!";
 my %card_index_to_indent;
-$session->map_table ([$cardType,$cardContainedByIndex],
+$session->map_table ([$cardType,$cardContainedByIndex,$cardDescr],
 		     sub () {
-			 my ($index, $type, $contained_by) = @_;
+			 my ($index, $type, $contained_by, $descr) = @_;
 			 grep (defined $_ && ($_=pretty_print $_),
-			       ($type, $contained_by));
+			       ($type, $contained_by, $descr));
 			 my $indent = $contained_by ? ($card_index_to_indent{$contained_by} || 0) + 2 : 0;
 			 $card_index_to_indent{$index} = $indent;
-			 note_card ($index, $type, $contained_by);
+			 note_card ($index, $contained_by, $type, $descr);
 		     });
 $session->close
     || warn "close SNMP session: $!";
@@ -124,19 +125,26 @@ list_cards ();
 my %all_cards;
 my @top_level_cards;
 
-sub card_index ($) { defined $_[1] ? $_[0]->[0] = $_[1] : $_[0]->[0]; }
-sub card_type ($) { defined $_[1] ? $_[0]->[1] = $_[1] : $_[0]->[1]; }
-sub card_parent ($) { defined $_[1] ? $_[0]->[2] = $_[1] : $_[0]->[2]; }
-sub card_children ($) { defined $_[1] ? $_[0]->[3] = $_[1] : $_[0]->[3]; }
+sub card_index ($) { defined $_[1] ? $_[0]->{idx} = $_[1] : $_[0]->{idx}; }
+sub card_type ($) { defined $_[1] ? $_[0]->{type} = $_[1] : $_[0]->{type}; }
+sub card_parent ($) { defined $_[1] ? $_[0]->{parent} = $_[1] : $_[0]->{parent}; }
+sub card_descr ($) { defined $_[1] ? $_[0]->{descr} = $_[1] : $_[0]->{descr}; }
+sub card_children ($) { defined $_[1] ? $_[0]->{children} = $_[1] : $_[0]->{children}; }
 
-sub make_card ($$$) {
-    my ($index, $type, $parent) = @_;
-    [ $index, $type, $parent, [] ];
+sub make_card ($$@) {
+    my ($index, $parent, $type, $descr) = @_;
+    {
+	idx => $index,
+	parent => $parent,
+	type => $type,
+	descr => $descr,
+	children => [],
+    };
 }
 
-sub note_card ($$$) {
-    my ($index, $type, $parent) = @_;
-    my $card = make_card ($index, $type, $parent);
+sub note_card ($$@) {
+    my ($index, $parent, @other_args) = @_;
+    my $card = make_card ($index, $parent, @other_args);
     $all_cards{$index} = $card;
     if ($parent) {
 	my $parent_card = $all_cards{$parent};
@@ -163,7 +171,8 @@ sub list_cards_with_children ($@) {
 	printf STDOUT ("%03d%s %-20s%s\n",
 		       $index,
 		       $indent,
-		       $pretty_type);
+		       $pretty_type,
+		       card_descr ($card));
 	list_cards_with_children ($indent.'  ',@{card_children $card});
     }
 }
