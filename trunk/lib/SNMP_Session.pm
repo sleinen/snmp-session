@@ -178,8 +178,8 @@ sub encode_request_3 ($$$@) {
     $request = encode_tagged_sequence
 	($reqtype,
 	 encode_int ($this->{request_id}),
-	 defined $i1 ? encode_int ($i1) : encode_int_0,
-	 defined $i2 ? encode_int ($i2) : encode_int_0,
+	 defined $i1 ? encode_int ($i1) : encode_int_0 (),
+	 defined $i2 ? encode_int ($i2) : encode_int_0 (),
 	 encode_sequence (@{$encoded_oids_or_pairs}))
 	  || return $this->ber_error ("encoding request PDU");
     return $this->wrap_request ($request);
@@ -626,11 +626,6 @@ sub open {
 	# IPv6-capable code. Will use IPv6 or IPv4 depending on the address.
 	# Uses Socket6 and INET6 calls.
 
-	# Turn off strict subs because NI_NUMERICHOST and NI_NUMERICSERV
-	# are only defined in Socket6.pm, which may not be available,
-	# and AF_INET6 is defined in Socket.pm only in recent versions.
-	no strict "subs";
-
 	# If it's a numeric IPv6 addresses, remove square brackets
 	if ($remote_hostname =~ /^\[.*\]$/) {
 	    $remote_hostname = substr($remote_hostname, 1);
@@ -643,9 +638,6 @@ sub open {
 	if (scalar(@res) < 5) {
 	    return $this->error_return ("can't resolve \"$remote_hostname\" to IPv6 address");
 	}
-
-	# Turn strict back on.
-	use strict "subs";
 
 	if ($SNMP_Session::recycle_socket && defined $the_socket) {
 	    $socket = $the_socket;
