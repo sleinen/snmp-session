@@ -38,10 +38,10 @@ use Exporter;
 use Carp;
 
 use BER "0.88";
-use SNMP_Session "0.93";
+use SNMP_Session "0.97";
 use Socket;
 
-$VERSION = '0.97';
+$VERSION = '0.98';
 
 @ISA = qw(Exporter);
 
@@ -666,16 +666,34 @@ sub snmpwalk_flg ($$@) {
 	  my $upo = $upoid;
 	  while (!exists($revOIDS{$upo}) && length($upo)) {
 	    $upo =~ s/(\.\d+?)$//;
-	    $inst = $1.$inst;
+	    if (defined($1) && length($1)) {
+	      $inst = $1 . $inst;
+	    } else {
+	      $upo = "";
+	      last;
+	    }
 	  }	
-	  $upo = $revOIDS{$upo};
-	  $upo .= $inst if (defined($inst));
+	  if (length($upo) && exists($revOIDS{$upo})) {
+	    $upo = $revOIDS{$upo} . $inst;
+	  } else {
+	    $upo = $upoid;
+	  }
 
 	  $inst = "";
 	  while (!exists($revOIDS{$tempo}) && length($tempo)) {
 	    $tempo =~ s/(\.\d+?)$//;
-	    $inst = $1.$inst;
+	    if (defined($1) && length($1)) {
+	      $inst = $1 . $inst;
+	    } else {
+	      $tempo = "";
+	      last;
+	    }
 	  }	
+	  if (length($tempo) && exists($revOIDS{$tempo})) {
+	    $tempo = $revOIDS{$tempo} . $inst;
+	  } else {
+	    $tempo = pretty_print($oid);
+	  }
 	  #
 	  # call hash_sub
 	  #
@@ -960,9 +978,9 @@ sub toOID(@) {
       unless ($SNMP_Session::suppress_warnings > 1);
       next;
     }
-    if ($var =~ /\"(.*)\"/) {
+    while ($var =~ /\"([^\"]*)\"/) {
       $tmp = sprintf("%d.%s", length($1), join(".", map(ord, split(//, $1))));
-      $var =~ s/\".*\"/$tmp/;
+      $var =~ s/\"$1\"/$tmp/;
     }
     print "toOID: $var\n" if $SNMP_util::Debug;
     $tmp = encode_oid_with_errmsg($var);
@@ -983,7 +1001,7 @@ sub snmpmapOID(@)
   $ind = 0;
   while($ind <= $#vars) {
     $txt = $vars[$ind++];
-    next unless($txt =~ /^(([a-z][a-z\d\-]*\.)*([a-z][a-z\d\-]*))$/i);
+    next unless($txt =~ /^(([a-zA-Z][a-zA-Z\d\-]*\.)*([a-zA-Z][a-zA-Z\d\-]*))$/);
 
     $oid = $vars[$ind++];
     next unless($oid =~ /^((\d+.)*\d+)$/);
@@ -1037,7 +1055,7 @@ sub Check_OID ($) {
   my($var) = @_;
   my($tmp, $tmpv, $oid);
 
-  if ($var =~ /^(([a-z][a-z\d\-]*\.)*([a-z][a-z\d\-]*))/i)
+  if ($var =~ /^(([a-zA-Z][a-zA-Z\d\-]*\.)*([a-zA-Z][a-zA-Z\d\-]*))/)
   {
     $tmp = $&;
     $tmpv = $tmp;
