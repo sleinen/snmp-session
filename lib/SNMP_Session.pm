@@ -86,19 +86,19 @@ sub backoff { $_[0]->{backoff} }
 sub set_timeout {
     my ($session, $timeout) = @_;
     die "timeout ($timeout) must be a positive number" unless $timeout > 0.0;
-    $session->{timeout} = $timeout;
+    $session->{'timeout'} = $timeout;
 }
 sub set_retries {
     my ($session, $retries) = @_;
     die "retries ($retries) must be a non-negative integer"
 	unless $retries == int ($retries) && $retries >= 0;
-    $session->{retries} = $retries; 
+    $session->{'retries'} = $retries; 
 }
 sub set_backoff {
     my ($session, $backoff) = @_;
     die "backoff ($backoff) must be a number >= 1.0"
 	unless $backoff == int ($backoff) && $backoff >= 1.0;
-    $session->{backoff} = $backoff; 
+    $session->{'backoff'} = $backoff; 
 }
 
 sub encode_request ($$@)
