@@ -1,3 +1,37 @@
+1998-06-24  Simon Leinen  <simon@limmat.switch.ch>
+
+	* SNMP_Session.pm (set_timeout, set_retries, set_backoff):
+	Fixed warning.
+
+	* SNMP_util.pm (snmptrap): Added upTime handling.
+
+	* index.html: Documented new methods and map_table fix.
+
+	* SNMP_Session.pm (set_timeout, set_retries, set_backoff): New methods.
+
+	(map_table_start_end): Fixed comparison logic so that an index of
+	"0" no longer terminates the table.
+
+1998-06-11  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Updated RFC 1213 reference for new server.
+
+	* index.html: Updated pointer to mrtg page.
+
+1998-06-03  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Noted SNMP_util.pm.
+
+	Shortened section about Higher-Level APIs.
+
+	* README: Updated to be in line with the current index.html.
+
+	* Makefile (PKGSRCS): Added SNMP_util.pm.
+
+	* BER.pm: Added exported subroutine `encode_timeticks'.
+
+	Upped version to 0.58.
+
 1998-06-03  Simon Leinen  <simon@limmat.switch.ch>
 
 	* BER.pm: Added exported subroutine `encode_timeticks'.
