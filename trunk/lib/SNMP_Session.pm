@@ -1,4 +1,28 @@
-package SNMP_Session;		# -*- mode: Perl -*-
+# -*- mode: Perl -*-
+######################################################################
+### BER (Basic Encoding Rules) encoding and decoding.
+######################################################################
+### This module implements encoding and decoding of ASN.1-based data
+### structures using the Basic Encoding Rules (BER).  Only the subset
+### necessary for SNMP is implemented.
+######################################################################
+### Created by:  Simon Leinen  <simon@instrumatic.ch>
+###
+### Contributions and fixes by:
+###
+### tobias Oetiker <oetiker@ee.ethz.ch>: 
+###   raised default timeout to 10 sec
+### Heine Peters <peters@dkrz.de>:
+###   I made 2 changes to SNMP_Session.pm. The first is the fix for
+###   the problem mentioned above. The second change leaves the source
+###   address of the snmp request unspecified. The address picked by
+###   your old code was not in the access list of some routers. I
+###   couldn't change the access list, because these routers are owned
+###   and managed by the ISP
+######################################################################
+
+package SNMP_Session;		
+
 
 use Socket;
 use BER;
@@ -55,7 +79,7 @@ sub decode_get_response
 sub wait_for_response
 {
     my($this) = shift;
-    my($timeout) = shift || 2.0;
+    my($timeout) = shift || 10.0;
     my($rin,$win,$ein) = ('','','');
     my($rout,$wout,$eout);
     vec($rin,$this->sockfileno,1) = 1;
@@ -105,7 +129,7 @@ sub snmp_version { 0 }
 sub open
 {
     my($this,$remote_hostname,$community,$port,$max_pdu_len) = @_;
-    my($name,$aliases,$local_hostname,$local_addr,$remote_addr,$socket);
+    my($name,$aliases,$remote_addr,$socket);
 
     $udp_proto = 0;
     $sockaddr = 'S n a4 x8';
@@ -114,21 +138,21 @@ sub open
     $port = SNMP_Session::standard_udp_port unless defined $port;
     $max_pdu_len = 8000 unless defined $max_pdu_len;
 
-    $remote_addr = (gethostbyname($remote_hostname))[4]
-	|| die (host_not_found_error ($remote_hostname, $?));
+    if ($remote_hostname =~ /^\d+\.\d+\.\d+\.\d+$/) {
+	## decode numeric hostnames
+	## addition by peters@dkrz.de 25-Apr-1996
+	$remote_addr = pack('C4',split(/\./,$remote_hostname));
+    } else {
+	$remote_hostname = gethostbyname($remote_hostname)[4]
+	    || die (host_not_found_error ($remote_hostname, $?));
+    }
     $socket = 'SNMP'.sprintf ("%08x04x",
 			      unpack ("N", $remote_addr), $port);
     (($name,$aliases,$udp_proto) = getprotobyname('udp'))
 	unless $udp_proto;
     $udp_proto=17 unless $udp_proto;
-    chop($local_hostname = `uname -n`);
-    $local_addr = (gethostbyname($local_hostname))[4]
-	|| die (host_not_found_error ($local_hostname, $?));
-    $local_addr = pack ($sockaddr, AF_INET, 0, $local_addr);
     socket ($socket, AF_INET, SOCK_DGRAM, $udp_proto)
 	|| die "socket: $!";
-    bind ($socket, $local_addr)
-	|| die "bind $local_addr: $!";
     $remote_addr = pack ($sockaddr, AF_INET, $port, $remote_addr);
     bless {
 	'sock' => $socket,
@@ -138,7 +162,7 @@ sub open
 	'max_pdu_len' => $max_pdu_len,
 	'pdu_buffer' => '\0' x $max_pdu_len,
 	'request_id' => rand 0x80000000 + rand 0xffff,
-	'timeout' => 3.0
+	'timeout' => 10.0
 	};
 }
 
@@ -198,10 +222,11 @@ sub receive_response
     my($remote_addr);
     ($remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,0))
 	|| return 0;
-    if ($remote_addr ne $this->remote_addr) {
-	warn "Response came from $remote_addr, not ".$this->remote_addr;
-	return 0;
-    }
+#print"response from $remote_addr ",length($remote_addr),", should be from $this->{'remote_addr'}",length($this->remote_addr),"\n";
+#    if ($remote_addr ne $this->{'remote_addr'}) {
+#	warn "Response came from $remote_addr, not ".$this->remote_addr;
+#	return 0;
+#    }
     return length $this->pdu_buffer;
 }
 
