@@ -139,8 +139,6 @@ sub open
     $max_pdu_len = 8000 unless defined $max_pdu_len;
 
     if ($remote_hostname =~ /^\d+\.\d+\.\d+\.\d+$/) {
-	## decode numeric hostnames
-	## addition by peters@dkrz.de 25-Apr-1996
 	$remote_addr = pack('C4',split(/\./,$remote_hostname));
     } else {
 	$remote_addr = (gethostbyname($remote_hostname))[4]
