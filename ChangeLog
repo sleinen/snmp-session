@@ -1,3 +1,17 @@
+Thu Jun 12 09:00:34 1997  Simon Leinen  <simon@limmat.switch.ch>
+
+	* test.pl, walk-test.pl:
+ 	Better error message for session open failure.
+
+	* index.html: Updated for new error handling and adapted sample
+ 	code, note dependency on Perl 5.002, note use of strict.
+
+Thu Jun 12 08:47:53 1997  Simon Leinen  <simon@limmat.switch.ch>
+
+	* BER.pm, SNMP_Session.pm: Require Perl 5.002.
+
+	* SNMP_Session.pm: Be less strict.
+
 Mon Apr 28 18:55:20 1997  Simon Leinen  <simon@limmat.switch.ch>
 
 	* README, index.html: Moved my home page to
