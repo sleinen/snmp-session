@@ -4,13 +4,13 @@
   <TITLE>SNMP support for Perl 5</TITLE>
  </HEAD>
  <BODY bgcolor="#ffffff">
-<CENTER>
+<DIV ALIGN=CENTER>
   <H1>SNMP support for Perl 5</H1>
 
   <H3>Author: <A HREF="http://www.switch.ch/misc/leinen/">Simon
 Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
-</CENTER>
+</DIV>
 
 <P> This package contains Perl 5 modules <tt>SNMP_Session.pm</tt> and
  <tt>BER.pm</tt>, which, when used together, provide rudimentary
@@ -35,10 +35,6 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
  for, see Tobias Oetiker's <a
  href="http://ee-staff.ethz.ch/~oetiker/webtools/mrtg/mrtg.html">``mrtg''
  (Multi Router Traffic Grapher)</a> tool </p>
-
-<!-- <P> You can try a trivial <A				-->
-<!-- HREF="http://liawww.epfl.ch/cgi-bin/snmp/wwwtest">sample	-->
-<!-- application</A> I have built with this library. </P>	-->
 
 <h2> Recent Changes: </h2>
 
@@ -96,7 +92,7 @@ responses by <a href="mailto:mcm@unx.sas.com">Mike Mitchell</a>.
 
 <li> SNMP_Session.pm 0.61: The sender address of the last response
  received for a session is stored in
- <em>$session->{'last_sender_addr'}</em>.  In connection with
+ <em>$session-&gt;{'last_sender_addr'}</em>.  In connection with
  broadcast or multicast addresses, this can be used to discover SNMP
  agents listening to specific communities, as illustrated in
  <tt>test/discover</tt>.
@@ -192,12 +188,11 @@ use SNMP_Session "0.52";
 
 <li> The pretty printer should now print unsigned 32-bit values (such
  as Counters and Gauges) correctly, i.e. values larger than
- 2<sup><font size=-2>31</font></sup> are printed as large positive
+ 2<sup><font size="-2">31</font></sup> are printed as large positive
  numbers rather than negative numbers.  Note that this can cause
  problems depending on how you handle the output of the pretty
  printer, since those string representations of large numbers may not
- be convertible to integers using <b>atoi()</b> or similar
- functions.
+ be convertible to integers using <b>atoi()</b> or similar functions.
 
 <li> The subroutines in SNMP_Session never call <b>die()</b> anymore
  if it encouters error situations.  Instead, they issue a warning and
@@ -351,7 +346,7 @@ sub walk_function ($$$) {
 
 ...
 $columns = [$base_oid1, $base_oid3];
-$n_rows = $session->map_table ($columns, \&amp;walk_function);
+$n_rows = $session-&gt;map_table ($columns, \&amp;walk_function);
 </pre>
 
 <p> The <em>columns</em> argument must be a reference to a list of
@@ -401,7 +396,7 @@ throw away). </p>
 <p> Of course it is usually impossible to know the size of the table
 in advance.  If you don't specify <tt>maxRepetitions</tt> when walking
 a table, then <tt>map_table</tt> will use a per-session default
-(<tt>$session->default_max_repetitions</tt>).  The default value for
+(<tt>$session-&gt;default_max_repetitions</tt>).  The default value for
 this default is 12. </p>
 
 <p> If you walk a table multiple times, and the size of the table is
