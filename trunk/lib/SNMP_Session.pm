@@ -1,4 +1,4 @@
-package SNMP_Session;
+package SNMP_Session;		# -*- mode: Perl -*-
 
 require 'Socket.pm';
 use Socket;
