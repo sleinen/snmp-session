@@ -21,6 +21,7 @@
 ### Clinton Wong <clintdw@netcom.com>
 ### Alan Nichols <Alan.Nichols@Ebay.Sun.COM>
 ### Mike McCauley <mikem@open.com.au>
+### Andrew W. Elble <elble@icculus.nsg.nwu.edu>
 ######################################################################
 
 package SNMP_Session;		
@@ -41,7 +42,7 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.72';
+$VERSION = '0.73';
 
 @ISA = qw(Exporter);
 
@@ -459,6 +460,7 @@ use vars qw(@ISA);
 use SNMP_Session;
 use Socket;
 use BER;
+use IO::Socket;
 
 @ISA = qw(SNMP_Session);
 
@@ -468,9 +470,7 @@ sub open
 {
     my($this,$remote_hostname,$community,$port,
        $max_pdu_len,$bind_to_port,$max_repetitions) = @_;
-    my($name,$aliases,$remote_addr,$socket);
-
-    my $udp_proto = 0;
+    my($remote_addr,$socket);
 
     $community = 'public' unless defined $community;
     $port = SNMP_Session::standard_udp_port unless defined $port;
@@ -479,11 +479,8 @@ sub open
 	unless defined $max_repetitions;
     $remote_addr = inet_aton ($remote_hostname)
 	|| return $this->error_return ("can't resolve \"$remote_hostname\" to IP address");
-    $socket = 'SNMP'.sprintf ("%s:%d", inet_ntoa ($remote_addr), $port);
-    (($name,$aliases,$udp_proto) = getprotobyname('udp'))
-	unless $udp_proto;
-    $udp_proto=17 unless $udp_proto;
-    socket ($socket, PF_INET, SOCK_DGRAM, $udp_proto)
+    $socket = IO::Socket::INET->new(Proto => "udp",
+				    Type => SOCK_DGRAM)
 	|| return $this->error_return ("creating socket: $!");
     if (defined $bind_to_port) {
 	my $sockaddr = sockaddr_in ($bind_to_port, INADDR_ANY);
