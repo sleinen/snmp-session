@@ -1,8 +1,9 @@
 #!/logiciels/public/divers/bin/perl5
 
 require 5;
-require 'BER.pm';
+
 require 'SNMP_Session.pm';
+require 'BER.pm';
 
 srand();
 
