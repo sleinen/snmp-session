@@ -1,3 +1,26 @@
+Tue Jul  9 08:41:22 1996  Simon Leinen  <simon@instrumatic.ch>
+
+	* BER.pm (decode_intlike): Fixed shifting of first byte.
+
+	* BER.pm: Reformatted the header comment and added my name.
+
+	* BER.pm (decode_string): Cleaned up by removing my old code that
+ 	had been commented out by Andrzej Tobola when he fixed it.
+
+Tue Jul  9 08:41:22 1996  Andrzej Tobola  <san@iem.pw.edu.pl>
+
+	* BER.pm (decode_string): Support long strings by using
+	decode_length.
+
+Tue Jul  9 08:41:22 1996  Tobias Oetiker  <oetiker@ee.ethz.ch>
+
+	* BER.pm (decode_intlike): Handle five-byte integers.
+
+Tue Jul  9 08:41:22 1996  Dave Rand  <dlr@Bungi.com>
+
+	* BER.pm (pretty_uptime): New subroutine to print sysUpTime
+	readably.
+
 Mon Jul  8 17:15:43 1996  Simon Leinen  <simon@instrumatic.ch>
 
 	* README: Updated my e-mail address.
