@@ -49,6 +49,15 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> BER.pm 0.82: OIDs with only two subids can now be encoded.  The
+most common case is the "null" OID (0.0).  Thanks to <a
+href="mailto:wardenb@eluminant.com">Brett T Warden</a> for pointing out
+that this didn't work. </li>
+
+<li> BER.pm 0.82: pretty_print() now handles UInteger32 objects.
+Patch by <a href="mailto:wardenb@eluminant.com">Brett T
+Warden</a>. </li>
+
 <li> BER.pm 0.81: Subids in the range 2^31 - 2^32-1 are now encoded
 correctly.  Thanks to <a href="mailto:rik.hoorelbeke@pandora.be">Rik
 Hoorelbeke</a> for noticing the problem. </li>
@@ -714,7 +723,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20001115
+20001203
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
