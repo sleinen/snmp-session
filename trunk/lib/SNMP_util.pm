@@ -23,6 +23,8 @@
 ### Laurent Girod <girod.laurent@pmintl.ch>: code for snmpwalkhash
 ### Ian Duplisse <i.duplisse@cablelabs.com>: MIB parsing suggestions
 ### Jakob Ilves <jakob.ilves@oracle.com>: return_array_refs for snmpwalk()
+### Valerio Bontempi <v.bontempi@inwind.it>: IPv6 support
+### Lorenzo Colitti <lorenzo@colitti.com>: IPv6 support
 ######################################################################
 
 package SNMP_util;
@@ -38,7 +40,7 @@ use BER "0.88";
 use SNMP_Session "0.93";
 use Socket;
 
-$VERSION = '0.94';
+$VERSION = '0.96';
 
 @ISA = qw(Exporter);
 
@@ -331,6 +333,7 @@ undef $SNMP_util::Host;
 undef $SNMP_util::Session;
 undef $SNMP_util::Version;
 undef $SNMP_util::LHost;
+undef $SNMP_util::IPv4only;
 $SNMP_util::Debug = 0;
 $SNMP_util::CacheFile = "OID_cache.txt";
 $SNMP_util::CacheLoaded = 0;
@@ -367,14 +370,29 @@ sub snmpopen ($$$) {
   my($host, $type, $vars) = @_;
   my($nhost, $port, $community, $lhost, $lport, $nlhost);
   my($timeout, $retries, $backoff, $version);
+  my $v4onlystr;
 
   $type = 0 if (!defined($type));
   $community = "public";
   $nlhost = "";
 
   ($community, $host) = ($1, $2) if ($host =~ /^(.*)@([^@]+)$/);
-  ($host, $port, $timeout, $retries, $backoff, $version) = split(':', $host, 6)
-    if ($host =~ /:/);
+
+  # We can't split on the : character because a numeric IPv6
+  # address contains a variable number of :'s
+  my $opts;
+ if( ($host =~ /^(\[.*\]):(.*)$/) || ($host =~ /^(\[.*\])$/) ) {
+    # Numeric IPv6 address between []
+    ($host, $opts) = ($1, $2);
+  } else {
+    # Hostname or numeric IPv4 address
+    ($host, $opts) = split(':', $host, 2);
+  }
+  ($port, $timeout, $retries, $backoff, $version, $v4onlystr) = split(':', $opts, 6)
+    if(defined($opts) && (length $opts > 0) );
+
+  undef($version) if (defined($version) && length($version) <= 0);
+  $v4onlystr = "" unless defined $v4onlystr;
   $version = '1' unless defined $version;
   if (defined($port) && ($port =~ /^([^!]*)!(.*)$/)) {
     ($port, $lhost) = ($1, $2);
@@ -391,21 +409,23 @@ sub snmpopen ($$$) {
   if ((!defined($SNMP_util::Session))
     || ($SNMP_util::Host ne $nhost)
     || ($SNMP_util::Version ne $version)
-    || ($SNMP_util::LHost ne $nlhost)) {
+    || ($SNMP_util::LHost ne $nlhost)
+    || ($SNMP_util::IPv4only ne $v4onlystr)) {
     if (defined($SNMP_util::Session)) {
       $SNMP_util::Session->close();    
       undef $SNMP_util::Session;
       undef $SNMP_util::Host;
       undef $SNMP_util::Version;
       undef $SNMP_util::LHost;
+      undef $SNMP_util::IPv4only;
     }
     $SNMP_util::Session = ($version =~ /^2c?$/i)
       ? SNMPv2c_Session->open($host, $community, $port, undef,
-				$lport, undef, $lhost)
+				$lport, undef, $lhost, ($v4onlystr eq 'v4only') ? 1:0 )
       : SNMP_Session->open($host, $community, $port, undef,
-				$lport, undef, $lhost);
+				$lport, undef, $lhost, ($v4onlystr eq 'v4only') ? 1:0 );
     ($SNMP_util::Host = $nhost, $SNMP_util::Version = $version,
-      $SNMP_util::LHost = $nlhost) if defined($SNMP_util::Session);
+      $SNMP_util::LHost = $nlhost, $SNMP_util::IPv4only = $v4onlystr) if defined($SNMP_util::Session);
   }
 
   if (defined($SNMP_util::Session)) {
