@@ -68,9 +68,15 @@ $session->close ();
 ##
 sub out_arp_entry ($$$) {
   my ($index, $physAddress, $type) = @_;
+
+  ## the index of this table has the form IFINDEX.IPADDRESS, where
+  ## IPADDRESS is a "dotted quad" of four integers.  We simply split
+  ## at the first dot to get the interface index and the IP address in
+  ## readable notation:
+  ##
   my ($ifIndex, $netAddress) = split(/\./, $index, 2);
 
-  $type = $pretty_print ($type);
+  $type = pretty_print ($type);
   if ($type eq 1) { $type = "other"; }
   elsif ($type eq 2) { $type = "invalid"; }
   elsif ($type eq 3) { $type = "dynamic"; }
