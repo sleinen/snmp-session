@@ -57,7 +57,7 @@ foreach $desc (@ret) {
 }
 
 #
-#	Example 2: snmpwalkhash
+#	Example 3: snmpwalkhash
 #
 
 my %ret_hash = &snmpwalkhash($host, \&my_simple_hash, @oid_names);
