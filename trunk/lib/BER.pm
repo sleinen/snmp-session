@@ -13,6 +13,8 @@
 ### Andrzej Tobola <san@iem.pw.edu.pl>:  Added long String decode
 ### Tobias Oetiker <oetiker@ee.ethz.ch>:  Added 5 Byte Integer decode ...
 ### Dave Rand <dlr@Bungi.com>:  Added SysUpTime decode
+### Yufang HU <yhu@casc.com>:  Added check for negative OID subids
+### Philippe Simonet <sip00@vg.swissptt.ch>:  support up to 32bit subids
 ######################################################################
 
 package BER;
@@ -98,10 +100,46 @@ sub encode_oid
 	$result = pack ("C", $result);
     }
     foreach $subid (@oid) {
-	if ($subid < 128) {
+# Yufang HU (yhu@casc.com) added low-limit checking
+	if ( ($subid>=0) && ($subid<128) ){ #7 bits long subid 
 	    $result .= pack ("C", $subid);
-	} elsif ($subid < 16384) {
+	} elsif ( ($subid>=128) && ($subid<16384) ){ #14 bits long subid
 	    $result .= pack ("CC", 0x80 | $subid >> 7, $subid & 0x7f);
+	} 
+#
+# From: "Simonet Philippe, 8TO" <sip00@vg.swissptt.ch>
+#
+# I had some problem to read private MIBs of our Synoptics   
+# concentrators(1.3.6.1.4.1.45.1.6.6.2.1.1.2.204006), and I solved 
+# that by adding this ...
+#
+	elsif ( ($subid>=16384) && ($subid<2097152) ) {#21 bits long subid
+	    $result .= pack ("CCC",
+			     0x80 | (($subid>>14) & 0x7f), 
+			     0x80 | (($subid>>7) & 0x7f),
+			     $subid & 0x7f); 
+	}
+	# Yufang: yhu@casc.com added following branches
+	elsif ( ($subid>=2097152) && ($subid<268435456) ){ #28 bits long subid
+	    $result .= pack ("CCCC", 
+			     0x80 | (($subid>>21) & 0x7f),
+			     0x80 | (($subid>>14) & 0x7f),
+			     0x80 | (($subid>>7) & 0x7f),
+			     $subid & 0x7f);
+	} elsif ( ($subid>=268435456) && ($subid<2147483648) ){ #31 bits long subid
+	    $result .= pack ("CCCCC", 
+			     0x80 | (($subid>>28) & 0x0f), #mask the bits beyond 32 
+			     0x80 | (($subid>>21) & 0x7f),
+			     0x80 | (($subid>>14) & 0x7f),
+			     0x80 | (($subid>>7) & 0x7f),
+			     $subid & 0x7f);
+	} elsif ( ($subid>=-2147483648) && ($subid<0) ) { #32 bits long subid
+	    $result .= pack ("CCCCC", 
+			     0x80 | (($subid>>28) & 0x0f), #mask the bits beyond 32 
+			     0x80 | (($subid>>21) & 0x7f),
+			     0x80 | (($subid>>14) & 0x7f),
+			     0x80 | (($subid>>7) & 0x7f),
+			     $subid & 0x7f);
 	} else {
 	    die "Cannot encode subid $subid yet.";
 	}
