@@ -34,6 +34,7 @@
 ### Jakob Ilves (/IlvJa) <jakob.ilves@oracle.com>: PDU capture
 ### Valerio Bontempi <v.bontempi@inwind.it>: IPv6 support
 ### Lorenzo Colitti <lorenzo@colitti.com>: IPv6 support
+### Philippe Simonet <Philippe.Simonet@swisscom.com>: Export avoid...
 ######################################################################
 
 package SNMP_Session;		
@@ -42,7 +43,9 @@ require 5.002;
 
 use strict;
 use Exporter;
-use vars qw(@ISA $VERSION @EXPORT $errmsg $suppress_warnings);
+use vars qw(@ISA $VERSION @EXPORT $errmsg
+	    $suppress_warnings
+	    $default_avoid_negative_request_ids);
 use Socket;
 use BER;
 use Carp;
@@ -102,7 +105,7 @@ my $default_max_repetitions = 12;
 ### some agents erroneously encode the response ID as an unsigned,
 ### which prevents this code from matching such responses to requests.
 ###
-my $default_avoid_negative_request_ids = 0;
+$SNMP_Session::default_avoid_negative_request_ids = 0;
 
 ### Whether all SNMP_Session objects should share a single UDP socket.
 ###
@@ -629,9 +632,8 @@ sub open {
 	# Uses Socket6 and INET6 calls.
 
 	# If it's a numeric IPv6 addresses, remove square brackets
-	if ($remote_hostname =~ /^\[.*\]$/) {
-	    $remote_hostname = substr($remote_hostname, 1);
-	    chop $remote_hostname;
+	if ($remote_hostname =~ /^\[(.*)\]$/) {
+	    $remote_hostname = $1;
 	}
 
 	my (@res, $socktype_tmp, $proto_tmp, $canonname_tmp);
@@ -669,7 +671,7 @@ sub open {
 	   'max_pdu_len' => $max_pdu_len,
 	   'pdu_buffer' => '\0' x $max_pdu_len,
 	   'request_id' =>
-	       $default_avoid_negative_request_ids
+	       $SNMP_Session::default_avoid_negative_request_ids
 	       ? (int (rand 0x8000) << 16) + int (rand 0x10000)
 	       : (int (rand 0x10000) << 16) + int (rand 0x10000)
 	       - 0x80000000,
@@ -683,7 +685,7 @@ sub open {
 	   'use_getbulk' => 1,
 	   'lenient_source_address_matching' => 1,
 	   'lenient_source_port_matching' => 1,
-	   'avoid_negative_request_ids' => $default_avoid_negative_request_ids,
+	   'avoid_negative_request_ids' => $SNMP_Session::default_avoid_negative_request_ids,
 	   'capture_buffer' => undef,
 	  };
 }
