@@ -1,0 +1,71 @@
+#!/logiciels/public/divers/bin/perl5
+
+require 5;
+
+require 'SNMP_Session.pm';
+require 'BER.pm';
+
+srand();
+
+%ugly_oids = ( "sysDescr.0" => "1.3.6.1.2.1.1.1.0",
+		"sysContact.0" => "1.3.6.1.2.1.1.4.0",
+	      "ipForwarding.0" => "1.3.6.1.2.1.4.1.0",
+	      "computerSystemUsers.0" => "1.3.6.1.4.1.11.2.3.1.1.2.0",
+	      "computerSystemAvgJobs1.0" => "1.3.6.1.4.1.11.2.3.1.1.3.0",
+	      "computerSystemAvgJobs5.0" => "1.3.6.1.4.1.11.2.3.1.1.4.0",
+	      "computerSystemAvgJobs15.0" => "1.3.6.1.4.1.11.2.3.1.1.5.0",
+	      );
+foreach (keys %ugly_oids) {
+    $ugly_oids{$_} = BER::encode_oid (split (/\./, $ugly_oids{$_}));
+    $pretty_oids{$ugly_oids{$_}} = $_;
+}
+
+print "Content-type: text/html\n\n";
+
+$session = SNMP_Session->open ('liasg7', 'public', 161)
+    || die "open session: $!";
+snmp_get ($session, qw(sysDescr sysContact ipForwarding
+		       computerSystemUsers
+		       computerSystemAvgJobs1 
+		       computerSystemAvgJobs5
+		       computerSystemAvgJobs15))
+    || die "snmpget: $!";
+$session->close ();
+1;
+
+sub snmp_get
+{
+    my($session, @oids) = @_;
+    my($response, $bindings, $binding, $value, $oid);
+    grep ($_ = $ugly_oids{$_.".0"}, @oids);
+    if ($session->get_request_response (@oids)) {
+	$response = $session->{pdu_buffer};
+	($bindings) = $session->decode_get_response ($response);
+
+	print "<TABLE BORDER>\n";
+	while ($bindings ne '') {
+	    ($binding,$bindings) = BER::decode_sequence ($bindings);
+	    ($oid,$value) = BER::decode_by_template ($binding, "%O%@");
+	    print "<TR>",
+	    "<TD ALIGN=RIGHT>", &html_quote (BER::pretty_print ($value)), "</SAMP></TD>",
+	    "<TH ALIGN=LEFT>", $pretty_oids{$oid}, "</TH>",
+	    "</TR>\n";
+	}
+	print "</TABLE>\n";
+	1;
+    } else {
+	warn "Response not received.\n";
+	0;
+    }
+}
+
+sub html_quote
+{
+    local ($_) = @_;
+
+    return $_ unless /[<>&]/;
+    s/&/&amp;/g;
+    s/</&lt;/g;
+    s/>/&gt;/g;
+    $_;
+}
