@@ -47,23 +47,17 @@ use Socket;
 use BER;
 use Carp;
 
-BEGIN {
-    if (eval {require Socket6;})  {
-	import Socket6;
-    }
-}
-
 sub map_table ($$$ );
 sub map_table_4 ($$$$);
 sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.96';
+$VERSION = '0.97';
 
 @ISA = qw(Exporter);
 
-@EXPORT = qw(errmsg suppress_warnings index_compare oid_diff recycle_socket);
+@EXPORT = qw(errmsg suppress_warnings index_compare oid_diff recycle_socket ipv6available);
 
 my $default_debug = 0;
 
@@ -113,6 +107,27 @@ my $default_avoid_negative_request_ids = 0;
 ### Whether all SNMP_Session objects should share a single UDP socket.
 ###
 $SNMP_Session::recycle_socket = 0;
+
+### IPv6 initialization code: check that IPv6 libraries are available,
+### and if so load them.
+
+### We store the length of an IPv6 socket address structure in the class
+### so we can determine if a socket address is IPv4 or IPv6 just by checking
+### its length. The proper way to do this would be to use sockaddr_family(),
+### but this function is only available in recent versions of Socket.pm.
+my $ipv6_addr_len;
+
+BEGIN {
+    $ipv6_addr_len = undef;
+    $SNMP_Session::ipv6available = 0;
+
+    if (eval {require Socket6;} &&
+	eval {require IO::Socket::INET6; IO::Socket::INET6->VERSION("1.26");}) {
+	import Socket6;
+	$ipv6_addr_len = length(pack_sockaddr_in6(161, inet_pton(AF_INET6, "::1")));
+	$SNMP_Session::ipv6available = 1;
+    }
+}
 
 my $the_socket;
 
@@ -505,13 +520,10 @@ sub pretty_address {
     # complaining about AF_INET6 when Socket6 is not available
     no strict "subs";
 
-    # Use eval() both to check that we have IPv6 support and that
-    # the address is an IPv6 address.
-    eval {
+    if( (defined $ipv6_addr_len) && (length $addr == $ipv6_addr_len)) {
 	($port,$addrunpack) = unpack_sockaddr_in6 ($addr);
 	$addrstr = inet_ntop (AF_INET6, $addrunpack);
-    };
-    if($@) {
+    } else {
 	($port,$addrunpack) = unpack_sockaddr_in ($addr);
 	$addrstr = inet_ntoa ($addrunpack);
     }
@@ -564,24 +576,10 @@ use BER;
 use IO::Socket;
 use Carp;
 
-# Check whether IPv6 libraries are available, and if so load them
-my $ipv6available;
-
 BEGIN {
-    $ipv6available = 0;
-    if (eval {require Socket6;})  {
+    if($SNMP_Session::ipv6available) {
 	import Socket6;
-
-	if (eval {require IO::Socket::INET6;
-		  IO::Socket::INET6->VERSION ("1.26");
-	      })  {
-	    use IO::Socket::INET6;
-	} else {
-	    ## warn "failed to import INET6: $@";
-	}
-	if ( ! $@ ) {
-	    $ipv6available = 1;
-	}
+	import IO::Socket::INET6;
     }
 }
 
@@ -607,7 +605,7 @@ sub open {
     $max_repetitions = $default_max_repetitions
 	unless defined $max_repetitions;
 
-    if ($ipv4only || ! $ipv6available) {
+    if ($ipv4only || ! $SNMP_Session::ipv6available) {
 	# IPv4-only code, uses only Socket and INET calls
     if (defined $remote_hostname) {
 	$remote_addr = inet_aton ($remote_hostname)
@@ -875,12 +873,10 @@ sub receive_trap {
     my ($remote_addr, $iaddr, $port, $trap);
     $remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,0);
     return undef unless $remote_addr;
-    # Hack. The proper way would be to use sockaddr_family, but this
-    # is only available in recent versions of Socket.pm.
-    eval {
+
+    if( (defined $ipv6_addr_len) && (length $remote_addr == $ipv6_addr_len)) {
 	($port,$iaddr) = unpack_sockaddr_in6($remote_addr);
-    };
-    if($@) {
+    } else {
 	($port,$iaddr) = unpack_sockaddr_in($remote_addr);
     }
 
@@ -927,12 +923,9 @@ sub receive_request {
 			$this->{'max_pdu_len'}, 0);
     return undef unless $remote_addr;
 
-    # Hack. The proper way would be to use sockaddr_family, but this
-    # is only available in recent versions of Socket.pm.
-    eval {
+    if( (defined $ipv6_addr_len) && (length $remote_addr == $ipv6_addr_len)) {
 	($port,$iaddr) = unpack_sockaddr_in6($remote_addr);
-    };
-    if($@) {
+    } else {
 	($port,$iaddr) = unpack_sockaddr_in($remote_addr);
     }
 
