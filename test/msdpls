@@ -23,6 +23,7 @@ sub msdp_map_sg ($$$$$ );
 sub msdp_list_group ($$);
 sub pretty_ip_html ($ );
 sub pretty_ip ($ );
+sub usage ($ );
 
 while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
     if ($ARGV[0] =~ /^-v/) {
@@ -286,4 +287,9 @@ sub pretty_ip ($ ) {
     ($name = gethostbyaddr (inet_aton ($ip),AF_INET))
 	? "$name [$ip]"
 	: "$ip";
+}
+
+sub usage ($ ) {
+    printf STDERR "Usage: $0 [-v 1|2c] [-p PORT] [-g GROUP] ROUTER [COMMUNITY]\n";
+    exit $_[0];
 }
