@@ -18,6 +18,28 @@ use SNMP_Session;
 use POSIX;			# for exact time
 use Curses;
 
+my $version = '1';
+
+while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
+    if ($ARGV[0] =~ /^-v/) {
+	if ($ARGV[0] eq '-v') {
+	    shift @ARGV;
+	    usage () unless defined $ARGV[0];
+	} else {
+	    $ARGV[0] = substr($ARGV[0], 2);
+	}
+	if ($ARGV[0] eq '1') {
+	    $version = '1';
+	} elsif ($ARGV[0] eq '2c') {
+	    $version = '2c';
+	} else {
+	    usage ();
+	}
+    } else {
+	usage ();
+    }
+    shift @ARGV;
+}
 my $host = shift @ARGV || die;
 my $community = shift @ARGV || die;
 
@@ -83,22 +105,41 @@ sub out_interface {
 }
 
 $win->erase ();
-my $session = SNMP_Session->open ($host, $community, 161)
+my $session =
+    ($version eq '1' ? SNMPv1_Session->open ($host, $community, 161)
+     : $version eq '2c' ? SNMPv2c_Session->open ($host, $community, 161)
+     : die "Unknown SNMP version $version")
   || die "Opening SNMP_Session";
+
+### max_repetitions:
+###
+### We try to be smart about the value of $max_repetitions.  Starting
+### with the session default, we use the number of rows in the table
+### (returned from map_table_4) to compute the next value.  It should
+### be one more than the number of rows in the table, because
+### map_table needs an extra set of bindings to detect the end of the
+### table.
+###
+my $max_repetitions = $session->default_max_repetitions;
 while (1) {
     $win->standout();
-    $win->addstr (0, 0, sprintf ("%-20s interval %4.1fs",
+    $win->addstr (0, 0, sprintf ("%-20s interval %4.1fs %d reps",
 				 $host,
-				 $interval || $desired_interval));
+				 $interval || $desired_interval,
+				 $max_repetitions));
     $win->addstr (1, 0,
 		  sprintf ("%2s  %-24s %10s %10s %10s %10s %s\n",
 			   "ix", "desc", "inOctets", "outOctets", "inPkts", "outPkts", "alias"));
     $win->clrtoeol ();
     $win->standend();
     $linecount = 2;
-    $session->map_table ([$ifDescr,$ifAdminStatus,$ifOperStatus,
-			  $ifInOctets,$ifOutOctets,$ifInUcastPkts,$ifOutUcastPkts,$locIfDescr],
-			 \&out_interface);
+    my $calls = $session->map_table_4
+	([$ifDescr,$ifAdminStatus,$ifOperStatus,
+	  $ifInOctets,$ifOutOctets,$ifInUcastPkts,$ifOutUcastPkts,$locIfDescr],
+	 \&out_interface,
+	 $max_repetitions);
+    $max_repetitions = $calls + 1
+	if $calls > 0;
     $sleep_interval -= ($interval - $desired_interval)
 	if defined $interval;
     select (undef, undef, undef, $sleep_interval);
