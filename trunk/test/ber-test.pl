@@ -3,7 +3,7 @@
 ### Name:	  ber-test.pl
 ### Date Created: Sat Feb  1 16:09:46 1997
 ### Author:	  Simon Leinen  <simon@switch.ch>
-### RCS $Id: ber-test.pl,v 1.6 1998-04-30 10:59:12 leinen Exp $
+### RCS $Id: ber-test.pl,v 1.7 2000-03-29 13:28:48 leinen Exp $
 ######################################################################
 ### Regression Tests for BER encoding/decoding
 ######################################################################
@@ -36,6 +36,18 @@ sub regression_test
     &decode_intlike_test ('"\x02\x04\x00\xff\xff\xfd"', 16777213);
     &decode_intlike_test ('"\x02\x04\xff\xff\xff\xfc"', -4);
     &decode_intlike_test ('"\x02\x05\x00\xff\xff\xff\xfc"', 4294967292);
+
+    ## Tests for integers > 2^32
+    ##
+    ## For really big integers (those that don't have an exact double
+    ## representation, I guess), we have to write the comparands as
+    ## strings, because otherwise they will be converted to NaN by
+    ## Perl.  The comparisons still work right thanks to Math::BigInt,
+    ## which is used by BER.pm for large integers.
+    ##
+    &decode_intlike_test ('"\x02\x06\x00\x01\x00\x00\x00\x00"', 4294967296);
+    &decode_intlike_test ('"\x02\x09\x00\xff\xff\xff\xff\xff\xff\xff\xff"',
+			      "18446744073709551615");
     &eq_test ('(&BER::decode_string ("\x04\x06public"))[0]', "public");
     &eq_test ('(&BER::decode_oid ("\x06\x04\x01\x03\x06\x01"))[0]', 
 	      "\x06\x04\x01\x03\x06\x01");
