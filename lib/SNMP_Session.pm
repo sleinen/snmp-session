@@ -100,7 +100,7 @@ sub get_request_response
 	    || die "receive_response: $!";
 	## print STDERR "$response_length bytes of response received.\n";
     } else {
-	warn "Timeout\n";
+	0;
     }
 }
 
