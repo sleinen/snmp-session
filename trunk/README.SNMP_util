@@ -1,7 +1,7 @@
 
 		       README for SNMP_util.pm
 
-		       Copyright (c) 1998-2000, Mike Mitchell
+		       Copyright (c) 1998-2001, Mike Mitchell
 			  All rights reserved
 
 This program is free software; you can redistribute it under the
@@ -36,6 +36,8 @@ The SNMP_utils.pm module contains the functions
   snmpgetnext(community@host:port:timeout:retries:backoff:version, OID,
 	    [OID...])
   snmpwalk(community@host:port:timeout:retries:backoff:version, OID)
+  snmpgetbulk(community@host:port:timeout:retries:backoff:version, non_repeat, max_repeat,
+	    OID, [OID...])
   snmpset(community@host:port:timeout:retries:backoff:version, OID, type, value,
 	    [OID, type, value ...])
   snmptrap(community@host:port:timeout:retries:backoff:version, enterpriseOID,
@@ -125,7 +127,8 @@ of 1.0 the timeout stays the same for every retry.
 
 The version parameter defaults to SNMP version 1.  Some SNMP values such as
 64-bit counters have to be queried using SNMP version 2.  Specifying "2" or
-"2c" as the version parameter will accomplish this.
+"2c" as the version parameter will accomplish this.  The snmpgetbulk routine
+is only supported in SNMP version 2 and higher.
 
 The snmpget function returns an array with the results of the 'get'
 operation.  The value associated with each OID is returned as a
@@ -140,6 +143,17 @@ returns an array with all the OID numbers and values.  The instance
 part of the OID number is added as a prefix just like in the
 snmpgetnext functions.  A walk might return an array like
 '1:ethernet', '2:ethernet', '3:fddi'.
+The snmpwalk function will use a 'getbulk' query for efficiency
+if the SNMP version is 2 or higher.
+
+The snmpgetbulk function, like the snmpgetnext function,  returns an array
+with the results of the 'getbulk' operation.  The OID number is added to the
+result as a prefix with a colon separator, like '1.3.6.1.2.1.2.2.1.2.1:ethernet'
+The 'non_repeat' argument is the number of OID arguments that should be
+retrieved no more than once.  The 'max_repeat' argument is the number of
+times that other variables beyond those specified by the 'non_repeat'
+argument should be retrieved.  The getbulk query is only supported at
+SNMP version 2 or higher.
 
 The snmpset function is passed OID, type, and value triplets.  It
 returns an array with the result of the set.
