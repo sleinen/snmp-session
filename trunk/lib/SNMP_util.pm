@@ -581,6 +581,8 @@ sub snmpwalk_flg ($$@) {
     return undef;
   }
 
+  $h_ref = (ref $vars[$#vars] eq "HASH") ? pop(@vars) : \%rethash;
+
   @enoid = toOID(@vars);
   return undef unless defined $enoid[0];
 
