@@ -80,22 +80,24 @@ sub pretty_print
     die "Cannot pretty print objects of type $type";
 }
 
-sub pretty_string
+sub pretty_using_decoder
 {
+    my($decoder) = shift;
     my($packet) = shift;
     my($decoded,$rest);
-    ($decoded,$rest) = &decode_string ($packet);
+    ($decoded,$rest) = &$decoder ($packet);
     die "Junk after object" unless $rest eq '';
     return $decoded;
 }
 
+sub pretty_string
+{
+    &pretty_using_decoder (\&decode_string, @_);
+}
+
 sub pretty_int
 {
-    my($packet) = shift;
-    my($decoded,$rest);
-    ($decoded,$rest) = &decode_int ($packet);
-    die "Junk after object" unless $rest eq '';
-    return $decoded;
+    &pretty_using_decoder (\&decode_int, @_);
 }
 
 sub pretty_oid
