@@ -30,21 +30,23 @@ sub out_memory_pool_entry {
   grep (defined $_ && ($_=pretty_print $_),
 	($name, $alt, $valid, $used, $free, $largest));
   my $type = $CiscoMemoryPoolTypes{$index} || $index;
-  printf "%-17s", $type;
-  printf "%-13s ", ('"'.$name.'"');
-  printf "%6d ", $alt;
-  printf "%3s ", $valid ? 'yes' : 'no';
-  printf "%10d ", $used;
-  printf "%10d ", $free;
-  printf "%10d\n", $largest;
+  printf STDOUT ("%-13s %6d %3s %10d %10d %10d %10d\n",
+		 $name, $alt,
+		 $valid ? 'yes' : 'no',
+		 $used+$free, $used, $free, $largest);
 }
 
 my $session = SNMP_Session->open ($host, $community, 161)
   || die "Opening SNMP_Session";
+printf STDOUT ("%-13s %6s %3s %10s %10s %10s %10s\n",
+	       "Name", "Alt", "Vld", "Total", "Used", "Free", "Largest");
+print STDOUT "-" x (13+7+4+11+11+11+11),"\n";
 $session->map_table ([
 		      $ciscoMemoryPoolName,
-		      $ciscoMemoryPoolAlternate, $ciscoMemoryPoolValid,
-		      $ciscoMemoryPoolUsed, $ciscoMemoryPoolFree,
+		      $ciscoMemoryPoolAlternate,
+		      $ciscoMemoryPoolValid,
+		      $ciscoMemoryPoolUsed,
+		      $ciscoMemoryPoolFree,
 		      $ciscoMemoryPoolLargestFree],
 		     \&out_memory_pool_entry);
 1;
