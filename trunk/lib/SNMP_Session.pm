@@ -516,7 +516,7 @@ sub unwrap_response_5a
       unless defined $snmpver;
     return $this->error ("Received SNMP response with unknown snmp-version field $snmpver")
 	unless $snmpver == $this->snmp_version;
-    if ($this->{error_status} != 0 || $this->{error_index} != 0) {
+    if ($this->{error_status} != 0) {
       if ($errorp) {
 	my ($oid, $errmsg);
 	$errmsg = $error_status_code[$this->{error_status}] || $this->{error_status};
