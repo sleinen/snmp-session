@@ -50,7 +50,7 @@ The SNMP_utils.pm module contains the functions
   snmpmaptable4(community@host:port:timeout:retries:backoff:version,
 		function, max_repetitions, OID, [OID...])
   snmpwalkhash(community@host:port:timeout:retries:backoff:version,
-		function, OID, [OID...])
+		function, OID, [OID...], [hash ref])
 
 
 The functions have a small mapping table for commonly used OIDs.  The
@@ -208,7 +208,10 @@ hosts, by oid_names, by oid_numbers, by instances... like these:
    $hash{$oid . '.' . $ints} = $value;
    $hash{$inst} = $value;
    ...
-The snmpwalkhash routine returns the hash.
+If the last argument to snmpwalkhash is a reference to a hash, that hash
+reference is passed to the passed-in function instead of a local hash
+reference.  That way your function can look up other objects unrelated
+to the current invocation of snmpwalkhash.
 
 Here is a simple example of using the functions:
 
@@ -288,6 +291,16 @@ sub main {
     foreach my $inst (sort { $a <=> $b } keys %{$ret_hash{$host}{$oid}}) {
       printf("%20s\t: %-15s %3s = %s\n", $host, $oid, $inst,
 		$ret_hash{$host}{$oid}{$inst});
+    }
+  }
+
+  print "Trying 'walkhash' on $host, using own hash\n";
+  my(%myhash);
+  %ret_hash = &snmpwalkhash($host, \&my_hash_with_host, "ifEntry", \%myhash);
+  foreach $oid (sort keys %{$myhash{$host}}) {
+    foreach my $inst (sort { $a <=> $b } keys %{$myhash{$host}{$oid}}) {
+      printf("%20s\t: %-15s %3s = %s\n", $host, $oid, $inst,
+		$myhash{$host}{$oid}{$inst});
     }
   }
 
