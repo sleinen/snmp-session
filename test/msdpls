@@ -10,6 +10,7 @@ my $version = '1';
 my $port = 161;
 my $debug = 0;
 my $group;
+my $numericp = 0;
 
 ### Prototypes
 sub msdp_list_duplicate_sas ($ );
@@ -54,6 +55,8 @@ while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
 	}
     } elsif ($ARGV[0] eq '-d') {
 	++$debug;
+    } elsif ($ARGV[0] eq '-n') {
+	++$numericp;
     } elsif ($ARGV[0] eq '-h') {
 	usage (0);
 	exit 0;
@@ -272,31 +275,29 @@ sub msdp_list_group ($$) {
 }
 
 sub pretty_ip_html ($ ) {
-    my ($ip) = @_;
-    my ($name);
-
-    ($name = gethostbyaddr (inet_aton ($ip),AF_INET))
-	? "<tt>$ip</tt> ($name)"
-	: "<tt>$ip</tt>";
+    return "<tt>".pretty_ip ($_[0])."</tt>";
 }
 
 sub pretty_ip ($ ) {
     my ($ip) = @_;
     my ($name);
 
-    ($name = gethostbyaddr (inet_aton ($ip),AF_INET))
+    !$numericp && ($name = gethostbyaddr (inet_aton ($ip),AF_INET))
 	? "$name [$ip]"
 	: "$ip";
 }
 
 sub usage ($ ) {
     print STDERR
-	("Usage: $0 [-v 1|2c] [-p PORT] [-g GROUP] [-d] ROUTER [COMMUNITY]\n\n",
-	 "  -v 1|2c    select SNMPv1 or SNMPv2c (community-based SNMPv2)\n",
-	 "  -p PORT    specify an alternate UDP port to contact SNMP agent\n",
-	 "  -g GROUP   list sources for a specific group\n",
-	 "  -d         print debugging output\n",
+	("Usage: $0 [OPTIONS...] ROUTER [COMMUNITY]\n\n",
+	 "  OPTIONS:\n\n",
+	 "    -v 1|2c    select SNMPv1 or SNMPv2c (community-based SNMPv2)\n",
+	 "    -p PORT    specify an alternate UDP port to contact SNMP agent\n",
+	 "    -g GROUP   list sources for a specific group\n",
+	 "    -d         print debugging output\n",
+	 "    -n         don't resolve hostnames\n",
+	 "\n",
 	 "  ROUTER     which agent to contact - must implement the MSDP MIB\n",
-	 "  COMMUNITY  specifies the SNMP community string.\n");
+	 "  COMMUNITY  specifies the SNMP community string, defaults to \"public\"\n");
     exit $_[0];
 }
