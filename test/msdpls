@@ -290,6 +290,13 @@ sub pretty_ip ($ ) {
 }
 
 sub usage ($ ) {
-    printf STDERR "Usage: $0 [-v 1|2c] [-p PORT] [-g GROUP] ROUTER [COMMUNITY]\n";
+    print STDERR
+	("Usage: $0 [-v 1|2c] [-p PORT] [-g GROUP] [-d] ROUTER [COMMUNITY]\n\n",
+	 "  -v 1|2c    select SNMPv1 or SNMPv2c (community-based SNMPv2)\n",
+	 "  -p PORT    specify an alternate UDP port to contact SNMP agent\n",
+	 "  -g GROUP   list sources for a specific group\n",
+	 "  -d         print debugging output\n",
+	 "  ROUTER     which agent to contact - must implement the MSDP MIB\n",
+	 "  COMMUNITY  specifies the SNMP community string.\n");
     exit $_[0];
 }
