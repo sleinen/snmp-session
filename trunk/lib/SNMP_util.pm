@@ -2,7 +2,7 @@
 ######################################################################
 ### SNMP_util -- SNMP utilities using SNMP_Session.pm and BER.pm
 ######################################################################
-### Copyright (c) 1998-2001, Mike Mitchell.
+### Copyright (c) 1998-2002, Mike Mitchell.
 ###
 ### This program is free software; you can redistribute it under the
 ### "Artistic License" included in this distribution (file "Artistic").
@@ -21,6 +21,7 @@
 ### Simon Leinen <simon@switch.ch>: 'undefined port' bug
 ### Daniel McDonald <dmcdonald@digicontech.com>: request for getbulk support
 ### Laurent Girod <girod.laurent@pmintl.ch>: code for snmpwalkhash
+### Ian Duplisse <i.duplisse@cablelabs.com>: MIB parsing suggestions
 ######################################################################
 
 package SNMP_util;
@@ -36,11 +37,11 @@ use BER "0.82";
 use SNMP_Session "0.83";
 use Socket;
 
-$VERSION = '0.90';
+$VERSION = '0.92';
 
 @ISA = qw(Exporter);
 
-@EXPORT = qw(snmpget snmpgetnext snmpwalk snmpset snmptrap snmpgetbulk snmpmaptable snmpwalkhash snmpmapOID snmpMIB_to_OID snmpLoad_OID_Cache snmpQueue_MIB_File);
+@EXPORT = qw(snmpget snmpgetnext snmpwalk snmpset snmptrap snmpgetbulk snmpmaptable snmpmaptable4 snmpwalkhash snmpmapOID snmpMIB_to_OID snmpLoad_OID_Cache snmpQueue_MIB_File);
 
 # The OID numbers from RFC1213 (MIB-II) and RFC1315 (Frame Relay)
 # are pre-loaded below.
@@ -345,6 +346,7 @@ sub snmpset ($@);
 sub snmptrap ($$$$$@);
 sub snmpgetbulk ($$$@);
 sub snmpmaptable ($$@);
+sub snmpmaptable4 ($$$@);
 sub snmpwalkhash ($$@);
 sub toOID (@);
 sub snmpmapOID (@);
@@ -787,6 +789,11 @@ sub snmpgetbulk ($$$@) {
 #
 sub snmpmaptable($$@) {
   my($host, $fun, @vars) = @_;
+  return snmpmaptable4($host, $fun, 0, @vars);
+}
+
+sub snmpmaptable4($$$@) {
+  my($host, $fun, $max_reps, @vars) = @_;
   my(@enoid, $var, $session);
 
   $session = &snmpopen($host, 0, \@vars);
@@ -800,17 +807,19 @@ sub snmpmaptable($$@) {
     push(@enoid, [split('\.', pretty_print($var))]);
   }
 
-  return $session->map_table([@enoid],
-			      sub() {
-				my ($ind, @vals) = @_;
-				my (@pvals, $val);
+  $max_reps = $session->default_max_repetitions() if ($max_reps <= 0);
 
-				foreach $val (@vals) {
-				  push(@pvals, pretty_print($val));
-				}
-				&$fun($ind, @pvals);
-			      }
-			      );
+  return $session->map_table_start_end( [@enoid],
+					sub() {
+					  my ($ind, @vals) = @_;
+					  my (@pvals, $val);
+
+					  foreach $val (@vals) {
+					    push(@pvals, pretty_print($val));
+					  }
+					  &$fun($ind, @pvals);
+					},
+					"", undef, $max_reps);
 }
 
 
@@ -857,6 +866,10 @@ sub toOID(@) {
       carp "Unknown SNMP var $var\n"
       unless ($SNMP_Session::suppress_warnings > 1);
       next;
+    }
+    if ($var =~ /\"(.*)\"/) {
+      $tmp = sprintf("%d.%s", length($1), join(".", map(ord, split(//, $1))));
+      $var =~ s/\".*\"/$tmp/;
     }
     print "toOID: $var\n" if $SNMP_util::Debug;
     $tmp = encode_oid_with_errmsg($var);
@@ -964,13 +977,13 @@ sub snmpQueue_MIB_File (@) {
 }
 
 #
-# Read in the passed list of MIB files, parsing them
+# Read in the passed MIB file, parsing it
 # for their text-to-OID mappings
 #
 sub snmpMIB_to_OID ($) {
   my($arg) = @_;
   my($quote, $buf, $var, $code, $val, $tmp, $tmpv, $strt);
-  my($ret);
+  my($ret, $pass, $pos, $need2pass, $cnt, %prev);
   my(%Link) = (
     'org' => 'iso',
     'dod' => 'org',
@@ -990,101 +1003,137 @@ sub snmpMIB_to_OID ($) {
   }
   print "snmpMIB_to_OID: loading $arg\n" if $SNMP_util::Debug;
   $ret = 0;
-  while(<MIB>) {
-    s/--.*--//g;	# throw away comments (-- anything --)
-    s/--.*//;		# throw away comments (-- anything EOL)
-    if ($quote) {
-      next unless /"/;
-      $quote = 0;
-    }
-    chop;
+  $pass = 0;
+  $need2pass = 1;
+  $cnt = 0;
+  $pos = tell(MIB);
+  while($need2pass) {
+    while(<MIB>) {
+      s/--.*--//g;	# throw away comments (-- anything --)
+      s/--.*//;		# throw away comments (-- anything EOL)
+      if ($quote) {
+	next unless /"/;
+	$quote = 0;
+      }
+      chop;
 #
 #	$buf = "$buf $_";
 # Previous line removed (and following replacement)
 # suggested by Brian Reichert, reichert@numachi.com
 #
-    $buf .= ' ' . $_;
-    $buf =~ s/\s+/ /g;
+      $buf .= ' ' . $_;
+      $buf =~ s/\s+/ /g;
 
-    if ($buf =~ / DEFINITIONS ::= BEGIN/) {
-      undef %Link;
-      %Link = (
-	'org' => 'iso',
-	'dod' => 'org',
-	'internet' => 'dod',
-	'directory' => 'internet',
-	'mgmt' => 'internet',
-	'mib-2' => 'mgmt',
-	'experimental' => 'internet',
-	'private' => 'internet',
-	'enterprises' => 'private',
-      );
-    }
+      if ($buf =~ / DEFINITIONS ::= BEGIN/) {
+	if ($pass == 0 && $need2pass) {
+	  seek(MIB, $pos, 0);
+	  $buf = "";
+	  $pass = 1;
+	  $need2pass = 0;
+	  $cnt = 0;
+	  next;
+	}
+	$need2pass = 0;
+	$pass = 0;
+	$pos = tell(MIB);
+	undef %Link;
+	undef %prev;
+	%Link = (
+	  'org' => 'iso',
+	  'dod' => 'org',
+	  'internet' => 'dod',
+	  'directory' => 'internet',
+	  'mgmt' => 'internet',
+	  'mib-2' => 'mgmt',
+	  'experimental' => 'internet',
+	  'private' => 'internet',
+	  'enterprises' => 'private',
+	);
+	$buf = "";
+	next;
+      }
 
-    $buf =~ s/OBJECT-TYPE/OBJECT IDENTIFIER/;
-    $buf =~ s/OBJECT-IDENTITY/OBJECT IDENTIFIER/;
-    $buf =~ s/MODULE-IDENTITY/OBJECT IDENTIFIER/;
-    $buf =~ s/ IMPORTS .*\;//;
-    $buf =~ s/ SEQUENCE {.*}//;
-    $buf =~ s/ SYNTAX .*//;
-    $buf =~ s/ [\w-]+ ::= OBJECT IDENTIFIER//;
-    $buf =~ s/ OBJECT IDENTIFIER .* ::= {/ OBJECT IDENTIFIER ::= {/;
-    $buf =~ s/".*"//;
-    if ($buf =~ /"/) {
-      $quote = 1;
-    }
+      $buf =~ s/OBJECT-TYPE/OBJECT IDENTIFIER/;
+      $buf =~ s/OBJECT-IDENTITY/OBJECT IDENTIFIER/;
+      $buf =~ s/OBJECT-GROUP/OBJECT IDENTIFIER/;
+      $buf =~ s/MODULE-IDENTITY/OBJECT IDENTIFIER/;
+      $buf =~ s/ IMPORTS .*\;//;
+      $buf =~ s/ SEQUENCE {.*}//;
+      $buf =~ s/ SYNTAX .*//;
+      $buf =~ s/ [\w-]+ ::= OBJECT IDENTIFIER//;
+      $buf =~ s/ OBJECT IDENTIFIER .* ::= {/ OBJECT IDENTIFIER ::= {/;
+      $buf =~ s/".*"//;
+      if ($buf =~ /"/) {
+	$quote = 1;
+      }
 
-    if ($buf =~ / ([\w\-]+) OBJECT IDENTIFIER ::= {([^}]+)}/) {
-      $var = $1;
-      $buf = $2;
-      undef $val;
-      $buf =~ s/ +$//;
-      ($code, $val) = split(' ', $buf, 2);
+      if ($buf =~ / ([\w\-]+) OBJECT IDENTIFIER ::= {([^}]+)}/) {
+	$var = $1;
+	$buf = $2;
+	undef $val;
+	$buf =~ s/ +$//;
+	($code, $val) = split(' ', $buf, 2);
 
-      if (!defined($val) || (length($val) <= 0)) {
-	$SNMP_util::OIDS{$var} = $code;
-	$ret++;
-	print "'$var' => '$code'\n" if $SNMP_util::Debug;
-      } else {
-	$strt = $code;
-	while($val =~ / /) {
-	  ($tmp, $val) = split(' ', $val, 2);
-	  if ($tmp =~ /([\w\-]+)\((\d+)\)/) {
-	    $tmp = $1;
-	    $tmpv = "$SNMP_util::OIDS{$strt}.$2";
-	    $Link{$tmp} = $strt;
-	    if (defined($SNMP_util::OIDS{$tmp})) {
-	      if ($tmpv ne $SNMP_util::OIDS{$tmp}) {
-		$strt = "$strt.$tmp";
-		$SNMP_util::OIDS{$strt} = $tmpv;
-		$ret++;
+	if (!defined($val) || (length($val) <= 0)) {
+	  $SNMP_util::OIDS{$var} = $code;
+	  $cnt++;
+	  print "'$var' => '$code'\n" if $SNMP_util::Debug;
+	} else {
+	  $strt = $code;
+	  while($val =~ / /) {
+	    ($tmp, $val) = split(' ', $val, 2);
+	    if ($tmp =~ /([\w\-]+)\((\d+)\)/) {
+	      $tmp = $1;
+	      $tmpv = "$SNMP_util::OIDS{$strt}.$2";
+	      $Link{$tmp} = $strt;
+	      if (!defined($prev{$tmp}) && defined($SNMP_util::OIDS{$tmp})) {
+		if ($tmpv ne $SNMP_util::OIDS{$tmp}) {
+		  $strt = "$strt.$tmp";
+		  $SNMP_util::OIDS{$strt} = $tmpv;
+		  $cnt++;
+		}
+	      } else {
+		$prev{$tmp} = 1;
+		$SNMP_util::OIDS{$tmp} = $tmpv;
+		$cnt++;
+		$strt = $tmp;
 	      }
-	    } else {
-	      $SNMP_util::OIDS{$tmp} = $tmpv;
-	      $ret++;
-	      $strt = $tmp;
 	    }
 	  }
-	}
 
-	if (!defined($SNMP_util::OIDS{$strt})) {
-	  carp "snmpMIB_to_OID: $arg: \"$strt\" prefix unknown, load the parent MIB first.\n"
-	    unless ($SNMP_Session::suppress_warnings > 1);
-	}
-	$Link{$var} = $strt;
-	$val = "$SNMP_util::OIDS{$strt}.$val";
-	if (defined($SNMP_util::OIDS{$var})) {
-	  if ($val ne $SNMP_util::OIDS{$var}) {
-	    $var = "$strt.$var";
+	  if (!defined($SNMP_util::OIDS{$strt})) {
+	    if ($pass) {
+	      carp "snmpMIB_to_OID: $arg: \"$strt\" prefix unknown, load the parent MIB first.\n"
+		unless ($SNMP_Session::suppress_warnings > 1);
+	    } else {
+		$need2pass = 1;
+	    }
 	  }
+	  $Link{$var} = $strt;
+	  $val = "$SNMP_util::OIDS{$strt}.$val";
+	  if (!defined($prev{$var}) && defined($SNMP_util::OIDS{$var})) {
+	    if ($val ne $SNMP_util::OIDS{$var}) {
+	      $var = "$strt.$var";
+	    }
+	  }
+
+	  $SNMP_util::OIDS{$var} = $val;
+	  $prev{$var} = 1;
+	  $cnt++;
+
+	  print "'$var' => '$val'\n" if $SNMP_util::Debug;
 	}
-
-	$SNMP_util::OIDS{$var} = $val;
-	$ret++;
-
-	print "'$var' => '$val'\n" if $SNMP_util::Debug;
+	undef $buf;
       }
-      undef $buf;
+    }
+    if ($pass == 0 && $need2pass) {
+      seek(MIB, $pos, 0);
+      $buf = "";
+      $pass = 1;
+      $cnt = 0;
+    } else {
+      $ret += $cnt;
+      $need2pass = 0;
     }
   }
   close(MIB);
