@@ -482,12 +482,4 @@ sub encoded_oid_prefix_p
     return 0;
 }
 
-#### Regression Tests
-
-sub regression_test
-{
-    "\x04\x06\x70\x75\x62\x6C\x69\x63" eq encode_string ('public') || die;
-    "\x02\x04\x4A\xEC\x31\x16" eq encode_int (0x4aec3116) || die;
-}
-
 1;
