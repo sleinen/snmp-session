@@ -37,7 +37,7 @@ use vars qw(@ISA @EXPORT $VERSION);
 use Exporter;
 use Carp;
 
-use BER "0.88";
+use BER "0.95";
 use SNMP_Session "0.97";
 use Socket;
 
