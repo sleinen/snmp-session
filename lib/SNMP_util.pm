@@ -10,7 +10,7 @@ use BER "0.58";
 use SNMP_Session "0.59";
 use Socket;
 
-$VERSION = '0.57';
+$VERSION = '0.58';
 
 @ISA = qw(Exporter);
 
@@ -86,7 +86,7 @@ sub snmpopen (@) {
 
   ($community, $host) = split('@', $host, 2) if ($host =~ /\@/);
   ($host, $port, $timeout, $retries, $backoff) = split(':', $host, 5)
-	if ($host =~ /:/);
+    if ($host =~ /:/);
   $nhost = "$community\@$host:$port";
 
   if ((!defined($SNMP_util::Session))
@@ -125,7 +125,8 @@ sub snmpget (@) {
 
   $session = &snmpopen($host);
   if (!defined($session)) {
-    warn "SNMPGET Problem for $host\n";
+    warn "SNMPGET Problem for $host\n"
+      unless ($SNMP_Session::suppress_warnings > 1);
     return undef;
   }
 
@@ -144,7 +145,8 @@ sub snmpget (@) {
     return(@retvals);
   }
   $var = join(' ', @vars);
-  warn "SNMPGET Problem for $var on $host\n";
+  warn "SNMPGET Problem for $var on $host\n"
+    unless ($SNMP_Session::suppress_warnings > 1);
   return undef;
 }
 
@@ -160,7 +162,8 @@ sub snmpgetnext (@) {
 
   $session = &snmpopen($host);
   if (!defined($session)) {
-    warn "SNMPGETNEXT Problem for $host\n";
+    warn "SNMPGETNEXT Problem for $host\n"
+      unless ($SNMP_Session::suppress_warnings > 1);
     return undef;
   }
 
@@ -209,7 +212,8 @@ sub snmpgetnext (@) {
   else
   {
     $var = join(' ', @vars);
-    warn "SNMPGETNEXT Problem for $var on $host\n";
+    warn "SNMPGETNEXT Problem for $var on $host\n"
+      unless ($SNMP_Session::suppress_warnings > 1);
     return undef;
   }
 }
@@ -226,7 +230,8 @@ sub snmpwalk (@) {
 
   $session = &snmpopen($host);
   if (!defined($session)) {
-    warn "SNMPWALK Problem for $host\n";
+    warn "SNMPWALK Problem for $host\n"
+      unless ($SNMP_Session::suppress_warnings > 1);
     return undef;
   }
 
@@ -279,7 +284,8 @@ sub snmpwalk (@) {
   else
   {
     $var = join(' ', @vars);
-    warn "SNMPWALK Problem for $var on $host\n";
+    warn "SNMPWALK Problem for $var on $host\n"
+      unless ($SNMP_Session::suppress_warnings > 1);
     return undef;
   }
 }
@@ -296,7 +302,8 @@ sub snmpset(@) {
     $session = &snmpopen($host);
     if (!defined($session))
     {
-	warn "SNMPSET Problem for $host\n";
+	warn "SNMPSET Problem for $host\n"
+	    unless ($SNMP_Session::suppress_warnings > 1);
 	return undef;
     }
 
@@ -323,7 +330,8 @@ sub snmpset(@) {
 	}
 	else
 	{
-	    warn "unknown SNMP type: $type\n";
+	    warn "unknown SNMP type: $type\n"
+		unless ($SNMP_Session::suppress_warnings > 1);
 	    return undef;
 	}
     }
@@ -356,7 +364,8 @@ sub snmptrap(@) {
     $session = &snmpopen($host);
     if (!defined($session))
     {
-	warn "SNMPTRAP Problem for $host\n";
+	warn "SNMPTRAP Problem for $host\n"
+	    unless ($SNMP_Session::suppress_warnings > 1);
 	return undef;
     }
 
@@ -396,7 +405,8 @@ sub snmptrap(@) {
 	}
 	else
 	{
-	    warn "unknown SNMP type: $type\n";
+	    warn "unknown SNMP type: $type\n"
+		unless ($SNMP_Session::suppress_warnings > 1);
 	    return undef;
 	}
     }
@@ -423,7 +433,8 @@ sub toOID(@)
 	    if ($oid) {
 		$var =~ s/^$tmp/$oid/;
 	    } else {
-		warn "Unknown SNMP var $var\n";
+		warn "Unknown SNMP var $var\n"
+		    unless ($SNMP_Session::suppress_warnings > 1);
 		next;
 	    }
 	}
@@ -462,7 +473,8 @@ sub encode_oid_with_errmsg ($) {
     my ($oid) = @_;
     my $tmp = encode_oid(split(/\./, $oid));
     if (! defined $tmp) {
-	warn "cannot encode Object ID $oid: $BER::errmsg";
+	warn "cannot encode Object ID $oid: $BER::errmsg"
+	    unless ($SNMP_Session::suppress_warnings > 1);
 	return undef;
     }
     return $tmp;
