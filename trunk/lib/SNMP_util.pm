@@ -524,7 +524,7 @@ sub snmpwalk ($@) {
 }
 
 #
-# Walk the MIB, puting everything you find into hashes.
+# Walk the MIB, putting everything you find into hashes.
 #
 sub snmpwalkhash($$@) {
 #  my($host, $hash_sub, @vars) = @_;
