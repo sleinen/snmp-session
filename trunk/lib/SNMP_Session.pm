@@ -48,7 +48,7 @@ use vars qw(@ISA $VERSION @EXPORT $errmsg
 	    $suppress_warnings
 	    $default_avoid_negative_request_ids);
 use Socket;
-use BER;
+use BER '0.95';
 use Carp;
 
 sub map_table ($$$ );
@@ -128,7 +128,7 @@ BEGIN {
     if (eval {require Socket6;} &&
 	eval {require IO::Socket::INET6; IO::Socket::INET6->VERSION("1.26");}) {
 	import Socket6;
-	$ipv6_addr_len = length(pack_sockaddr_in6(161, inet_pton(AF_INET6, "::1")));
+	$ipv6_addr_len = length(pack_sockaddr_in6(161, inet_pton(AF_INET6(), "::1")));
 	$SNMP_Session::ipv6available = 1;
     }
 }
@@ -522,17 +522,14 @@ sub pretty_address {
 
     # Disable strict subs to stop old versions of perl from
     # complaining about AF_INET6 when Socket6 is not available
-    no strict "subs";
 
     if( (defined $ipv6_addr_len) && (length $addr == $ipv6_addr_len)) {
 	($port,$addrunpack) = unpack_sockaddr_in6 ($addr);
-	$addrstr = inet_ntop (AF_INET6, $addrunpack);
+	$addrstr = inet_ntop (AF_INET6(), $addrunpack);
     } else {
 	($port,$addrunpack) = unpack_sockaddr_in ($addr);
 	$addrstr = inet_ntoa ($addrunpack);
     }
-
-    use strict "subs";
 
     return sprintf ("[%s].%d", $addrstr, $port);
 }
@@ -798,17 +795,15 @@ sub sa_equal_p ($$$) {
 
     # Disable strict subs to stop old versions of perl from
     # complaining about AF_INET6 when Socket6 is not available
-    no strict "subs";
     if($this->{'sockfamily'} == AF_INET) {
 	# IPv4 addresses
 	($p1,$a1) = unpack_sockaddr_in ($sa1);
 	($p2,$a2) = unpack_sockaddr_in ($sa2);
-    } elsif($this->{'sockfamily'} == AF_INET6) {
+    } elsif($this->{'sockfamily'} == AF_INET6()) {
 	# IPv6 addresses
 	($p1,$a1) = unpack_sockaddr_in6 ($sa1);
 	($p2,$a2) = unpack_sockaddr_in6 ($sa2);
     } else {
-	use strict "subs";
 	return 0;
     }
     use strict "subs";
