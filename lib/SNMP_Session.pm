@@ -48,7 +48,7 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.83';
+$VERSION = '0.85';
 
 @ISA = qw(Exporter);
 
@@ -548,6 +548,7 @@ sub open {
 	   'default_max_repetitions' => $max_repetitions,
 	   'use_getbulk' => 1,
 	   'lenient_source_address_matching' => 1,
+	   'lenient_source_port_matching' => 0,
 	  };
 }
 
@@ -651,7 +652,9 @@ sub sa_equal_p ($$$) {
     if (! $this->{'lenient_source_address_matching'}) {
 	return 0 if $a1 ne $a2;
     }
-    return 0 if $p1 != $p2;
+    if (! $this->{'lenient_source_port_matching'}) {
+	return 0 if $p1 != $p2;
+    }
     return 1;
 }
 
