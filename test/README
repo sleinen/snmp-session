@@ -28,3 +28,10 @@ asn1-test.pl
 ber-test.pl
 	a few regression tests for BER encoding.  If you get errors
 	running these, I'd be very interested to hear about it!
+
+trap-send
+	send an SNMPv1 trap to a remote management station
+
+trap-listener
+	sit there and listen for SNMPv1 traps, which are decoded and
+	written out in a readable form
