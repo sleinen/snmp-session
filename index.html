@@ -40,6 +40,12 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 <ul>
 
+<li> SNMP_util.pm 0.71: New subroutines <tt>snmpLoad_OID_Cache</tt> and
+<tt>snmpQueue_MIB_File</tt> for loading MIBs in compact format.
+
+<li> SNMP_util.pm 0.71: <tt>snmpset</tt> now accepts <tt>ipaddr</tt>
+as a type specifier.
+
 <li> SNMP_util.pm 0.70: <a href="mailto:mcm@unx.sas.com">Mike
 Mitchell</a> added code for parsing MIB files.  See the description of
 <tt>snmpMIB_to_OID</tt> in <a
@@ -555,7 +561,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19990407
+19990630
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
