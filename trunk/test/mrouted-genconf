@@ -1,0 +1,67 @@
+#!/usr/local/bin/perl -w
+
+use strict;
+use SNMP_Session "0.58";
+use BER;
+use Socket;
+
+my $directory = 'ten-34/ipmcast';
+my $rate_limit = '2000000';
+my $abs_max = '100000000';
+
+my $mrouters =
+[
+ 'it-ws.ten-34.net',
+ 'de-ws-atm.ten-34.net',
+ 'ch-ws.ten-34.net',
+ 'at-ws.ten-34.net',
+ 'uk-ws.ten-34.net',
+ ];
+
+my $dvmrpInterfaceType = [1,3,6,1,3,62,1,1,3,1,2];
+my $dvmrpInterfaceRemoteAddress = [1,3,6,1,3,62,1,1,3,1,5];
+my $dvmrpInterfaceInOctets = [1,3,6,1,3,62,1,1,3,1,11];
+my $dvmrpInterfaceOutOctets = [1,3,6,1,3,62,1,1,3,1,12];
+
+print <<EOM;
+WorkDir: /home/noc/stat
+IconDir: /lan/stat
+WriteExpires: Yes
+Weekformat[^]: V
+WithPeak[_]: wmy
+
+EOM
+foreach my $mrouter (@{$mrouters}) {
+    my $session;
+    my $rate_limit_bytes = $rate_limit >> 3;
+    my $abs_max_bytes = $abs_max >> 3;
+
+    $session = SNMP_Session->open ($mrouter, "public", 161)
+	|| (warn ("Opening SNMP session to $mrouter\n"), next);
+    $session->map_table
+	([$dvmrpInterfaceType, $dvmrpInterfaceRemoteAddress], sub
+	 { 
+	     my ($index, $type, $peer_addr) = @_;
+	     grep (defined $_ && ($_=pretty_print $_),
+		   ($type, $peer_addr));
+	     ## ignore interfaces other than tunnels for now
+	     return unless $type == 1;
+	     my $peer_name = gethostbyaddr(pack ("C4",split ('\.',$peer_addr)),
+					   AF_INET)
+		 || $peer_addr;
+	     my $graph_name = $mrouter.'-'.$peer_name;
+		 print <<EOM;
+Target[$graph_name]: 1.3.6.1.3.62.1.1.3.1.11.$index&1.3.6.1.3.62.1.1.3.1.12.$index:public\@$mrouter
+PageTop[$graph_name]: <hr><H3>Tunnel $mrouter -> $peer_name</H3>
+Options[$graph_name]: growright,bits
+MaxBytes[$graph_name]: $rate_limit_bytes
+AbsMax[$graph_name]: $abs_max_bytes
+Title[$graph_name]: Mbone Tunnel from $mrouter to $peer_name
+EOM
+    ;
+	     print "Directory[$graph_name]: switch/ipmcast\n"
+		 if $directory;
+	     print "\n\n";
+	 });
+    $session->close ();
+}
