@@ -39,7 +39,7 @@ $VERSION = '0.86';
 
 @ISA = qw(Exporter);
 
-@EXPORT = qw(snmpget snmpgetnext snmpwalk snmpset snmptrap snmpgetbulk snmpmapOID snmpMIB_to_OID snmpLoad_OID_Cache snmpQueue_MIB_File);
+@EXPORT = qw(snmpget snmpgetnext snmpwalk snmpset snmptrap snmpgetbulk snmpmap_table snmpmapOID snmpMIB_to_OID snmpLoad_OID_Cache snmpQueue_MIB_File);
 
 # The OID numbers from RFC1213 (MIB-II) and RFC1315 (Frame Relay)
 # are pre-loaded below.
@@ -338,6 +338,7 @@ sub snmpwalk ($@);
 sub snmpset ($@);
 sub snmptrap ($$$$$@);
 sub snmpgetbulk ($$$@);
+sub snmpmap_table ($$@);
 sub toOID (@);
 sub snmpmapOID (@);
 sub snmpMIB_to_OID ($);
@@ -345,6 +346,7 @@ sub encode_oid_with_errmsg ($);
 sub Check_OID ($);
 sub snmpLoad_OID_Cache ($);
 sub snmpQueue_MIB_File (@);
+sub walk_fun ($@);
 
 sub version () { $VERSION; }
 
@@ -485,7 +487,7 @@ sub snmpgetnext ($@) {
   my($host, @vars) = @_;
   my(@enoid, $var, $response, $bindings, $binding);
   my($value, $upoid, $oid, @retvals);
-  my($noid, $ok);
+  my($noid);
   my $session;
 
   $session = &snmpopen($host, 0, \@vars);
@@ -742,7 +744,7 @@ sub snmpgetbulk ($$$@) {
   my($host, $nr, $mr, @vars) = @_;
   my(@enoid, $var, $response, $bindings, $binding);
   my($value, $upoid, $oid, @retvals);
-  my($noid, $ok);
+  my($noid);
   my $session;
 
   $session = &snmpopen($host, 0, \@vars);
@@ -784,10 +786,48 @@ sub snmpgetbulk ($$$@) {
 }
 
 #
+# walk a table, calling a user-supplied function for each
+# column of a table.
+#
+sub snmpmap_table($$@)
+{
+  my($host, $fun, @vars) = @_;
+  my(@enoid, $var, $session);
+
+  $session = &snmpopen($host, 0, \@vars);
+  if (!defined($session)) {
+    carp "SNMPMAP_TABLE Problem for $host\n"
+      unless ($SNMP_Session::suppress_warnings > 1);
+    return undef;
+  }
+
+  foreach $var (toOID(@vars))
+  {
+    push(@enoid, [split('\.', pretty_print($var))]);
+  }
+
+  $SNMP_Util::Map_Fun = $fun;
+
+  return $session->map_table([@enoid], \&walk_fun);
+}
+
+sub walk_fun($@)
+{
+  my ($ind, @vals) = @_;
+  my (@pvals, $val);
+
+  foreach $val (@vals)
+  {
+    push(@pvals, pretty_print($val));
+  }
+  &$SNMP_Util::Map_Fun($ind, @pvals);
+}
+
+
+#
 #  Given an OID in either ASN.1 or mixed text/ASN.1 notation, return an
 #  encoded OID.
 #
-
 sub toOID(@)
 {
     my(@vars) = @_;
