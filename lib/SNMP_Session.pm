@@ -37,9 +37,7 @@ package SNMP_Session;
 
 require 5.002;
 
-use strict qw(vars subs);	# cannot use strict subs here
-				# because of the way we use
-				# generated file handles
+use strict;
 use Exporter;
 use vars qw(@ISA $VERSION @EXPORT $errmsg $suppress_warnings);
 use Socket;
@@ -52,7 +50,7 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.92';
+$VERSION = '0.93';
 
 @ISA = qw(Exporter);
 
@@ -91,6 +89,17 @@ my $default_backoff = 1.0;
 ### map_table_4().
 ###
 my $default_max_repetitions = 12;
+
+### Default value for "avoid_negative_request_ids".
+###
+### Set this to non-zero if you have agents that have trouble with
+### negative request IDs, and don't forget to complain to your agent
+### vendor.  According to the spec (RFC 1905), the request-id is an
+### Integer32, i.e. its range is from -(2^31) to (2^31)-1.  However,
+### some agents erroneously encode the response ID as an unsigned,
+### which prevents this code from matching such responses to requests.
+###
+my $default_avoid_negative_request_ids = 0;
 
 ### Whether all SNMP_Session objects should share a single UDP socket.
 ###
@@ -144,7 +153,10 @@ sub encode_request_3 ($$$@) {
     local($_);
 
     $this->{request_id} = ($this->{request_id} == 0x7fffffff)
-	? -0x80000000 : $this->{request_id}+1;
+	? ($this->{avoid_negative_request_ids}
+	   ? 0x00000000
+	   : -0x80000000)
+	: $this->{request_id}+1;
     foreach $_ (@{$encoded_oids_or_pairs}) {
       if (ref ($_) eq 'ARRAY') {
 	$_ = &encode_sequence ($_->[0], $_->[1])
@@ -541,8 +553,10 @@ sub open {
 	   'remote_addr' => $remote_addr,
 	   'max_pdu_len' => $max_pdu_len,
 	   'pdu_buffer' => '\0' x $max_pdu_len,
-	   'request_id' => ((int (rand 0x10000) << 16) + int (rand 0x10000))
-	       - 0x80000000,
+	   'request_id' =>
+	       $default_avoid_negative_request_ids
+	       ? (int (rand 0x8000) << 16) + int (rand 0x10000)
+	       : ((int (rand 0x10000) - 0x8000) << 16) + int (rand 0x10000),
 	   'timeout' => $default_timeout,
 	   'retries' => $default_retries,
 	   'backoff' => $default_backoff,
@@ -553,6 +567,7 @@ sub open {
 	   'use_getbulk' => 1,
 	   'lenient_source_address_matching' => 1,
 	   'lenient_source_port_matching' => 1,
+	   'avoid_negative_request_ids' => $default_avoid_negative_request_ids,
 	  };
 }
 
