@@ -36,10 +36,10 @@ require 5.002;
 
 use strict;
 use vars qw(@ISA @EXPORT $VERSION $pretty_print_timeticks
-	    %pretty_printer $errmsg);
+	    %pretty_printer %default_printer $errmsg);
 use Exporter;
 
-$VERSION = '1.02';
+$VERSION = '1.05';
 
 @ISA = qw(Exporter);
 
@@ -65,9 +65,6 @@ $VERSION = '1.02';
 ## unsigned integer representing hundredths of seconds.
 ##
 $pretty_print_timeticks = 1;
-
-## A hash of pretty-printing subroutines for different type codes.
-%pretty_printer = ();
 
 ### Prototypes
 sub encode_header ($$);
@@ -154,6 +151,22 @@ sub snmp_uinteger32_tag		{ 0x07 | application_flag () }
 sub snmp_nosuchobject		{ context_flag () | 0x00 }
 sub snmp_nosuchinstance		{ context_flag () | 0x01 }
 sub snmp_endofmibview		{ context_flag () | 0x02 }
+
+### pretty-printer initialization code.  Create a hash with
+### the most common types of pretty-printer routines.
+
+BEGIN {
+    $default_printer{int_tag()}             = \&pretty_intlike;
+    $default_printer{snmp_counter32_tag()}  = \&pretty_unsignedlike;
+    $default_printer{snmp_gauge32_tag()}    = \&pretty_unsignedlike;
+    $default_printer{snmp_counter64_tag()}  = \&pretty_unsignedlike;
+    $default_printer{snmp_uinteger32_tag()} = \&pretty_unsignedlike;
+    $default_printer{octet_string_tag()}    = \&pretty_string;
+    $default_printer{object_id_tag()}       = \&pretty_oid;
+    $default_printer{snmp_ip_address_tag()} = \&pretty_ip_address;
+
+    %pretty_printer = %default_printer;
+}
 
 #### Encoding
 
@@ -316,20 +329,10 @@ sub pretty_print ($) {
 	my $c_ref = $pretty_printer{$result};
 	return &$c_ref ($packet);
     }
-    return pretty_intlike ($packet)
-	if $result == int_tag;
-    return pretty_unsignedlike ($packet)
-	if $result == snmp_counter32_tag
-	    || $result == snmp_gauge32_tag
-	    || $result == snmp_counter64_tag
-	    || $result == snmp_uinteger32_tag;
-    return pretty_string ($packet) if $result == octet_string_tag;
-    return pretty_oid ($packet) if $result == object_id_tag;
     return ($pretty_print_timeticks
 	    ? pretty_uptime ($packet)
 	    : pretty_unsignedlike ($packet))
 	if $result == uptime_tag;
-    return pretty_ip_address ($packet) if $result == snmp_ip_address_tag;
     return "(null)" if $result == null_tag;
     return error ("Exception code: noSuchObject") if $result == snmp_nosuchobject;
     return error ("Exception code: noSuchInstance") if $result == snmp_nosuchinstance;
@@ -835,7 +838,11 @@ sub unregister_pretty_printer($)
     while(($type, $val) = each %$h_ref) {
 	if ((exists ($pretty_printer{$type}))
 	    && ($pretty_printer{$type} == $val)) {
-	    delete $pretty_printer{$type};
+	    if (exists($default_printer{$type})) {
+		$pretty_printer{$type} = $default_printer{$type};
+	    } else {
+		delete $pretty_printer{$type};
+	    }
 	    $cnt++;
 	}
     }
