@@ -37,7 +37,7 @@ sub map_table_start_end ($$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.59';
+$VERSION = '0.60';
 
 @ISA = qw(Exporter);
 
@@ -170,6 +170,21 @@ sub decode_get_response
     my($this, $response) = @_;
     my @rest;
     @{$this->{'unwrapped'}};
+}
+
+sub decode_trap_request ($$) {
+    my ($this, $trap) = @_;
+    my ($snmp_version, $community, $ent, $agent, $gen, $spec, $dt, @pairs);
+    ($snmp_version, $community, $ent, $agent, $gen, $spec, $dt, @pairs)
+	= decode_by_template ($trap, "%{%i%s%*{%O%A%i%i%u%{%@",
+			      SNMP_Session::trap_request
+			      );
+    return undef
+	unless $snmp_version == $this->snmp_version ();
+    if (!defined $ent) {
+	warn "BER error decoding trap:\n  ".$BER::errmsg."\n";
+    }
+    return ($community, $ent, $agent, $gen, $spec, $dt, @pairs);
 }
 
 sub wait_for_response
@@ -394,7 +409,7 @@ sub snmp_version { 0 }
 
 sub open
 {
-    my($this,$remote_hostname,$community,$port,$max_pdu_len) = @_;
+    my($this,$remote_hostname,$community,$port,$max_pdu_len,$bind_to_port) = @_;
     my($name,$aliases,$remote_addr,$socket);
 
     my $udp_proto = 0;
@@ -415,12 +430,17 @@ sub open
       $remote_addr = inet_aton ($remote_hostname)
 	|| return $this->error_return ("can't resolve \"$remote_hostname\" to IP address");
     }
-    $socket = 'SNMP'.sprintf ("%s:04x", inet_ntoa ($remote_addr), $port);
+    $socket = 'SNMP'.sprintf ("%s:%d", inet_ntoa ($remote_addr), $port);
     (($name,$aliases,$udp_proto) = getprotobyname('udp'))
 	unless $udp_proto;
     $udp_proto=17 unless $udp_proto;
     socket ($socket, PF_INET, SOCK_DGRAM, $udp_proto)
 	|| return $this->error_return ("creating socket: $!");
+    if (defined $bind_to_port) {
+	my $sockaddr = sockaddr_in ($bind_to_port, INADDR_ANY);
+	bind ($socket, $sockaddr)
+	    || return $this->error_return ("binding to port %bind_to_port: $!");
+    }
     $remote_addr = pack_sockaddr_in ($port, $remote_addr);
     bless {
 	   'sock' => $socket,
@@ -438,6 +458,12 @@ sub open
 	   'error_status' => 0,
 	   'error_index' => 0,
 	  };
+}
+
+sub open_trap_session (@) {
+    my ($this, $port) = @_;
+    $port = 162 unless defined $port;
+    return $this->open ("0.0.0.0", "", 161, undef, $port);
 }
 
 sub sock { $_[0]->{sock} }
@@ -550,6 +576,17 @@ sub receive_response_3
     }
     $this->{'unwrapped'} = \@unwrapped;
     return length $this->pdu_buffer;
+}
+
+sub receive_trap
+{
+    my ($this) = @_;
+    my ($remote_addr, $iaddr, $port, $trap);
+    $remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,0);
+    return undef unless $remote_addr;
+    ($port, $iaddr) = sockaddr_in($remote_addr);
+    $trap = $this->{'pdu_buffer'};
+    return ($trap, $iaddr, $port);
 }
 
 sub pretty_address
