@@ -1,7 +1,19 @@
 
 		       README for SNMP_util.pm
 
-		   Mike Mitchell <mcm@unx.sas.com>
+		       Copyright (c) 1998-2000, Mike Mitchell
+			  All rights reserved
+
+This program is free software; you can redistribute it under the
+"Artistic License" included in this distribution (file "Artistic").
+
+	Author: Mike Mitchell	<Mike.Mitchell@.sas.com>
+			Contributors:
+	    Tobias Oetiker	<oetiker@ee.ethz.ch>
+	    Simon Leinen	<simon@switch.ch>
+	    Jeff Allen		<jeff.allen@acm.org>
+	    Johannes Demel	<demel@zid.tuwien.ac.at>
+
 
 I was using Simon Leinen's SNMP tools in various perl scripts, and I
 found that I was using the same functions over and over.  I grouped
@@ -31,7 +43,7 @@ The SNMP_utils.pm module contains the functions
 
 
 The functions have a small mapping table for commonly used OIDs.  The
-OIDs from RFC1213 (MIB-II) and RFC1316 (Frame Relay) are preloaded.
+OIDs from RFC1213 (MIB-II) and RFC1315 (Frame Relay) are preloaded.
 
 It is much easier to say "ifInOctets.4" instead of "1.3.6.1.2.1.2.2.1.10.4".
 The snmpmapOID() function will let you add your own entries to the mapping
