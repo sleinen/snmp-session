@@ -26,6 +26,9 @@ package BER;
 ##use vars qw(@ISA @EXPORT);
 use Exporter;
 
+### We only need integer arithmetic here.
+use integer;
+
 @ISA = qw(Exporter);
 
 @EXPORT = qw(context_flag constructor_flag
@@ -142,15 +145,8 @@ sub encode_oid
     encode_header (object_id_tag, length $result).$result;
 }
 
-sub encode_null
-{
-    encode_header (null_tag, 0);
-}
-
-sub encode_sequence
-{
-    encode_tagged_sequence (sequence_tag, @_);
-}
+sub encode_null { encode_header (null_tag, 0); }
+sub encode_sequence { encode_tagged_sequence (sequence_tag, @_); }
 
 sub encode_tagged_sequence
 {
@@ -210,7 +206,7 @@ sub pretty_oid
 {
     my($oid) = shift;
     my($result,$subid,$next);
-    my(@result,@oid);
+    my(@oid);
     $result = ord (substr ($oid, 0, 1));
     die "Object ID expected" unless $result == object_id_tag;
     ($result, $oid) = decode_length (substr ($oid, 1));
@@ -340,15 +336,9 @@ sub decode_by_template
 		    push @results, $read;
 		} else {
 		    $expected = int (shift) if $expected eq '*';
-		    #
-		    # This returns "Expected -1 (0xffffffff), got 255 (0xff)"
-		    # for Cisco routers [model AGS+, IOS Software GS3-K-M Version 10.3(6)]
-		    # while the actual readings are correct ...
-		    # so we drop this test for the moment ...
-		    #
-		    #       warn (sprintf ("Expected %d (0x%x), got %d (0x%x)",
-		    #                      $expected, $expected, $read, $read))
-		    #           unless ($expected == $read)
+		    warn (sprintf ("Expected %d (0x%x), got %d (0x%x)",
+				   $expected, $expected, $read, $read))
+			unless ($expected == $read)
 		}
 	    } elsif (/^\@(.*)/) {
 		$_ = $1;
@@ -392,38 +382,25 @@ sub decode_int
 sub decode_intlike
 {
     my($pdu) = shift;
-    my($result);
-    my(@result);
-    $result = ord (substr ($pdu, 1, 1));
-    if ($result == 1) {
-	@result = (ord (substr ($pdu, 2, 1)), substr ($pdu, 3));
-    } elsif ($result == 2) {
-	@result = (unpack ("n", (substr ($pdu, 2, 2))), substr ($pdu, 4));
-    } elsif ($result == 3) {
-	@result = ((ord (substr ($pdu, 2, 1)) << 16) 
-		   + unpack ("n", (substr ($pdu, 3, 2))), substr ($pdu, 5));
-    } elsif ($result == 4) {
-      @result = (unpack ("N", (substr ($pdu, 2, 4))), substr ($pdu, 6));
-      #### Our router returns 5 byte integers!
-    } elsif ($result == 5) {
-      @result = ((ord (substr ($pdu, 2, 1)) << 32)
-		 + unpack ("N", (substr ($pdu, 3, 4))), substr ($pdu, 7));
-    } else {
-	die "Unsupported integer length $result ($pdu)";
+    my($length,$result);
+    $length = ord (substr ($pdu, 1, 1));
+    my $ptr = 2;
+    $result = unpack ("c", substr ($pdu, $ptr++, 1));
+    while (--$length > 0) {
+	$result <<= 8;
+	$result += unpack ("C", substr ($pdu, $ptr++, 1));
     }
-    @result;
+    ($result, substr ($pdu, $ptr));
 }
 
 sub decode_string
 {
     my($pdu) = shift;
     my($result);
-    my(@result);
     $result = ord (substr ($pdu, 0, 1));
     die "Expected octet string" unless $result == octet_string_tag;
     ($result, $pdu) = decode_length (substr ($pdu, 1));
-    @result = (substr ($pdu, 0, $result), substr ($pdu, $result));
-    @result;
+    return (substr ($pdu, 0, $result), substr ($pdu, $result));
 }
 
 sub decode_length
