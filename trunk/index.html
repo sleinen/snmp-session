@@ -1,0 +1,86 @@
+<HTML>
+ <BODY>
+<CENTER>
+  <H1>SNMP support for Perl 5</H1>
+
+  <H3>Author: <A HREF="http://liawww.epfl.ch/simon.html">Simon
+Leinen</A>  &lt;<A HREF="mailto:simon@lia.di.epfl.ch">simon@lia.di.epfl.ch</A>&gt;</H3>
+
+</CENTER>
+
+<P> <A HREF="http://liawww.epfl.ch/simon/snmp/perl/snmp.shar">This
+archive</A> contains Perl 5 modules SNMP_Session.pm and BER.pm, which,
+when used together, provide rudimentary access to remote SNMP (v1)
+agents. </P>
+
+<P> The only SNMP operation currently supported is "get".  That means
+that you can neither set values, nor read tables using these routines.
+Hopefully I will get around to implementing these other operations one
+day. </P>
+
+<H2>Usage</H2>
+
+<P> The basic usage of these routines works like this: </P>
+
+<PRE>
+use BER;
+require 'SNMP_Session.pm';
+
+# Set $host to the name of the host whose SNMP agent you want
+# to talk to.  Set $community to the community name under
+# which you want to talk to the agent.	Set port to the UDP
+# port on which the agent listens (usually 161).
+
+$session = SNMP_Session::open ($host, $community, $port);
+
+# Set $oid1, $oid2... to the BER-encoded OIDs of the MIB
+# variables you want to get.
+
+if ($session-&gt;get_request_response ($oid1, $oid2, ...)) {
+    $session-&gt;{pdu_buffer};
+    ($bindings) = $session-&gt;decode_get_response ($session-&gt;{pdu_buffer});
+
+    while ($bindings ne '') {
+	($binding,$bindings) = &amp;decode_sequence ($bindings);
+	($oid,$value) = &amp;decode_by_template ($binding, "%O%@");
+	print $pretty_oids{$oid}," =&gt; ",
+	      &amp;pretty_print ($value), "\n";
+    }
+} else {
+    die "No response from agent on $host";
+}
+</PRE>
+
+<H2>Encoding OIDs</H2>
+
+<P> In order to BER-encode OIDs, you can use the function
+<B>BER::encode_oid</B>.  It takes (a vector of) numeric subids as an
+argument.  For example, </P>
+
+<PRE>
+use BER;
+encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
+</PRE>
+
+<P> will return the BER-encoded OID for the <B>sysDescr.0</B>
+(1.3.6.1.2.1.1.1.0) instance of <A HREF="http://ds.internic.net/rfc/rfc1213.txt">MIB-2</A>. </P>
+
+<H2>Decoding the results</H2>
+
+<P> When get_request_response returns success, you must decode the
+response PDU from the remote agent.  The function
+<B>decode_get_response</B> can be used to do this.  It takes a
+get-response PDU, checks its syntax and returns the "bindings" part of
+the PDU.  This is where the remote agent actually returns the values
+of the variables in your query. </P>
+
+<P> You should iterate over the individual bindings in this "bindings"
+part and extract the value for each variable.  In the example above,
+the returned bindings are simply printed using the
+<B>BER::pretty_print</B> function.  The hash <B>%pretty_oids</B> in
+the example contains a mapping from BER-encoded OIDs to "readable"
+instance names.  Look at the source of the real example programs to
+see how this is constructed. </P>
+
+ </BODY>
+</HTML>
