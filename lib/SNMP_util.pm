@@ -10,11 +10,11 @@ use BER "0.58";
 use SNMP_Session "0.59";
 use Socket;
 
-$VERSION = '0.70';
+$VERSION = '0.71';
 
 @ISA = qw(Exporter);
 
-@EXPORT = qw(snmpget snmpgetnext snmpwalk snmpset snmptrap snmpmapOID snmpMIB_to_OID);
+@EXPORT = qw(snmpget snmpgetnext snmpwalk snmpset snmptrap snmpmapOID snmpMIB_to_OID snmpLoad_OID_Cache snmpQueue_MIB_File);
 
 # The OID numbers from RFC1213 (MIB-II) and RFC1315 (Frame Relay)
 # are pre-loaded below.
@@ -279,6 +279,8 @@ my $agent_start_time = time;
 undef $SNMP_util::Host;
 undef $SNMP_util::Session;
 $SNMP_util::Debug = 0;
+$SNMP_util::CacheFile = "OID_cache.txt";
+$SNMP_util::CacheLoaded = 0;
 
 srand(time|$$);
 
@@ -293,6 +295,9 @@ sub toOID (@);
 sub snmpmapOID (@);
 sub snmpMIB_to_OID ($);
 sub encode_oid_with_errmsg ($);
+sub Check_OID ($);
+sub snmpLoad_OID_Cache ($);
+sub snmpQueue_MIB_File (@);
 
 sub version () { $VERSION; }
 
@@ -310,6 +315,7 @@ sub snmpopen (@) {
   ($community, $host) = ($1, $2) if ($host =~ /^(.*)@([^@]+)$/);
   ($host, $port, $timeout, $retries, $backoff) = split(':', $host, 5)
     if ($host =~ /:/);
+  $port = 161 if (defined($port) && (length($port) <= 0));
   $nhost = "$community\@$host:$port";
 
   if ((!defined($SNMP_util::Session))
@@ -540,6 +546,11 @@ sub snmpset(@) {
 	    $value = encode_string($value);
 	    push @enoid, [$oid,$value];
 	}
+	elsif ($type =~ /ipaddr/i)
+	{
+	    $value = encode_ip_address($value);
+	    push @enoid, [$oid,$value];
+	}
 	elsif ($type =~ /int/i)
 	{
 	    $value = encode_int($value);
@@ -649,22 +660,42 @@ sub toOID(@)
     undef @retvar;
     foreach $var (@vars)
     {
-	if ($var =~ /^(([a-z][a-z\d\-]*\.)*([a-z][a-z\d\-]*))/i)
+	($oid, $tmp) = &Check_OID($var);
+	if (!$oid && $SNMP_util::CacheLoaded == 0)
 	{
-	    $tmp = $&;
-	    $tmpv = $tmp;
-	    for (;;) {
-		last if defined($SNMP_util::OIDS{$tmpv});
-		last if !($tmpv =~ s/^[^\.]*\.//);
+	    $tmp = $SNMP_Session::suppress_warnings;
+	    $SNMP_Session::suppress_warnings = 1000;
+
+	    &snmpLoad_OID_Cache($SNMP_util::CacheFile);
+
+	    $SNMP_util::CacheLoaded = 1;
+	    $SNMP_Session::suppress_warnings = $tmp;
+
+	    ($oid, $tmp) = &Check_OID($var);
+	}
+	while (!$oid && $#SNMP_util::MIB_Files >= 0)
+	{
+	    $tmp = $SNMP_Session::suppress_warnings;
+	    $SNMP_Session::suppress_warnings = 1000;
+
+	    snmpMIB_to_OID(shift(@SNMP_util::MIB_Files));
+
+	    $SNMP_Session::suppress_warnings = $tmp;
+
+	    ($oid, $tmp) = &Check_OID($var);
+	    if ($oid)
+	    {
+		open(CACHE, ">>$SNMP_util::CacheFile");
+		print CACHE "$tmp\t$oid\n";
+		close(CACHE);
 	    }
-	    $oid = $SNMP_util::OIDS{$tmpv};
-	    if ($oid) {
-		$var =~ s/^$tmp/$oid/;
-	    } else {
-		warn "Unknown SNMP var $var\n"
-		    unless ($SNMP_Session::suppress_warnings > 1);
-		next;
-	    }
+	}
+	if ($oid) {
+	    $var =~ s/^$tmp/$oid/;
+	} else {
+	    warn "Unknown SNMP var $var\n"
+		unless ($SNMP_Session::suppress_warnings > 1);
+	    next;
 	}
 	print "toOID: $var\n" if $SNMP_util::Debug;
 	$tmp = encode_oid_with_errmsg($var);
@@ -696,6 +727,86 @@ sub snmpmapOID(@)
     }
     return undef;
 }
+
+#
+# Open the passed-in file name and read it in to populate
+# the cache of text-to-OID map table.  It expects lines
+# with two fields, the first the textual string like "ifInOctets",
+# and the second the OID value, like "1.3.6.1.2.1.2.2.1.10".
+#
+# blank lines and anything after a '#' or between '--' is ignored.
+#
+sub snmpLoad_OID_Cache ($)
+{
+    my($arg) = @_;
+    my($txt, $oid);
+
+    if (!open(CACHE, $arg))
+    {
+	warn "snmpLoad_OID_Cache: Can't open $arg: $!"
+	    unless ($SNMP_Session::suppress_warnings > 1);
+	return -1;
+    }
+
+    while(<CACHE>)
+    {
+	s/#.*//;
+	s/--.*--//g;
+	s/--.*//;
+	next if (/^$/);
+	next unless (/\s/);
+	chop;
+	($txt, $oid) = split(' ', $_, 2);
+	&snmpmapOID($txt, $oid);
+    }
+    close(CACHE);
+    return 0;
+}
+
+#
+# Check to see if an OID is in the text-to-OID cache.
+# Returns the OID and the corresponding text as two separate
+# elements.
+#
+sub Check_OID ($)
+{
+    my($var) = @_;
+    my($tmp, $tmpv, $oid);
+
+    if ($var =~ /^(([a-z][a-z\d\-]*\.)*([a-z][a-z\d\-]*))/i)
+    {
+	$tmp = $&;
+	$tmpv = $tmp;
+	for (;;) {
+	    last if defined($SNMP_util::OIDS{$tmpv});
+	    last if !($tmpv =~ s/^[^\.]*\.//);
+	}
+	$oid = $SNMP_util::OIDS{$tmpv};
+	if ($oid) {
+	    return ($oid, $tmp);
+	} else {
+	    return undef;
+	}
+    }
+    return ($var, $var);
+}
+
+#
+# Save the passed-in list of MIB files until an OID can't be
+# found in the existing table.  At that time the MIB file will
+# be loaded, and the lookup attempted again.
+#
+sub snmpQueue_MIB_File (@)
+{
+    my(@files) = @_;
+    my($file);
+
+    foreach $file (@files)
+    {
+	push(@SNMP_util::MIB_Files, $file);
+    }
+}
+
 
 #
 # Read in the passed list of MIB files, parsing them

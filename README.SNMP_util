@@ -17,6 +17,8 @@ The SNMP_utils.pm module contains the functions
 
   snmpmapOID(text, OID, [text, OID ...])
   snmpMIB_to_OID(filename)
+  snmpLoad_OID_Cache(filename)
+  snmpQueue_MIB_File(filename, [filename])
 
   snmpget(community@host:port:timeout:retries:backoff, OID, [OID...])
   snmpgetnext(community@host:port:timeout:retries:backoff, OID, [OID...])
@@ -49,6 +51,34 @@ The snmpMIB_to_OID() function will open the passed-in MIB file name
 and read it.  It will create text mappings for the appropriate OID
 number.  It returns the number of text mappings added, so a zero or
 negative return indicates an error.
+
+The snmpLoad_OID_Cache() function will open the passed-in file name
+and read the file.  It is expecting lines with a text string in
+the first column and an OID number in the second column, like
+
+    ifInOctets	1.3.6.1.2.1.2.2.1.10
+    ifOutOctets	1.3.6.1.2.1.2.2.1.16
+
+It will add the text to OID mappings in the file to the internal list by
+calling the "snmpmapOID()" function.  This way the extra overhead of
+parsing a MIB file can be avoided if you have a pre-parsed version of
+the MIB handy.
+
+The snmpQueue_MIB_File() function queues up file names for use by the
+"snmpMIB_to_OID()" function.  If there are filenames passed into
+"snmpQueue_MIB_File()", when an OID can't be found in the internal
+table, the queued MIB files are loaded one after another until the
+OID can be found (or the list is exhausted).  This delays the MIB
+parsing until the OID value is actually needed.
+
+A cache file with the looked up text-to-OID mappings is maintained.
+It's name is "OID_cache.txt", and can be changed by setting the
+variable $SNMP_util::CacheFile to the name of the file you desire.
+This cache file is automatically loaded before the queued MIB files
+are parsed.  If the OID is found in the cache file, the MIB file
+doesn't have to be parsed.
+
+
 
 The rest of the functions require a hostname/IP address as the first
 argument.  The community string, port number, timeout, retries, and backoff
@@ -189,3 +219,43 @@ sub main {
 }
 main;
 exit(0);
+-----------------------------------------------------
+Here is an example using the MIB parsing functions.
+First create a file with a simple MIB:
+cat > dummy.mib <<EOF
+abc OBJECT IDENTIFIER ::=  { system 1  }
+EOF
+
+#! /usr/local/bin/perl5
+BEGIN {
+
+# The older perls tend to behave peculiar with
+# large integers ... 
+require 5.003;
+
+use SNMP_util "0.71";
+}
+
+use strict;
+
+sub main {
+    my ($ret, $arg);
+
+    # queue up reading the "dummy.mib" file
+    &snmpQueue_MIB_File("dummy.mib");
+
+    # Override the default cache file ("OID_cache.txt") with "cache_test.txt"
+    $SNMP_util::CacheFile = "cache_test.txt";
+
+    ($ret) = &snmpget("127.0.0.1", "abc.0");
+    print "$ret\n";
+}
+
+main;
+exit(0);
+-----------------------------------------------------
+The first time you run the above script, the "dummy.mib" file will be read
+and parsed.  You should see the "cache_test.txt" file get created with
+a single line in it, namely "abc 1.3.6.1.2.1.1.1". The second time you
+run the script the "cache_test.txt" file will be loaded instead of the
+"dummy.mib" file.
