@@ -264,10 +264,13 @@ sub decode_intlike
 	@result = (ord (substr ($pdu, 2, 1)), substr ($pdu, 3));
     } elsif ($result == 2) {
 	@result = (unpack ("n", (substr ($pdu, 2, 2))), substr ($pdu, 4));
+    } elsif ($result == 3) {
+	@result = ((ord (substr ($pdu, 2, 1)) << 16) 
+		   + unpack ("n", (substr ($pdu, 3, 2))), substr ($pdu, 5));
     } elsif ($result == 4) {
 	@result = (unpack ("N", (substr ($pdu, 2, 4))), substr ($pdu, 6));
     } else {
-	die "Unsupported integer length $length";
+	die "Unsupported integer length $result";
     }
     @result;
 }
