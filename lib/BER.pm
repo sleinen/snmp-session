@@ -1,4 +1,4 @@
-package BER;
+package BER;			# -*- mode: Perl -*-
 
 @ISA = qw(Exporter);
 
