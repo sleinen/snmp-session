@@ -1,3 +1,105 @@
+Sat Feb  1 17:33:57 1997  Simon Leinen  <simon@switch.ch>
+
+	* BER.pm: Use integer.
+
+	(decode_intlike): Simplified by writing a proper loop to decode
+ 	octet by octet.  This should also solve any problems with signed
+ 	vs. unsigned.
+
+	* ber-test.pl (decode_intlike_test): New subroutine.
+
+	(regression_test): Use it.
+
+	* ber-test.pl: Use integer.
+
+	Added several test cases.
+
+	* ber-test.pl: Initial revision
+
+	* BER.pm (regression_test): Removed.  This is now in ber-test.pl.
+
+Wed Jan 15 08:56:54 1997  leinen  <leinen@ohiggins>
+
+	* SNMP_Session.pm: Backed out the changes between revisions 1.27
+ 	and 1.28 that used the new subroutines in Socket.pm.  It turned
+ 	out that those routines require Perl 5.002 or later.  Put the new
+ 	code back in and commented it out with clear notices - look for
+ 	the markers "Perl 5.002 or later" and "end of pre-5.002 code".
+
+Tue Jan 14 09:01:57 1997  leinen  <leinen@ohiggins>
+
+	* BER.pm, SNMP_Session.pm: Commented out use strict/use vars and
+ 	explain why.
+
+Mon Jan 13 13:28:04 1997  leinen  <leinen@ohiggins>
+
+	* BER.pm: Updated my e-mail address in the header comment.
+
+Tue Jan  7 16:38:48 1997  leinen  <leinen@ohiggins>
+
+	* index.html: Updated from latest README.
+
+	Added section with recent changes and credits.
+
+	* README: Updated from latest index.html.
+
+	* SNMP_Session.pm: Make better use of the functionality in
+ 	Socket.pm.
+
+Thu Dec 26 17:31:32 1996  Simon Leinen  <simon@switch.ch>
+
+	* SNMP_Session.pm (receive_response_1): Perform the address check
+ 	only if debugging is set on the session.
+
+	* SNMP_Session.pm (receive_response_1): Don't return failure if
+ 	response comes from a different address.  Also, the warning is
+ 	only issued if debugging is set for the session.
+
+Fri Dec 20 14:50:03 1996  Simon Leinen  <simon@switch.ch>
+
+	* SNMP_Session.pm: Import @ISA from vars.
+
+	Added debugging.
+
+	Fixed header comment.
+
+	(unwrap_response_4): Removed spurious argument to
+	decode_by_template().
+
+	* BER.pm: Use strict.
+
+	(pretty_print): Declare $result as lexical variable.
+
+	(decode_by_template): Implement %i and %s without prefix arguments.
+
+	(encoded_oid_prefix_p): Declare $subid1, $subid2 lexical.
+
+Fri Dec 20 09:56:28 1996  Simon Leinen  <simon@switch.ch>
+
+	* SNMP_Session.pm ($default_timeout, $default_retries,
+ 	$default_backoff): New values.  Improved following discussions on
+ 	the mrtg mailing list.
+
+	(encode_request): Increment request ID.
+
+	(request_response_3): Renamed from `request_response'.  Added
+ 	`response_tag' argument.  Unwrap each received response.  If this
+ 	fails because of mismatching community or request ID, just ignore
+ 	the request and retry.
+
+	(SNMPv1_Session::open): Cast the random request ID to an int.
+
+	(unwrap_response_4): Renamed from `unwrap_response'.  Added
+ 	`request_id' argument.
+
+	Check community and request ID and return undefined if there is a
+ 	mismatch.
+
+	(receive_response_1): Renamed from `receive_response'.  Added
+ 	`response_tag' parameter.
+
+	Fixed report of response from bad address.
+
 Tue Dec 17 18:16:55 1996  Simon Leinen  <simon@switch.ch>
 
 	* SNMP_Session.pm: Stripped contributor entries.
@@ -5,11 +107,11 @@ Tue Dec 17 18:16:55 1996  Simon Leinen  <simon@switch.ch>
 	(decode_get_response): Call unwrap_response via eval and simply
  	return zero when it dies.
 
-	(receive_response):
-	Return zero if response comes from different address.
+	(receive_response): Return zero if response comes from different
+ 	address.
 
-	(request_response):
- 	Wait for another packet when receive_response fails.
+	(request_response): Wait for another packet when receive_response
+ 	fails.
 
 	* BER.pm: Contributors list: slightly fixed.
 
