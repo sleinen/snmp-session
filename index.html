@@ -6,12 +6,12 @@
 <CENTER>
   <H1>SNMP support for Perl 5</H1>
 
-  <H3>Author: <A HREF="http://liawww.epfl.ch/~simon/">Simon
-Leinen</A>  &lt;<A HREF="mailto:simon@lia.di.epfl.ch">simon@lia.di.epfl.ch</A>&gt;</H3>
+  <H3>Author: <A HREF="http://celeste.switch.ch/~leinen/">Simon
+Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 </CENTER>
 
-<P> <A HREF="http://liawww.epfl.ch/~simon/snmp/perl/snmp.shar">This
+<P> <A HREF="http://celeste.switch.ch/~leinen/snmp/perl/snmp.shar">This
 archive</A> contains Perl 5 modules SNMP_Session.pm and BER.pm, which,
 when used together, provide rudimentary access to remote SNMP (v1)
 agents. </P>
@@ -25,14 +25,14 @@ agents. </P>
  <SAMP>Socket</SAMP> module and should therefore be very
  portable. </P>
 
-<P> The only SNMP operation currently supported is
- <SAMP>get</SAMP>. That means that you can neither set values, nor
- read tables using these routines. Hopefully I will get around to
- implementing these other operations one day. </P>
+<P> Currently supported SNMP operations include
+ <SAMP>get</SAMP> and <SAMP>getNext</SAMP>.  There is no support for
+ sending or receiving traps (notifications) yet, nor for setting MIB
+ variables in an agent. </P>
 
-<P> You can try a trivial <A
-HREF="http://liawww.epfl.ch/cgi-bin/snmp/wwwtest">sample
-application</A> I have built with this library. </P>
+<!-- <P> You can try a trivial <A				-->
+<!-- HREF="http://liawww.epfl.ch/cgi-bin/snmp/wwwtest">sample	-->
+<!-- application</A> I have built with this library. </P>	-->
 
 <H2>Usage</H2>
 
@@ -100,11 +100,6 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
 
 <H2>Future Plans</H2>
 
-<H3>More Operations</H3>
-
-<P> Adding operations such as <SAMP>set</SAMP> and
- <SAMP>getNext</SAMP> should not be very difficult to implement. </P>
-
 <H3>SNMPv2 Support</H3>
 
 <P> The <B>SNMP_Session</B> type has already been subclassed into
@@ -117,6 +112,21 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
  encryption should be added so that authentication and privacy can be
  used.  Then the <SAMP>getBulk</SAMP> PDU should be implemented. </P>
 
+<p> Unfortunately(?) this is all more or less moot since the
+ ``traditional'' SNMPv2 party model has been abandoned because it was
+ considered to be too difficult to deploy.  The current standard is
+ SNMPv2C, which is basically SNMPv2 with the community-based
+ ``security'' model from SNMPv1.  This would still be worthwhile
+ because of the addition of <SAMP>getBulk</SAMP> and other
+ improvements.  However, I don't have any agent implementation I could
+ test my code against. </p>
+
+<H3>More Operations</H3>
+
+<p> Adding the <SAMP>set</SAMP> operation should not be very
+ difficult.  Support for receiving and/or sending traps would be
+ useful for some management applications. </p>
+
 <H3>MIB parsing</H3>
 
 <P> Currently, users of the module must provide numeric object IDs,
@@ -128,7 +138,7 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
 <P> However, parsing MIBs in their full ASN.1 syntax looks like
  overkill for such a small package.  As a compromise, we could use the
  output of an existing MIB compiler as input.  I have done this in <A
- HREF="http://liawww.epfl.ch/~simon/snmp/lisp/">another project</A>
+ HREF="http://celeste.switch.ch/~leinen/snmp/lisp/">another project</A>
  with files from ISODE SNMP's MIB compiler.  A problem with ISODE SNMP
  is that it is itself part of a rather huge package, and I would
  prefer to use a small standalone MIB parser.  Ideally this MIB parser
@@ -151,10 +161,10 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-Last modified: Mon Sep  4 14:36:18 MDT 1995
+Last modified: Tue Dec 17 19:43:32 MET 1996
 <!-- hhmts end -->
-<A HREF="http://liawww.epfl.ch/~simon/">
- Simon Leinen &lt;simon.leinen@lia.di.epfl.ch&gt;</A>
+<A HREF="http://celeste.switch.ch/~leinen/">
+ Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
 </ADDRESS>
 
 </BODY>
