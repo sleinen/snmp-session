@@ -144,7 +144,10 @@ Community name:
 <HR>
 <P> This is a sample application of an
  <A HREF="http://liawww.epfl.ch/simon/snmp/perl/">SNMP Module</A>
- I have written for Perl 5. </P>
+ I have written for Perl 5.
+ Here is the
+ <A HREF="http://liawww.epfl.ch/simon/snmp/perl/wwwtest">source code</A>
+ of this particular application.</P>
 <ADDRESS>
 <A HREF="http://liawww.epfl.ch/simon.html">
  Simon Leinen &lt;simon.leinen\@lia.di.epfl.ch&gt;</A>
