@@ -1,3 +1,100 @@
+Sat Aug 16 00:06:21 1997  Simon Leinen  <simon@switch.ch>
+
+	* Makefile (TESTSRCS): Added some, removed party-test.pl.
+
+	(DOCS): Added test/README, index.html.
+
+	(PKGSRCS): Removed Party.pm.
+
+	(TESTSRCS): Renamed from PROGSRCS.
+
+	Moved all test scripts to `test' subdirectory.
+
+	* index.html, README: snmp-set Support: Added credits for matter,
+ 	small description on snmpset usage, updated to-do items.
+
+	* SNMP_Session.pm: Added set-request support based on code
+ 	contributed my Matthew Trunnell <matter@media.mit.edu>:
+
+	(encode_request): The former list of encoded OIDs can now also
+ 	contain OID/value pairs.  Those are represented by references to
+ 	two-element arrays, the encoded OID and the encoded value.
+
+	(encode_set_request): New subroutine.
+
+	(set_request_response): New subroutine.
+
+	(request_response_4): Return undef as soon as an error response
+ 	packet has been received, rather than retrying.
+
+	(unwrap_response_5): Recognize OID/value pairs (but print only the
+ 	OID).
+
+	This fix doesn't really have anything to do with set-request
+ 	support:
+
+	(receive_response_2): Undefine the "unwrapped" cache so that you
+ 	don't get the data from the last request if you ignore the error
+ 	return.
+
+	($VERSION): Incremented to 0.52.
+
+Thu Jul 31 11:56:31 1997  leinen  <leinen@bolivar>
+
+	* test.pl: Fixed pathname to Perl.
+
+	* SNMP_Session.pm (open): Better error messages.
+
+	* SNMP_Session.pm: Better diagnostics:
+
+	(request_response_4): Renamed from request_response_3, take
+ 	additional argument $oids.
+
+	(receive_response_2): Renamed from receive_response_1, take
+ 	additional argument $oids.
+
+	(unwrap_response_5): Renamed from unwrap_response_4, take
+ 	additional argument $oids.  Use this to generate error message
+ 	when we have an errorIndex.
+
+	(error): New method to print an error message referring to a
+ 	specific session.
+
+	(to_string): New function, factored out from `describe'.  Be much
+ 	more verbose.
+
+	($VERSION): Incremented to 0.51.
+
+Wed Jul  9 16:17:30 1997  leinen  <leinen@bolivar>
+
+	* index.html: Document recent changes: version numbers, unsigned
+ 	printing.
+
+	* SNMP_Session.pm: Added versioning as supported by Exporter.pm.
+
+	* BER.pm: Don't die in a few places.
+
+	($VERSION): New variable, initially 0.50.
+
+	(version): New subroutine.
+
+Wed Jul  2 16:02:23 1997  leinen  <leinen@bolivar>
+
+	* BER.pm (pretty_uptime): Avoid negative times.
+
+	* BER.pm: Removed debugging version of decode_intlike_s.
+
+	(pretty_uptime): Use decode_unsignedlike rather than
+ 	decode_intlike.
+
+	* BER.pm: Buggy version that should work with mrtg on all systems.
+
+Thu Jun 12 09:05:17 1997  leinen  <leinen@bolivar>
+
+	* README: Updated sample code.
+
+	Added pointer to HTML page.
+
 Thu Jun 12 09:00:34 1997  Simon Leinen  <simon@limmat.switch.ch>
 
 	* test.pl, walk-test.pl:
