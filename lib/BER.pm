@@ -1,4 +1,13 @@
-package BER;			# -*- mode: Perl -*-
+### -*- mode: Perl -*-
+######################################################################
+### BER (Basic Encoding Rules) encoding and decoding.
+######################################################################
+### This module implements encoding and decoding of ASN.1-based data
+### structures using the Basic Encoding Rules (BER).  Only the subset
+### necessary for SNMP is implemented.
+######################################################################
+
+package BER;
 
 use Exporter;
 
@@ -10,6 +19,8 @@ use Exporter;
 	     decode_sequence decode_by_template
 	     pretty_print);
 
+### Flags for different types of tags
+
 sub universal_flag	{ 0x00 }
 sub application_flag	{ 0x40 }
 sub context_flag	{ 0x80 }
@@ -17,6 +28,8 @@ sub private_flag	{ 0xc0 }
 
 sub primitive_flag	{ 0x00 }
 sub constructor_flag	{ 0x20 }
+
+### Universal tags
 
 sub boolean_tag		{ 0x01 }
 sub int_tag		{ 0x02 }
@@ -27,9 +40,11 @@ sub object_id_tag	{ 0x06 }
 sub sequence_tag	{ 0x10 }
 sub set_tag		{ 0x11 }
 
+### Flag for length octet announcing multi-byte length field
+
 sub long_length		{ 0x80 }
 
-## SNMP specific tags
+### SNMP specific tags
 
 sub snmp_ip_address_tag		{ 0x00 | application_flag }
 sub snmp_counter32_tag		{ 0x01 | application_flag }
@@ -39,7 +54,9 @@ sub snmp_opaque_tag		{ 0x04 | application_flag }
 sub snmp_nsap_address_tag	{ 0x05 | application_flag }
 sub snmp_counter64_tag		{ 0x06 | application_flag }
 sub snmp_uinteger32_tag		{ 0x07 | application_flag }
-				
+
+#### Encoding
+
 sub encode_header
 {
     my($type,$length) = @_;
@@ -105,6 +122,8 @@ sub encode_string
     my($string)=@_;
     return encode_header (octet_string_tag, length $string).$string;
 }
+
+#### Decoding
 
 sub pretty_print
 {
@@ -311,6 +330,8 @@ sub decode_length
     }
     @result;
 }
+
+#### Regression Tests
 
 sub regression_test
 {
