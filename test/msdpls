@@ -51,6 +51,8 @@ while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
 	} else {
 	    usage (1);
 	}
+    } elsif ($ARGV[0] eq '-d') {
+	++$debug;
     } elsif ($ARGV[0] eq '-h') {
 	usage (0);
 	exit 0;
@@ -109,6 +111,9 @@ sub msdp_collect_sas ($ ) {
 	     die "index: $index"
 		 unless $index =~ /^(\d+\.\d+\.\d+\.\d+)\.(\d+\.\d+\.\d+\.\d+)\.(\d+\.\d+\.\d+\.\d+)$/;
 	     my ($group, $source, $rp) = ($1, $2, $3);
+	     warn ("S/G/RP entry (status): $group $source $rp ("
+		   .pretty_print ($sa_status).")\n")
+		 if $debug;
 	     return 0 unless pretty_print ($sa_status) == 1; # active(1)
 	     ++$nsa;
 	     push @{$announcements{$source,$group}}, {rp => $rp};
