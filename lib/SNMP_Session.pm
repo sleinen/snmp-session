@@ -3,8 +3,11 @@ package SNMP_Session;
 require 'Socket.pm';
 use Socket;
 
-sub get_request  { 0 | BER::context_flag | BER::constructor_flag };
-sub get_response { 2 | BER::context_flag | BER::constructor_flag };
+require 'BER.pm';
+use BER;
+
+sub get_request  { 0 | context_flag };
+sub get_response { 2 | context_flag };
 
 sub standard_udp_port { 161 };
 
@@ -115,15 +118,15 @@ sub encode_get_request
 {
     my($this) = shift;
     my(@encoded_oids) = @_;
-    grep($_ = BER::encode_sequence($_,BER::encode_null()),@encoded_oids);
-    return BER::encode_sequence (BER::encode_int ($this->{snmp_version}),
-			       BER::encode_string ($this->{community}),
-			       BER::encode_tagged_sequence
-				 (get_request,
-				BER::encode_int ($this->{request_id}),
-				BER::encode_int (0),
-				BER::encode_int (0),
-				BER::encode_sequence (@encoded_oids)));
+    grep($_ = encode_sequence($_,encode_null()),@encoded_oids);
+    return encode_sequence (encode_int ($this->{snmp_version}),
+			    encode_string ($this->{community}),
+			    encode_tagged_sequence
+			    (get_request,
+			     encode_int ($this->{request_id}),
+			     encode_int (0),
+			     encode_int (0),
+			     encode_sequence (@encoded_oids)));
 
 }
 
@@ -131,9 +134,9 @@ sub decode_get_response
 {
     my($this) = shift;
     my($response) = shift;
-    BER::decode_by_template ($response, "%{%0i%*s%*{%*i%0i%0i%{%@", 
-			     $this->{community}, get_response,
-			     $this->{request_id});
+    decode_by_template ($response, "%{%0i%*s%*{%*i%0i%0i%{%@", 
+			$this->{community}, get_response,
+			$this->{request_id});
 }
 
 1;
