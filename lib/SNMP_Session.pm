@@ -48,7 +48,7 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.77';
+$VERSION = '0.78';
 
 @ISA = qw(Exporter);
 
@@ -543,6 +543,7 @@ sub open
 	   'error_status' => 0,
 	   'error_index' => 0,
 	   'default_max_repetitions' => $max_repetitions,
+	   'use_getbulk' => 1,
 	  };
 }
 
@@ -786,11 +787,15 @@ sub map_table_start_end ($$$$$$) {
     my @encoded_oids;
     my $call_counter = 0;
     my $base_index = $start;
-    my $expected_oid_count = @{$columns};
+    my $ncols = @{$columns};
+
+    if (! $session->{'use_getbulk'}) {
+	return SNMP_Session::map_table_start_end ($session, $columns, $mapfn, $start, $end, $max_repetitions);
+    }
     $max_repetitions = $session->default_max_repetitions
 	unless defined $max_repetitions;
 
-    do {
+    for (;;) {
 	foreach (@encoded_oids = @{$columns}) {
 	    $_=encode_oid (@{$_},split '\.',$base_index)
 		|| return $session->ber_error ("encoding OID $base_index");
@@ -799,56 +804,72 @@ sub map_table_start_end ($$$$$$) {
 						@encoded_oids)) {
 	    my $response = $session->pdu_buffer;
 	    my ($bindings) = $session->decode_get_response ($response);
-	    my $smallest_index = undef;
-	    my @collected_values = ();
+	    my @colstack = ();
+	    my $k = 0;
+	    my $j;
+
+	    my $min_index = undef;
 
 	    my @bases = @{$columns};
 	    my $n_bindings = 0;
+	    my $binding;
+
 	    while ($bindings ne '') {
-		my ($binding, $oid, $value);
-		unless (defined $bases[0]) {
-		    @bases = @{$columns};
-		    (++$call_counter,
-		     &$mapfn ($smallest_index, @collected_values))
-			if defined $smallest_index;
-		    $base_index = $smallest_index;
-		    $smallest_index = undef;
-		    @collected_values = ();
-		}
-		my $base = shift @bases;
-
 		($binding, $bindings) = decode_sequence ($bindings);
-		($oid, $value) = decode_by_template ($binding, "%O%@");
+		my ($oid, $value) = decode_by_template ($binding, "%O%@");
 
-		my $out_index;
-
-		++$n_bindings;
-		$out_index = SNMP_Session::oid_diff ($base, $oid);
-		my $cmp;
-		if (!defined $smallest_index || ($cmp = SNMP_Session::index_compare ($out_index,$smallest_index)) == -1) {
-		    $smallest_index = $out_index;
-		    grep ($_=undef, @collected_values);
-		    push @collected_values, $value;
-		} elsif ($cmp == 1) {
-		    push @collected_values, undef;
-		} else {
-		    push @collected_values, $value;
-		}
-	    } # while bindings
-	    @bases = @{$columns};
-	    if ($expected_oid_count eq @collected_values) {
-		(++$call_counter, &$mapfn ($smallest_index, @collected_values))
-		    if defined $smallest_index;
-		$base_index = $smallest_index;
-		$smallest_index = undef;
-		@collected_values = ();
-	    } else {
+		push @{$colstack[$k]}, [$oid, $value];
+		++$k; $k = 0 if $k >= $ncols;
 	    }
+
+	    my $last_min_index = undef;
+	  walk_rows_from_pdu:
+	    for (;;) {
+		my @collected_values = ();
+		my $min_index = undef;
+
+		for ($k = 0; $k < $ncols; ++$k) {
+		    my $pair = $colstack[$k]->[0];
+		    unless (defined $pair) {
+			$min_index = undef;
+			last walk_rows_from_pdu;
+		    }
+		    my $this_index
+			= SNMP_Session::oid_diff ($columns->[$k], $pair->[0]);
+		    if (defined $this_index) {
+			my $cmp
+			    = !defined $min_index
+				? -1
+				    : SNMP_Session::index_compare
+					($this_index, $min_index);
+			if ($cmp == -1) {
+			    for ($j = 0; $j < $k; ++$j) {
+				unshift (@{$colstack[$j]},
+					 [$min_index,
+					  $collected_values[$j]]);
+				$collected_values[$j] = undef;
+			    }
+			    $min_index = $this_index;
+			}
+			if ($cmp <= 0) {
+			    $collected_values[$k] = $pair->[1];
+			    shift @{$colstack[$k]};
+			}
+		    }
+		}
+		last unless defined $min_index;
+		last if defined $end && index_compare ($min_index, $end) >= 0;
+		&$mapfn ($min_index, @collected_values);
+		++$call_counter;
+		$last_min_index = $min_index;
+	    }
+	    $base_index = $last_min_index;
 	} else {
 	    return undef;
 	}
+	last unless (defined $base_index
+		     && (!defined $end || index_compare ($base_index, $end) < 0));
     }
-    while (defined $base_index && (!defined $end || index_compare ($base_index, $end) < 0));
     $call_counter;
 }
 
