@@ -4,6 +4,7 @@ use Socket;
 use BER;
 
 sub get_request  { 0 | context_flag };
+sub getnext_request  { 1 | context_flag };
 sub get_response { 2 | context_flag };
 
 sub standard_udp_port { 161 };
@@ -13,11 +14,11 @@ sub open
     return SNMPv1_Session::open (@_);
 }
 
-sub timeout { @_[0]->{timeout} }
+sub timeout { $_[0]->{timeout} }
 
-sub encode_get_request
+sub encode_request
 {
-    my($this, @encoded_oids) = @_;
+    my($this, $reqtype, @encoded_oids) = @_;
     my($request);
 
     # turn each of the encoded OIDs into an encoded pair of the OID
@@ -25,12 +26,24 @@ sub encode_get_request
     grep($_ = encode_sequence($_,encode_null()),@encoded_oids);
 
     $request = encode_tagged_sequence
-	(get_request,
+	($reqtype,
 	 encode_int ($this->{request_id}),
 	 encode_int (0),
 	 encode_int (0),
 	 encode_sequence (@encoded_oids));
     return $this->wrap_request ($request);
+}
+
+sub encode_get_request
+{
+    my($this, @oids) = @_;
+    return encode_request ($this, get_request, @oids);
+}
+
+sub encode_getnext_request
+{
+    my($this, @oids) = @_;
+    return encode_request ($this, getnext_request, @oids);
 }
 
 sub decode_get_response
@@ -54,6 +67,23 @@ sub get_request_response
     my($this) = shift;
     my(@oids) = @_;
     $this->send_query ($this->encode_get_request (@oids))
+	|| die "send_query: $!";
+    if ($this->wait_for_response($this->timeout)) {
+	my($response_length);
+
+	($response_length = $this->receive_response())
+	    || die "receive_response: $!";
+	## print STDERR "$response_length bytes of response received.\n";
+    } else {
+	0;
+    }
+}
+
+sub getnext_request_response
+{
+    my($this) = shift;
+    my(@oids) = @_;
+    $this->send_query ($this->encode_getnext_request (@oids))
 	|| die "send_query: $!";
     if ($this->wait_for_response($this->timeout)) {
 	my($response_length);
@@ -128,11 +158,11 @@ sub host_not_found_error
     return $message.", h_errno==".$?;
 }
 
-sub sock { @_[0]->{sock} }
-sub sockfileno { @_[0]->{sockfileno} }
-sub remote_addr { @_[0]->{remote_addr} }
-sub pdu_buffer { @_[0]->{pdu_buffer} }
-sub max_pdu_len { @_[0]->{max_pdu_len} }
+sub sock { $_[0]->{sock} }
+sub sockfileno { $_[0]->{sockfileno} }
+sub remote_addr { $_[0]->{remote_addr} }
+sub pdu_buffer { $_[0]->{pdu_buffer} }
+sub max_pdu_len { $_[0]->{max_pdu_len} }
 
 sub close
 {
