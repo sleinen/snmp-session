@@ -3,7 +3,7 @@
 ### Name:	  ber-test.pl
 ### Date Created: Sat Feb  1 16:09:46 1997
 ### Author:	  Simon Leinen  <simon@switch.ch>
-### RCS $Id: ber-test.pl,v 1.7 2000-03-29 13:28:48 leinen Exp $
+### RCS $Id: ber-test.pl,v 1.8 2000-03-29 14:07:33 leinen Exp $
 ######################################################################
 ### Regression Tests for BER encoding/decoding
 ######################################################################
@@ -48,6 +48,15 @@ sub regression_test
     &decode_intlike_test ('"\x02\x06\x00\x01\x00\x00\x00\x00"', 4294967296);
     &decode_intlike_test ('"\x02\x09\x00\xff\xff\xff\xff\xff\xff\xff\xff"',
 			      "18446744073709551615");
+    require 'Math/BigInt.pm';
+
+    {
+	## We have to disable warnings because of Math::BigInt
+	##
+	local $^W = 0;
+	&eq_test ('encode_int (new Math::BigInt ("18446744073709551615"))', "\x02\x09\x00\xff\xff\xff\xff\xff\xff\xff\xff");
+    }
+
     &eq_test ('(&BER::decode_string ("\x04\x06public"))[0]', "public");
     &eq_test ('(&BER::decode_oid ("\x06\x04\x01\x03\x06\x01"))[0]', 
 	      "\x06\x04\x01\x03\x06\x01");
@@ -73,7 +82,7 @@ sub eq_test
     undef $@;
     eval "\$result = $expr";
     croak "$@" if $@;
-    (warn "$expr => $result != $wanted"), ++$exitcode
+    (warn $expr." => ".$result." != ".$wanted), ++$exitcode
 	unless $result eq $wanted;
 }
 
@@ -84,7 +93,7 @@ sub equal_test
     undef $@;
     eval "\$result = $expr";
     croak "$@" if $@;
-    (warn "$expr => $result != $wanted"), ++$exitcode
+    (warn $expr." => ".$result." != ".$wanted), ++$exitcode
 	unless $result == $wanted;
 }
 
