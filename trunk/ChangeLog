@@ -1,3 +1,82 @@
+Wed Dec  3 20:05:50 1997  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Documented recent changes.
+
+	* BER.pm: No longer use integer.
+
+	No longer call "warn".
+
+	* SNMP_Session.pm: Handle encoding errors in a sensible way.
+
+	($SNMP_Session::errmsg, $SNMP_Session::suppress_warnings): New
+	variables that give the caller more control about error messages.
+
+	Upped version number.
+
+Mon Dec  1 12:38:42 1997  Simon Leinen  <simon@limmat.switch.ch>
+
+	* BER.pm (decode_intlike_s): Multiply with 256 rather than shifting 8.
+
+Fri Nov 28 21:59:11 1997  Simon Leinen  <simon@limmat.switch.ch>
+
+	* BER.pm:
+	Better error handling.  No longer calls die(), but returns undefined
+	values and leaves an error message in $BER::errmsg.
+
+	* SNMP_Session.pm (ber_error):
+	New subroutine that passes an error up from the BER module.
+
+	(unwrap_response_5): Use it.
+
+Tue Nov 25 13:58:40 1997  Simon Leinen  <simon@limmat.switch.ch>
+
+	* README, index.html: Found an application for sending traps.
+
+Fri Nov 14 19:25:22 1997  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Added test/arp.
+
+	* Makefile (TESTSRCS): Added test/arp.
+
+Fri Oct 31 18:21:36 1997  Simon Leinen  <simon@limmat.switch.ch>
+
+	* Makefile (dist): Used to be called `shar'.
+
+	Install index.html, tol.
+
+	* index.html: Moved description of last change forward.
+
+	* SNMP_Session.pm ($VERSION): Incremented.
+
+	* SNMP_Session.pm: Added Daniel L. Needles' change to avoid
+ 	passing numeric IP addresses to inet_ntoa().
+
+	* README: Give credit to Daniel L. Needles.
+
+	* index.html: Mention Dan L. Needle's contribution.
+
+Mon Sep 22 19:25:36 1997  Simon Leinen  <simon@babar.switch.ch>
+
+	* BER.pm (hex_string, hex_string_of_type): New subroutines.
+
+Fri Aug 22 10:54:00 1997  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Bradford T. -> Brad.
+
+Thu Aug 21 14:05:37 1997  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html, README (Set Requests): Point to test/set-test.pl.
+
+	* index.html: Added missing `mailto:' to URL.
+
+Tue Aug 19 14:43:17 1997  Simon Leinen  <simon@limmat.switch.ch>
+
+	* SNMP_Session.pm: Use more canonic e-mail address for matter.
+
+	* Makefile (TESTSRCS): Added set-test.pl.
+
+	* README, index.html: Use more canonic e-mail address for matter.
+
 Sat Aug 16 00:06:21 1997  Simon Leinen  <simon@switch.ch>
 
 	* Makefile (TESTSRCS): Added some, removed party-test.pl.
