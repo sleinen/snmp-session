@@ -370,7 +370,7 @@ sub snmpopen (@) {
     undef($lport) if (defined($lport) && (length($lport) <= 0));
   }
   undef($port) if (defined($port) && length($port) <= 0);
-  $port = 162 if ($type == 1 && !defined($port));
+  $port = ($type == 1 ? 162 : 161) if !defined($port);
   $nhost = "$community\@$host";
   $nhost .= ":" . $port if (defined($port));
 
