@@ -2,6 +2,10 @@
 		       -----------------------
 
 	     Author: Simon Leinen  <simon@instrumatic.ch>
+			    Contributors:
+		 Tobias Oetiker <oetiker@ee.ethz.ch>
+		  Andrzej Tobola <san@iem.pw.edu.pl>
+		      Dave Rand <dlr@Bungi.com>
 
 This archive contains Perl 5 modules SNMP_Session.pm and BER.pm,
 which, when used together, provide rudimentary access to remote SNMP
@@ -11,6 +15,11 @@ The SNMP operations currently supported are "get" and "get-next".
 That means that you cannot set values or receive or generate SNMP
 traps using these routines.  Hopefully I will get around to
 implementing these other operations one day.
+
+For an excellent example of the type of application this is useful
+for, see version 2.0 (currently in beta) of Tobias Oetiker's ``mrtg''
+(Multi Router Traffic Grapher) tool:
+<URL:http://www.ee.ethz.ch/~oetiker/webtools/mrtg/mrtg.html>
 
 				Usage
 				.....
