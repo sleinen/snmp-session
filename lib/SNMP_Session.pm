@@ -1,10 +1,13 @@
 # -*- mode: Perl -*-
 ######################################################################
-### BER (Basic Encoding Rules) encoding and decoding.
+### SNMP Request/Response Handling
 ######################################################################
-### This module implements encoding and decoding of ASN.1-based data
-### structures using the Basic Encoding Rules (BER).  Only the subset
-### necessary for SNMP is implemented.
+### The abstract class SNMP_Session defines objects that can be used
+### to communicate with SNMP entities.  It has methods to send
+### requests to and receive responses from an agent.
+###
+### Currently it has one subclass, SNMPv1_Session, which implements
+### the SNMPv1 protocol.
 ######################################################################
 ### Created by:  Simon Leinen  <simon@switch.ch>
 ###
