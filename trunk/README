@@ -129,9 +129,14 @@ don't have any agent implementation I could test my code against.
 			   More Operations
 
 Support for receiving traps would be useful for some management
-applications.  There may even be use for sending traps, but I cannot
-imagine any except when people would start agents using this library,
-and I don't know whether that would be a good idea.
+applications.  The elementary application would be a program that just
+sits there and waits for traps, logging them or sending some kinds of
+notifications.  A larger management application could react on traps
+by sending out SNMP requests to localize problems more exactly.
+
+An interface to sending traps would help those people who have network
+management systems that react on SNMP traps and want to integrate Perl
+tools that can send alarms.
 
 			     MIB parsing
 
