@@ -1,7 +1,7 @@
 #!/logiciels/public/divers/bin/perl5
 # Minimal useful application of the SNMP package.
 # Author: Simon Leinen  <simon@lia.di.epfl.ch>
-# RCS $Header: /home/leinen/CVS/SNMP_Session/test/test.pl,v 1.12 1996-07-08 17:07:06 simon Exp $
+# RCS $Header: /home/leinen/CVS/SNMP_Session/test/test.pl,v 1.13 1997-06-12 09:00:34 leinen Exp $
 ######################################################################
 # This application sends a get request for three fixed MIB-2 variable
 # instances (sysDescr.0, sysContact.0 and ipForwarding.0) to a given
@@ -28,7 +28,8 @@ foreach (keys %ugly_oids) {
 }
 
 srand();
-$session = SNMP_Session->open ($hostname, $community, 161);
+die "Couldn't open SNMP session to $hostname"
+    unless ($session = SNMP_Session->open ($hostname, $community, 161));
 snmp_get ($session, qw(sysDescr.0 sysContact.0 ipForwarding.0));
 $session->close ();
 1;
