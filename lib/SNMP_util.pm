@@ -496,7 +496,7 @@ sub snmpget ($@) {
       my $tempo = pretty_print($value);
       push @retvals, $tempo;
     }
-    return(@retvals);
+    return wantarray ? @retvals : $retvals[0];
   }
   $var = join(' ', @vars);
   carp "SNMPGET Problem for $var on $host\n"
@@ -540,7 +540,7 @@ sub snmpgetnext ($@) {
       my $tempv = pretty_print($value);
       push @retvals, "$tempo:$tempv";
     }
-    return (@retvals);
+    return wantarray ? @retvals : $retvals[0];
   } else {
     $var = join(' ', @vars);
     carp "SNMPGETNEXT Problem for $var on $host\n"
@@ -834,7 +834,7 @@ sub snmpset($@) {
       my $tempo = pretty_print($value);
       push @retvals, $tempo;
     }
-    return (@retvals);
+    return wantarray ? @retvals : $retvals[0];
   }
   return undef;
 }
