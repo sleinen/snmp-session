@@ -1,0 +1,119 @@
+Wed Jun 28 21:41:51 1995  Simon Leinen  <simon@lia.di.epfl.ch>
+
+	* party-test.pl: Initial revision
+
+	* Party.pm: use BER.
+
+	* Party.pm: Initial revision
+
+	* SNMP_Session.pm (snmp_version_1, snmp_version_2): new subroutines.
+
+	(open): fixed typo in getprotobyname('udp').
+
+Mon Jun 19 19:43:12 1995  Simon Leinen  <simon@lia.di.epfl.ch>
+
+	* README (Example): use package BER, remove BER:: prefixes.
+
+	* wwwtest, test.pl: use BER.
+
+	Removed BER:: package prefixes.
+
+	* BER.pm: use Exporter.
+
+	* README: Tabified.
+
+Wed Jun 14 21:59:15 1995  Simon Leinen  <simon@lia.di.epfl.ch>
+
+	* wwwtest (snmp_get):
+	produce HTML error message when get_request_response fails.
+
+	* SNMP_Session.pm (get_request_response):
+	don't warn if wait_for_response fails, return
+	0.
+
+	* wwwtest (%ugly_oids):
+	added a couple of statistics about the first two
+	interfaces.
+
+	* BER.pm (pretty_print): format null objects as "(null)".
+
+	* wwwtest: Generate more properly structured HTML.
+
+	(%ugly_oids): Reformatted, added some variables.
+
+Mon Jun 12 15:43:36 1995  Simon Leinen  <simon@lia.di.epfl.ch>
+
+	* README: Initial revision
+
+Fri May 19 17:07:46 1995  Simon Leinen  <simon@lia.di.epfl.ch>
+
+	* BER.pm (decode_by_template):
+	improve error message for length mismatch.
+
+	(decode_length): support lengths up to 65536.
+
+	* BER.pm (decode_intlike): support length 3 integers.
+
+	Fix error message for unsupported integer length.
+
+	* BER.pm: Added SNMP-specific tags (counter, gauge, IP address etc.)
+
+	(pretty_print): handle counters and gauges, which are treated just
+	like integers.
+
+	* wwwtest: Initial revision
+
+Thu May 18 22:18:41 1995  Simon Leinen  <simon@lia.di.epfl.ch>
+
+	* BER.pm, SNMP_Session.pm: Added -*- mode -*- comment for Emacs.
+
+	* test.pl: Layout change.
+
+	* BER.pm: Export several symbols.
+
+	(decode_by_template): assume the constructor flag when the user gives
+	a tag value in a %{ option.
+
+	* SNMP_Session.pm: Use the BER package, removed BER:: prefixes.
+
+	* BER.pm (decode_by_template): avoid recursion.
+
+	* SNMP_Session.pm (open):
+	generate a file handle so that multiple sessions can be used
+	at the same time.
+
+	* SNMP_Session.pm:
+	Use symbolic constants for PDU tags and default UDP port.
+
+	(describe): include timeout value in the output.
+
+	* test.pl: Removed `&'s before subroutine names.
+
+	* BER.pm: Improved layout.
+
+	(decode_string): Improved error message.
+
+	* BER.pm: Use symbolic constants for tags and flags.
+
+	* SNMP_Session.pm:
+	Use `Socket.pm' to get the socket constants (AF_INET, SOCK_DGRAM).
+
+	* test.pl (snmp_get): new subroutine.
+
+	* BER.pm (pretty_using_decoder): new function.
+
+	(pretty_string, pretty_int): use it.
+
+	* test.pl: Use a different mechanism to pretty print OIDs.
+
+	* SNMP_Session.pm:
+	Renamed the `socket' member to `sock' in order to avoid confusion.
+
+	* test.pl: Moved the BER and SNMP_Session packages to subfiles.
+
+	* BER.pm (decode_by_template):
+	in the %i handler, cast $expected to int in
+	order to fix false mismatches.
+
+	* BER.pm, SNMP_Session.pm, test.pl: Initial revision
+
