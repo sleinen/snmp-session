@@ -90,7 +90,7 @@ sub out_interface {
     grep (defined $_ && ($_=pretty_print $_),
 	  ($descr, $admin, $oper, $in, $out, $crc, $comment));
     $win->clrtoeol ();
-    return unless $oper == 1;	# up
+    return unless defined $oper && $oper == 1;	# up
     return unless defined $in && defined $out && defined $crc;
     if (!defined $old{$index}) {
 	$win->addstr ($linecount, 0,
