@@ -1,0 +1,40 @@
+#!/usr/local/bin/perl -w
+
+use strict;
+require 5.002;
+
+use SNMP_Session "0.57";
+use BER;
+
+my $ciscoAtmCrossIfIndex = [1,3,6,1,4,1,9,10,13,1,2,1,1,15];
+my $ciscoAtmCrossVpi = [1,3,6,1,4,1,9,10,13,1,2,1,1,16];
+my $ciscoAtmCrossVci = [1,3,6,1,4,1,9,10,13,1,2,1,1,17];
+
+my $router = shift @ARGV || usage (1);
+my $community = shift @ARGV || 'public';
+
+my $session = SNMP_Session->open ($router, $community, 161)
+    || die "Cannot open SNMP session to $router";
+$session->map_table ([$ciscoAtmCrossIfIndex,
+		      $ciscoAtmCrossVpi,
+		      $ciscoAtmCrossVci],
+		     sub ($$$$) {
+			 my ($index, $cross_if_index, $cross_vpi, $cross_vci)
+			     = @_;
+			 my ($if_index, $vpi, $vci) = split ('\.', $index);
+			 grep (defined $_ && ($_=pretty_print $_),
+			       ($cross_if_index, $cross_vpi, $cross_vci));
+			 print "$if_index VPI=$vpi VCI=$vci",
+			 " -> $cross_if_index VPI=$cross_vpi VCI=$cross_vci\n";
+		     });
+$session->close ()
+    || warn "Cannot close SNMP session to $router";
+1;
+
+sub usage ($) {
+    if ($_[0]) {
+	die "Usage: $0 switch-name [community]\n";
+    } else {
+	warn "Usage: $0 switch-name [community]\n";
+    }
+}
