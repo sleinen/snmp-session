@@ -14,7 +14,7 @@ my $abs_max = '100000000';
 my $mrouters =
 [
  'public@it-ws.ten-34.net:9161',
- 'public@de-ws-atm.ten-34.net',
+ 'public@de-ws.ten-34.net',
  'public@ch-ws.ten-34.net',
  'public@at-ws.ten-34.net',
  'public@uk-ws.ten-34.net',
@@ -69,7 +69,8 @@ Legend4[$mrouter-mroutes]: max # routing table entries
 LegendI[$mrouter-mroutes]: &nbsp;reachable
 LegendO[$mrouter-mroutes]: &nbsp;total
 EOM
-    $session->map_table
+    eval {
+	$session->map_table
 	([$dvmrpInterfaceType, $dvmrpInterfaceRemoteAddress,
 	  $dvmrpInterfaceMetric, $dvmrpInterfaceRateLimit], sub
 	 { 
@@ -94,6 +95,6 @@ Title[$graph_name]: Mbone Tunnel from $mrouter to $peer_name
 EOM
     print "Directory[$graph_name]: $directory\n"
 	if $directory;
-	 });
+	 }) };
     $session->close ();
 }
