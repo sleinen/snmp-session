@@ -383,7 +383,6 @@ sub request_response_5 ($$$$$) {
 	    if (defined $this->{'capture_buffer'}
 		and ref $this->{'capture_buffer'} eq 'ARRAY');
 	#
-	
       wait_for_response:
 	($nfound, $timeleft) = $this->wait_for_response($timeleft);
 	if ($nfound > 0) {
@@ -400,8 +399,6 @@ sub request_response_5 ($$$$$) {
 		      if (defined $this->{'capture_buffer'}
 			  and ref $this->{'capture_buffer'} eq 'ARRAY');
 		#
-		
-
 		return $response_length;
 	    } elsif (defined ($response_length)) {
 		goto wait_for_response;
@@ -423,7 +420,6 @@ sub request_response_5 ($$$$$) {
 	if (defined $this->{'capture_buffer'}
 	    and ref $this->{'capture_buffer'} eq 'ARRAY');
     #
-
     $this->error ("no response received");
 }
 
