@@ -418,6 +418,8 @@ while (1) {
     }
     my $calls = $session->map_table_4
 	(\@oids, \&out_interface, $max_repetitions);
+    $win->clrtobot (), $win->refresh ()
+	unless $suppress_output;
     $max_repetitions = $calls + 1
 	if $calls > 0;
     $sleep_interval -= ($interval - $desired_interval)
