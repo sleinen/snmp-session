@@ -1,16 +1,16 @@
 #!/usr/local/bin/perl -w
 ##############################################################################
-### File Name:	  mrtg-cisco-ipmcast
+### File Name:	  mrtg-ipmcast
 ### Description:  Generate MRTG configuration for multicast statistics
 ### Author:	  Simon Leinen  <simon@switch.ch>
 ### Date Created: 20-Jun-2000
-### RCS $Header: /home/leinen/CVS/SNMP_Session/test/mrtg-ipmcast,v 1.5 2001-03-07 15:36:48 leinen Exp $
+### RCS $Header: /home/leinen/CVS/SNMP_Session/test/mrtg-ipmcast,v 1.6 2001-03-07 15:38:11 leinen Exp $
 ##############################################################################
 ### This script can be used to generate a piece of MRTG[1]
 ### configuration file for plotting per-interface multicast traffic
 ### statistics using IPMROUTE-MIB[2].
 ###
-### Usage: mrtg-cisco-ipmcast [-d DIR] [-w WORKDIR] [-i ICONDIR]
+### Usage: mrtg-ipmcast [-d DIR] [-w WORKDIR] [-i ICONDIR]
 ###          [-c COMMUNITY] [-v ( 1 | 2c )] [-p port] ROUTER1 ROUTER2 ...
 ###
 ### This will contact all ROUTERs under the specified COMMUNITY and
