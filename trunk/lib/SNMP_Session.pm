@@ -556,7 +556,11 @@ sub sockfileno { $_[0]->{sockfileno} }
 sub remote_addr { $_[0]->{remote_addr} }
 sub pdu_buffer { $_[0]->{pdu_buffer} }
 sub max_pdu_len { $_[0]->{max_pdu_len} }
-sub default_max_repetitions { $_[0]->{default_max_repetitions} }
+sub default_max_repetitions {
+    defined $_[1]
+	? $_[0]->{default_max_repetitions} = $_[1]
+	    : $_[0]->{default_max_repetitions} }
+sub debug { defined $_[1] ? $_[0]->{debug} = $_[1] : $_[0]->{debug} }
 
 sub close
 {
@@ -813,7 +817,8 @@ sub map_table_start_end ($$$$$$) {
 
 		($binding, $bindings) = decode_sequence ($bindings);
 		($oid, $value) = decode_by_template ($binding, "%O%@");
-
+		warn "oid: ".BER::pretty_oid ($oid)."\t".BER::pretty_print ($value)."\n"
+		    if $session->{debug};
 		my $out_index;
 
 		++$n_bindings;
@@ -838,6 +843,8 @@ sub map_table_start_end ($$$$$$) {
 	    $base_index = $smallest_index;
 	    $smallest_index = undef;
 	    @collected_values = ();
+	    warn "END OF BULK"
+		if $session->{debug};
 	} else {
 	    return undef;
 	}
