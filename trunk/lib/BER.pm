@@ -6,6 +6,12 @@
 ### structures using the Basic Encoding Rules (BER).  Only the subset
 ### necessary for SNMP is implemented.
 ######################################################################
+#
+# Andrzej Tobola <san@iem.pw.edu.pl>:  Added long String decode
+#
+# Tobias Oetiker <oetiker@ee.ethz.ch>:  Added 5 Byte Integer decode ...
+#
+# Dave Rand <dlr@Bungi.com>:  Added SysUpTime decode
 
 package BER;
 
@@ -39,6 +45,7 @@ sub null_tag		{ 0x05 }
 sub object_id_tag	{ 0x06 }
 sub sequence_tag	{ 0x10 }
 sub set_tag		{ 0x11 }
+sub uptime_tag		{ 0x43 }
 
 ### Flag for length octet announcing multi-byte length field
 
@@ -114,7 +121,7 @@ sub encode_tagged_sequence
 {
     my($tag,$result);
 
-    $tag = shift;
+    $tag = shift @_;
     $result = join '',@_;
     return encode_header ($tag | constructor_flag, length $result).$result;
 }
@@ -138,6 +145,7 @@ sub pretty_print
 		|| $result == snmp_gauge32_tag;
     return pretty_string ($packet) if $result == octet_string_tag;
     return pretty_oid ($packet) if $result == object_id_tag;
+    return pretty_uptime($packet) if $result == uptime_tag;
     return pretty_ip_address ($packet) if $result == snmp_ip_address_tag;
     return "(null)" if $result == null_tag;
     die "Cannot pretty print objects of type $result";
@@ -198,6 +206,34 @@ sub pretty_oid
     join ('.', @oid);
 }
 
+sub pretty_uptime {
+  my($packet,$result);
+  my($uptime,$seconds,$minutes,$hours,$days);
+  
+  ($uptime,$packet) = &decode_intlike(@_);
+  $uptime /= 100;
+  $days = $uptime / (60 * 60 * 24);
+  $uptime %= (60 * 60 * 24);
+  
+  $hours = $uptime / (60 * 60);
+  $uptime %= (60 * 60);
+  
+  $minutes = $uptime / 60;
+  $seconds = $uptime % 60;
+  
+  if ($days == 0){
+    $result = sprintf("%d:%02d:%02d", $hours, $minutes, $seconds);
+     } elsif ($days == 1) {
+       $result = sprintf("%d day, %d:%02d:%02d", 
+			 $days, $hours, $minutes, $seconds);
+     } else {
+       $result = sprintf("%d days, %d:%02d:%02d", 
+			 $days, $hours, $minutes, $seconds);
+     }
+  return $result;
+}
+
+
 sub pretty_ip_address
 {
     my $pdu = shift;
@@ -245,7 +281,8 @@ sub decode_by_template
 		$pdu = substr ($pdu,1);
 		(($length,$pdu) = decode_length ($pdu))
 		    || die "cannot read length";
-		die "Expected length $length, got ".length $pdu unless length $pdu == $length;
+		die "Expected length $length, got ".length $pdu 
+		  unless length $pdu == $length;
 	    } elsif (/^\*s(.*)/) {
 		$_ = $1;
 		$expected = shift @_;
@@ -261,9 +298,15 @@ sub decode_by_template
 		$_ = $2;
 		$expected = int (shift) if $expected eq '*';
 		(($read,$pdu) = decode_int ($pdu)) || die "cannot read int";
-		warn (sprintf ("Expected %d (0x%x), got %d (0x%x)",
-			       $expected, $expected, $read, $read))
-		    unless $expected == $read;
+       #
+       # This returns "Expected -1 (0xffffffff), got 255 (0xff)"
+       # for Cisco routers [model AGS+, IOS Software GS3-K-M Version 10.3(6)]
+       # while the actual readings are correct ...
+       # so we drop this test for the moment ...
+       #
+       #       warn (sprintf ("Expected %d (0x%x), got %d (0x%x)",
+       #                      $expected, $expected, $read, $read))
+       #           unless ($expected == $read) 
 	    } elsif (/^\@(.*)/) {
 		$_ = $1;
 		push @results, $pdu;
@@ -317,9 +360,13 @@ sub decode_intlike
 	@result = ((ord (substr ($pdu, 2, 1)) << 16) 
 		   + unpack ("n", (substr ($pdu, 3, 2))), substr ($pdu, 5));
     } elsif ($result == 4) {
-	@result = (unpack ("N", (substr ($pdu, 2, 4))), substr ($pdu, 6));
+      @result = (unpack ("N", (substr ($pdu, 2, 4))), substr ($pdu, 6));
+      #### Our router returns 5 byte integers!
+    } elsif ($result == 5) {
+      @result = ((ord (substr ($pdu, 2, 1)) << 16) 
+		 + unpack ("N", (substr ($pdu, 3, 4))), substr ($pdu, 7));
     } else {
-	die "Unsupported integer length $result";
+	die "Unsupported integer length $result ($pdu)";
     }
     @result;
 }
@@ -327,14 +374,20 @@ sub decode_intlike
 sub decode_string
 {
     my($pdu) = shift;
-    my($result,$length);
+    my($result);
+#   my($length);
     my(@result);
     $result = ord (substr ($pdu, 0, 1));
     die "Expected octet string" unless $result == octet_string_tag;
-    $length = ord (substr ($pdu, 1, 1));
-    die "Unsupported length" unless $length < 128;
-    @result = (substr ($pdu, 2, $length), substr ($pdu, 2+$length));
-    @result;
+#    $length = ord (substr ($pdu, 1, 1));
+#    die "Unsupported length" unless $length < 128;
+#    @result = (substr ($pdu, 2, $length), substr ($pdu, 2+$length));
+###########
+# fix for long strings by Andrzej Tobola <san@iem.pw.edu.pl>
+    ($result, $pdu) = decode_length (substr ($pdu, 1));
+    @result = (substr ($pdu, 0, $result), substr ($pdu, $result));
+###########
+   @result;
 }
 
 sub decode_length
