@@ -40,6 +40,15 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 <ul>
 
+<li> SNMP_Session 0.73: The UDP socket associated with each SNMP
+session object is now created using <tt>IO::Socket::INET->new</tt>.
+Before this change, a Perl file descriptor name was generated for each
+new socket.  Apparently this caused a file descriptor leak.  The new
+code is much cleaner and doesn't have that problem anymore.  Hopefully
+the newly introduced dependency on the Socket::IO module is not a
+problem.  Thanks to <a href="mailto:elble@icculus.nsg.nwu.edu">Andrew
+W. Elble</a> for suggesting this change. </li>
+
 <li> BER.pm 0.72: A new variable,
 <tt>$BER::pretty_print_timeticks</tt>, has been introduced to give
 users control over the degree of pretty-printing of <tt>TimeTicks</tt>
@@ -570,7 +579,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19990729
+19990902
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
