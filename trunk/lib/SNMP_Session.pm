@@ -51,7 +51,7 @@ use vars qw(@ISA $VERSION @EXPORT $errmsg
 	    $default_avoid_negative_request_ids
 	    $default_use_16bit_request_ids);
 use Socket;
-use BER '1.01';
+use BER '1.05';
 use Carp;
 
 sub map_table ($$$ );
@@ -60,7 +60,7 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '1.06';
+$VERSION = '1.07';
 
 @ISA = qw(Exporter);
 
