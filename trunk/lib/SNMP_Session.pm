@@ -31,7 +31,7 @@ use vars qw(@ISA $VERSION @EXPORT $errmsg $suppress_warnings);
 use Socket;
 use BER;
 
-$VERSION = '0.55';
+$VERSION = '0.56';
 
 @ISA = qw(Exporter);
 
