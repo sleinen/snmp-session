@@ -2,6 +2,11 @@
 ######################################################################
 ### SNMP Request/Response Handling
 ######################################################################
+### Copyright (c) 1995-1999, Simon Leinen.
+###
+### This program is free software; you can redistribute it under the
+### "Artistic License" included in this distribution (file "Artistic").
+######################################################################
 ### The abstract class SNMP_Session defines objects that can be used
 ### to communicate with SNMP entities.  It has methods to send
 ### requests to and receive responses from an agent.
@@ -42,7 +47,7 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.73';
+$VERSION = '0.74';
 
 @ISA = qw(Exporter);
 
