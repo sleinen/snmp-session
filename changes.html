@@ -7,7 +7,7 @@
 <DIV ALIGN=CENTER>
   <H1>SNMP support for Perl 5: Changes</H1>
 
-  <p> Copyright (c) 1995-2003, Simon Leinen<br>
+  <p> Copyright (c) 1995-2004, Simon Leinen<br>
   All rights reserved </p>
 
   <em> This program is free software; you can redistribute it under
@@ -24,7 +24,15 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
-<li> SNMP_Session 1.03: No change; version incremented for
+<li> SNMP_Session.pm 1.04: No change; version incremented for
+<tt>SNMP_util.pm</tt>. </li>
+
+<li> SNMP_util.pm 1.04: The subroutines <tt>snmpget</tt>,
+<tt>snmpgetnext</tt> and <tt>snmpset</tt> will now detect when they
+are called in scalar context, and return only the first (and typically
+the only) of the retrieved values in this case. </li>
+
+<li> SNMP_Session.pm 1.03: No change; version incremented for
 <tt>BER.pm</tt> and <tt>SNMP_util.pm</tt>. </li>
 
 <li> SNMP_util.pm 1.03: Added a missing part of Mike Mitchell
@@ -623,7 +631,7 @@ use SNMP_Session "0.52";
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20040322
+20040715
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
