@@ -1,5 +1,8 @@
 A collection of test scripts for the Perl SNMP code.
 
+arp	sample application that lists the ipNetToMediaTable of a
+	host.  Similar to the simple form of the Unix "arp" command.
+
 test.pl
 	trivial application that reads some fixed variables from an
 	agent.
