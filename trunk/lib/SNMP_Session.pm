@@ -11,7 +11,7 @@ sub standard_udp_port { 161 };
 sub open
 {
     my($this,$remote_hostname,$community,$port,$max_pdu_len) = @_;
-    my($name,$aliases,$local_hostname,$local_addr,$remote_addr);
+    my($name,$aliases,$local_hostname,$local_addr,$remote_addr,$socket);
 
     $udp_proto = 0;
     $sockaddr = 'S n a4 x8';
@@ -20,6 +20,10 @@ sub open
     $port = standard_udp_port unless defined $port;
     $max_pdu_len = 8000 unless defined $max_pdu_len;
 
+    $remote_addr = (gethostbyname($remote_hostname))[4]
+	|| die "host $remote_hostname not found: $!";
+    $socket = 'SNMP'.sprintf ("%08x04x",
+			      unpack ("N", $remote_addr), $port);
     (($name,$aliases,$udp_proto) = getprotobyname('ucp'))
 	unless $udp_proto;
     chop($local_hostname = `uname -n`);
@@ -27,15 +31,13 @@ sub open
 	|| die "local host $local_hostname not found: $!";
     $local_addr = pack ($sockaddr, AF_INET, 0, $local_addr);
     $udp_proto=17 unless $udp_proto;
-    $remote_addr = (gethostbyname($remote_hostname))[4]
-	|| die "host $remote_hostname not found: $!";
-    socket (SOCKET, AF_INET, SOCK_DGRAM, $udp_proto)
+    socket ($socket, AF_INET, SOCK_DGRAM, $udp_proto)
 	|| die "socket: $!";
-    bind (SOCKET, $local_addr)
+    bind ($socket, $local_addr)
 	|| die "bind $local_addr: $!";
     $remote_addr = pack ($sockaddr, AF_INET, $port, $remote_addr);
     bless {
-	'sock' => SOCKET,
+	'sock' => $socket,
 	'snmp_version' => 0,
 	'community' => $community,
 	'remote_addr' => $remote_addr,
