@@ -1,7 +1,7 @@
 
 		       README for SNMP_util.pm
 
-		       Copyright (c) 1998-2001, Mike Mitchell
+		       Copyright (c) 1998-2002, Mike Mitchell
 			  All rights reserved
 
 This program is free software; you can redistribute it under the
@@ -14,6 +14,7 @@ This program is free software; you can redistribute it under the
 	    Jeff Allen		<jeff.allen@acm.org>
 	    Johannes Demel	<demel@zid.tuwien.ac.at>
 	    Laurent Girod	<girod.laurent@pmintl.ch>
+	    Ian Duplisse	<i.duplisse@cablelabs.com>
 
 
 I was using Simon Leinen's SNMP tools in various perl scripts, and I
@@ -46,6 +47,8 @@ The SNMP_utils.pm module contains the functions
 	    [OID, type, value ...])
   snmpmaptable(community@host:port:timeout:retries:backoff:version,
 		function, OID, [OID...])
+  snmpmaptable4(community@host:port:timeout:retries:backoff:version,
+		function, max_repetitions, OID, [OID...])
   snmpwalkhash(community@host:port:timeout:retries:backoff:version,
 		function, OID, [OID...])
 
@@ -135,6 +138,22 @@ The version parameter defaults to SNMP version 1.  Some SNMP values such as
 "2c" as the version parameter will accomplish this.  The snmpgetbulk routine
 is only supported in SNMP version 2 and higher.
 
+Several parameters internal to SNMP_Session can be set by passing a hash as
+the first OID.  The keys to the hash are the parameters to modify.  Here is
+a list of parameters and their default values in SNMP_Session version 0.91:
+   'community'   => "public"
+   'timeout'     => 2.0
+   'retries'     => 5
+   'backoff'     => 1.0
+   'debug'       => 0
+   'default_max_repetitions' => 12
+   'use_getbulk' => 1
+   'lenient_source_address_matching' => 1
+   'lenient_source_port_matching' => 1
+Consult the documentation and/or source code for SNMP_Session for further
+information of these parameters.
+
+
 The snmpget function returns an array with the results of the 'get'
 operation.  The value associated with each OID is returned as a
 separate value in the array.
@@ -168,6 +187,10 @@ are the columns of the table sharing the same index, and the passed-in
 function is called once per row.  The passed-in function will be given
 the row index as a partial OID in dotted notation, e.g. "1.3", or
 "10.0.1.34", and values of the requested table columns in that row.
+
+The snmpmaptable4 function is just like snmpmaptable, only the third argument
+is the number of table rows to request in a single SNMP query.  The
+snmpmaptable function uses the default of 12 rows.
 
 The snmpwalkhash acts like snmpwalk, but will call the passed-in function
 once per returned value.  The function is passed a reference to a hash,
@@ -238,6 +261,13 @@ sub main {
 
   print "Trying 'getnext' on $host\n";
   @ret = &snmpgetnext($host, "ifDescr");
+  foreach $desc (@ret) {
+    ($oid, $desc) = split(':', $desc, 2);
+    print "$oid = $desc\n";
+  }
+
+  print "Trying 'getnext' on $host with different timeout and retries\n";
+  @ret = &snmpgetnext($host, { 'timeout' => 4, 'retries' => 2 }, "ifDescr");
   foreach $desc (@ret) {
     ($oid, $desc) = split(':', $desc, 2);
     print "$oid = $desc\n";
