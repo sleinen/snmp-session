@@ -24,9 +24,16 @@ require 5.002;
 use strict qw(vars subs);	# cannot use strict subs here
 				# because of the way we use
 				# generated file handles
-use vars qw(@ISA);
+use Exporter;
+use vars qw(@ISA $VERSION @EXPORT);
 use Socket;
 use BER;
+
+$VERSION = '0.50';
+
+@ISA = qw(Exporter);
+
+@EXPORT = qw();
 
 my $default_debug = 0;
 
@@ -153,6 +160,8 @@ sub request_response_3
     }
     0;
 }
+
+sub version { $VERSION; }
 
 package SNMPv1_Session;
 
