@@ -1,3 +1,10 @@
+Thu Jul  6 12:57:37 1995  Simon Leinen  <simon@lia.di.epfl.ch>
+
+	* test.pl (%ugly_oids): use qw() to define them, as in wwwtest.
+
+	* test.pl: Simplified a tiny bit by adding the instance numbers to
+ 	the parameters of snmp_get.
+
 Wed Jul  5 22:11:47 1995  Simon Leinen  <simon@lia.di.epfl.ch>
 
 	* wwwtest, party-test.pl: Added header comment.
