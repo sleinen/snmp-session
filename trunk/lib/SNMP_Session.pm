@@ -290,11 +290,17 @@ sub trap_request_send ($$$$$$@)
     return 1;
 }
 
-sub v2_trap_request_send ($@)
+sub v2_trap_request_send ($$$@)
 {
-    my($this, @pairs) = @_;
+    my($this, $trap_oid, $dt, @pairs) = @_;
+    my @sysUptime_OID = ( 1,3,6,1,2,1,1,3 );
+    my @snmpTrapOID_OID = ( 1,3,6,1,6,3,1,1,4,1 );
     my($req);
 
+    unshift @pairs, [encode_oid (@snmpTrapOID_OID,0),
+		     encode_oid (@{$trap_oid})];
+    unshift @pairs, [encode_oid (@sysUptime_OID,0),
+		     encode_timeticks ($dt)];
     $req = $this->encode_v2_trap_request (@pairs);
     ## Encoding may have returned an error.
     return undef unless defined $req;
