@@ -5,13 +5,15 @@ use SNMP_Session "0.58";
 use BER;
 use Socket;
 
+#my $work_dir = '/home/noc/stat';
+my $work_dir = '/var/tmp/mrtg';
+my $icon_dir = '/lan/stat';
 my $directory = 'ten-34/ipmcast';
-my $rate_limit = '2000000';
 my $abs_max = '100000000';
 
 my $mrouters =
 [
- 'it-ws.ten-34.net',
+ 'it-ws.ten-34.net:9161',
  'de-ws-atm.ten-34.net',
  'ch-ws.ten-34.net',
  'at-ws.ten-34.net',
@@ -20,30 +22,60 @@ my $mrouters =
 
 my $dvmrpInterfaceType = [1,3,6,1,3,62,1,1,3,1,2];
 my $dvmrpInterfaceRemoteAddress = [1,3,6,1,3,62,1,1,3,1,5];
+my $dvmrpInterfaceMetric = [1,3,6,1,3,62,1,1,3,1,7];
+my $dvmrpInterfaceRateLimit = [1,3,6,1,3,62,1,1,3,1,8];
 my $dvmrpInterfaceInOctets = [1,3,6,1,3,62,1,1,3,1,11];
 my $dvmrpInterfaceOutOctets = [1,3,6,1,3,62,1,1,3,1,12];
 
-print <<EOM;
-WorkDir: /home/noc/stat
-IconDir: /lan/stat
-WriteExpires: Yes
-Weekformat[^]: V
-WithPeak[_]: wmy
+## Print head of configuration file
+print "WorkDir: $work_dir\n" if defined $work_dir;
+print "IconDir: $icon_dir\n" if defined $icon_dir;
+print "WriteExpires: Yes\nWeekformat[^]: V\nWithPeak[_]: wmy\n";
 
-EOM
-foreach my $mrouter (@{$mrouters}) {
+foreach my $target (@{$mrouters}) {
     my $session;
-    my $rate_limit_bytes = $rate_limit >> 3;
     my $abs_max_bytes = $abs_max >> 3;
+    my ($mrouter, $port);
 
-    $session = SNMP_Session->open ($mrouter, "public", 161)
+    if ($target =~ /^(.*):([0-9]+)$/) {
+	$mrouter = $1; $port = $2;
+    } elsif ($target =~ /^(.*)$/) {
+	$mrouter = $1; $port = 161;
+    } else {
+	warn "Malformed target $target\n";
+	next;
+    }
+    $session = SNMP_Session->open ($mrouter, "public", $port)
 	|| (warn ("Opening SNMP session to $mrouter\n"), next);
+
+    print <<EOM;
+
+Target[$mrouter-mroutes]: 1.3.6.1.3.62.1.1.9.0&1.3.6.1.3.62.1.1.10.0:public\@$mrouter
+Directory[$mrouter-mroutes]: $directory
+MaxBytes[$mrouter-mroutes]: 8000
+AbsMax[$mrouter-mroutes]: 100000
+Options[$mrouter-mroutes]: growright,gauge,nopercent
+ShortLegend[$mrouter-mroutes]: routes
+YLegend[$mrouter-mroutes]: # of routes
+Title[$mrouter-mroutes]: Multicast routes on $mrouter
+PageTop[$mrouter-mroutes]: <hr><H3>Multicast routes on $mrouter</H3>
+Legend1[$mrouter-mroutes]: # reachable DVMRP routes
+Legend2[$mrouter-mroutes]: # DVMRP routing table entries
+Legend3[$mrouter-mroutes]: max # reachable routes
+Legend4[$mrouter-mroutes]: max # routing table entries
+LegendI[$mrouter-mroutes]: &nbsp;reachable
+LegendO[$mrouter-mroutes]: &nbsp;total
+EOM
+    print "SNMPPort[$mrouter-mroutes]: $port\n"
+	unless $port == 161;
     $session->map_table
-	([$dvmrpInterfaceType, $dvmrpInterfaceRemoteAddress], sub
+	([$dvmrpInterfaceType, $dvmrpInterfaceRemoteAddress,
+	  $dvmrpInterfaceMetric, $dvmrpInterfaceRateLimit], sub
 	 { 
-	     my ($index, $type, $peer_addr) = @_;
+	     my ($index, $type, $peer_addr, $metric, $rate_limit) = @_;
 	     grep (defined $_ && ($_=pretty_print $_),
-		   ($type, $peer_addr));
+		   ($type, $peer_addr, $metric, $rate_limit));
+	     my $rate_limit_bytes = $rate_limit * 1000 >> 3;
 	     ## ignore interfaces other than tunnels for now
 	     return unless $type == 1;
 	     my $peer_name = gethostbyaddr(pack ("C4",split ('\.',$peer_addr)),
@@ -51,17 +83,18 @@ foreach my $mrouter (@{$mrouters}) {
 		 || $peer_addr;
 	     my $graph_name = $mrouter.'-'.$peer_name;
 		 print <<EOM;
+
 Target[$graph_name]: 1.3.6.1.3.62.1.1.3.1.11.$index&1.3.6.1.3.62.1.1.3.1.12.$index:public\@$mrouter
-PageTop[$graph_name]: <hr><H3>Tunnel $mrouter -> $peer_name</H3>
+PageTop[$graph_name]: <hr><H3>Tunnel $mrouter -> $peer_name (metric $metric)</H3>
 Options[$graph_name]: growright,bits
 MaxBytes[$graph_name]: $rate_limit_bytes
 AbsMax[$graph_name]: $abs_max_bytes
 Title[$graph_name]: Mbone Tunnel from $mrouter to $peer_name
 EOM
-    ;
-	     print "Directory[$graph_name]: switch/ipmcast\n"
+    print "SNMPPort[$graph_name]: $port\n"
+	unless $port == 161;
+	     print "Directory[$graph_name]: $directory\n"
 		 if $directory;
-	     print "\n\n";
 	 });
     $session->close ();
 }
