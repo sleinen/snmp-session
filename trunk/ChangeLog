@@ -1,7 +1,7 @@
-Fri Jul 28 16:43:24 1995  Simon Leinen  <simon@lia.di.epfl.ch>
+Fri Jul 28 17:23:14 1995  Simon Leinen  <simon@lia.di.epfl.ch>
 
 	* wwwtest (write_query_form): added a footer with links to the
- 	source and to my home page.
+ 	SNMP module's page, the gateway's source and my home page.
 
 Mon Jul 17 13:51:04 1995  Simon Leinen  <simon@lia.di.epfl.ch>
 
