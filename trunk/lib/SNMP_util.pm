@@ -20,6 +20,7 @@
 ### Tobias Oetiker <oetiker@ee.ethz.ch>: HASH as first OID to set SNMP options
 ### Simon Leinen <simon@switch.ch>: 'undefined port' bug
 ### Daniel McDonald <dmcdonald@digicontech.com>: request for getbulk support
+### Laurent Girod <girod.laurent@pmintl.ch>: code for snmpwalkhash
 ######################################################################
 
 package SNMP_util;
@@ -35,11 +36,11 @@ use BER "0.82";
 use SNMP_Session "0.83";
 use Socket;
 
-$VERSION = '0.86';
+$VERSION = '0.89';
 
 @ISA = qw(Exporter);
 
-@EXPORT = qw(snmpget snmpgetnext snmpwalk snmpset snmptrap snmpgetbulk snmpmaptable snmpmapOID snmpMIB_to_OID snmpLoad_OID_Cache snmpQueue_MIB_File);
+@EXPORT = qw(snmpget snmpgetnext snmpwalk snmpset snmptrap snmpgetbulk snmpmaptable snmpwalkhash snmpmapOID snmpMIB_to_OID snmpLoad_OID_Cache snmpQueue_MIB_File);
 
 # The OID numbers from RFC1213 (MIB-II) and RFC1315 (Frame Relay)
 # are pre-loaded below.
@@ -54,13 +55,13 @@ $VERSION = '0.86';
     'mib-2' => '1.3.6.1.2.1',
     'system' => '1.3.6.1.2.1.1',
     'sysDescr' => '1.3.6.1.2.1.1.1.0',
-    'sysObjectID' => '1.3.6.1.2.1.1.2',
+    'sysObjectID' => '1.3.6.1.2.1.1.2.0',
     'sysUpTime' => '1.3.6.1.2.1.1.3.0',
     'sysUptime' => '1.3.6.1.2.1.1.3.0',
     'sysContact' => '1.3.6.1.2.1.1.4.0',
     'sysName' => '1.3.6.1.2.1.1.5.0',
     'sysLocation' => '1.3.6.1.2.1.1.6.0',
-    'sysServices' => '1.3.6.1.2.1.1.7',
+    'sysServices' => '1.3.6.1.2.1.1.7.0',
     'interfaces' => '1.3.6.1.2.1.2',
     'ifNumber' => '1.3.6.1.2.1.2.1.0',
     'ifTable' => '1.3.6.1.2.1.2.2',
@@ -335,10 +336,12 @@ sub snmpget ($@);
 sub snmpgetnext ($@);
 sub snmpopen ($$$);
 sub snmpwalk ($@);
+sub snmpwalk_flg ($$@);
 sub snmpset ($@);
 sub snmptrap ($$$$$@);
 sub snmpgetbulk ($$$@);
 sub snmpmaptable ($$@);
+sub snmpwalkhash ($$@);
 sub toOID (@);
 sub snmpmapOID (@);
 sub snmpMIB_to_OID ($);
@@ -346,7 +349,6 @@ sub encode_oid_with_errmsg ($);
 sub Check_OID ($);
 sub snmpLoad_OID_Cache ($);
 sub snmpQueue_MIB_File (@);
-sub walk_fun ($@);
 
 sub version () { $VERSION; }
 
@@ -514,6 +516,11 @@ sub snmpgetnext ($@) {
 #
 sub snmpwalk ($@) {
   my($host, @vars) = @_;
+  return(&snmpwalk_flg($host, 0, @vars));
+}
+
+sub snmpwalk_flg ($$@) {
+  my($host, $flg, @vars) = @_;
   my(@enoid, $var, $response, $bindings, $binding);
   my($value, $upoid, $oid, @retvals);
   my($got, @nnoid, $noid, $ok);
@@ -564,7 +571,7 @@ sub snmpwalk ($@) {
 	return undef unless defined $tmp;
 	$soid{$upoid} = $tmp;
 	my $tempv = pretty_print($value);
-	$tempo=~s/^$upoid\.//;
+	$tempo=~s/^$upoid\.// unless ($flg & 1);
 	push @retvals, "$tempo:$tempv";
       }
     }
@@ -743,7 +750,7 @@ sub snmpmaptable($$@) {
 
   $session = &snmpopen($host, 0, \@vars);
   if (!defined($session)) {
-    carp "SNMPMAP_TABLE Problem for $host\n"
+    carp "SNMPMAPTABLE Problem for $host\n"
       unless ($SNMP_Session::suppress_warnings > 1);
     return undef;
   }
@@ -763,6 +770,32 @@ sub snmpmaptable($$@) {
 				&$fun($ind, @pvals);
 			      }
 			      );
+}
+
+#
+# Walk the MIB, puting everything you find into hashes.
+#
+sub snmpwalkhash($$@) {
+  my($host, $hash_sub, @vars) = @_;
+  my($retflg, @retvals, %revOID, $ret, $tempo, $tempv, %rethash);
+
+  @retvals = snmpwalk_flg($host, 1, @vars);
+
+  %revOID = reverse %SNMP_util::OIDS;
+  foreach $ret (@retvals) {
+    my $inst;
+    ($tempo, $tempv) = split(':', $ret);
+    while (!exists($revOID{$tempo}) && length($tempo)) {
+      $tempo =~ s/(\.\d+?)$//;
+      $inst = $1.$inst;
+    }
+    if (defined($hash_sub)) {
+      &$hash_sub(\%rethash, $host, $revOID{$tempo}, $tempo, $inst, $tempv);
+    } else {
+      $rethash{$tempo}{$inst} = $tempv;
+    }
+  }
+  return(%rethash);
 }
 
 #
