@@ -24,6 +24,18 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_util.pm 0.92: New subroutine <tt>snmpmaptable4</tt>, which
+allows specifying the <em>max-repeaters</em>. </li>
+
+<li> SNMP_util.pm 0.92: New MIB parsing code.  Most MIBs are processed
+in one pass, but if an OID cannot be fully resolved, an extra pass is
+done.  Also, <samp>OBJECT-GROUP</samp> entries are now
+recognized. </li>
+
+<li> SNMP_util.pm 0.92: The string-to-OID conversion routines now
+transparently convert strings to instance indexes.  For example,
+<samp>"var"</samp> would be converted to <samp>4.47.118.97.114</samp>.
+
 <li> SNMP_Session.pm 0.91: Fixed a bug in <tt>map_table_start_end</tt>
 for <tt>SNMPv2_Session</tt> (which uses <tt>get-bulk</tt>) which had
 caused a superfluous query after the entire table has already been
@@ -510,7 +522,7 @@ use SNMP_Session "0.52";
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20020130
+20020212
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
