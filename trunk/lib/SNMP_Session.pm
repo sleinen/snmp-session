@@ -48,7 +48,7 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.79';
+$VERSION = '0.80';
 
 @ISA = qw(Exporter);
 
@@ -132,8 +132,7 @@ sub set_backoff {
     $session->{'backoff'} = $backoff; 
 }
 
-sub encode_request_3 ($$$@)
-{
+sub encode_request_3 ($$$@) {
     my($this, $reqtype, $encoded_oids_or_pairs, $i1, $i2) = @_;
     my($request);
     local($_);
@@ -158,33 +157,28 @@ sub encode_request_3 ($$$@)
     return $this->wrap_request ($request);
 }
 
-sub encode_get_request
-{
+sub encode_get_request {
     my($this, @oids) = @_;
     return encode_request_3 ($this, get_request, \@oids);
 }
 
-sub encode_getnext_request
-{
+sub encode_getnext_request {
     my($this, @oids) = @_;
     return encode_request_3 ($this, getnext_request, \@oids);
 }
 
-sub encode_getbulk_request
-{
+sub encode_getbulk_request {
     my($this, $non_repeaters, $max_repetitions, @oids) = @_;
     return encode_request_3 ($this, getbulk_request, \@oids,
 			     $non_repeaters, $max_repetitions);
 }
 
-sub encode_set_request
-{
+sub encode_set_request {
     my($this, @encoded_pairs) = @_;
     return encode_request_3 ($this, set_request, \@encoded_pairs);
 }
 
-sub encode_trap_request ($$$$$$@)
-{
+sub encode_trap_request ($$$$$$@) {
     my($this, $ent, $agent, $gen, $spec, $dt, @pairs) = @_;
     my($request);
     local($_);
@@ -204,15 +198,13 @@ sub encode_trap_request ($$$$$$@)
     return $this->wrap_request ($request);
 }
 
-sub encode_v2_trap_request ($@)
-{
+sub encode_v2_trap_request ($@) {
     my($this, @pairs) = @_;
 
     return encode_request_3($this, trap2_request, \@pairs);
 }
 
-sub decode_get_response
-{
+sub decode_get_response {
     my($this, $response) = @_;
     my @rest;
     @{$this->{'unwrapped'}};
@@ -245,8 +237,7 @@ sub decode_trap_request ($$) {
     return ($community, $ent, $agent, $gen, $spec, $dt, $bindings);
 }
 
-sub wait_for_response
-{
+sub wait_for_response {
     my($this) = shift;
     my($timeout) = shift || 10.0;
     my($rin,$win,$ein) = ('','','');
@@ -255,37 +246,32 @@ sub wait_for_response
     select($rout=$rin,$wout=$win,$eout=$ein,$timeout);
 }
 
-sub get_request_response ($@)
-{
+sub get_request_response ($@) {
     my($this, @oids) = @_;
     return $this->request_response_5 ($this->encode_get_request (@oids),
 				      get_response, \@oids, 1);
 }
 
-sub set_request_response ($@)
-{
+sub set_request_response ($@) {
     my($this, @pairs) = @_;
     return $this->request_response_5 ($this->encode_set_request (@pairs),
 				      get_response, \@pairs, 1);
 }
 
-sub getnext_request_response ($@)
-{
+sub getnext_request_response ($@) {
     my($this,@oids) = @_;
     return $this->request_response_5 ($this->encode_getnext_request (@oids),
 				      get_response, \@oids, 1);
 }
 
-sub getbulk_request_response ($$$@)
-{
+sub getbulk_request_response ($$$@) {
     my($this,$non_repeaters,$max_repetitions,@oids) = @_;
     return $this->request_response_5
 	($this->encode_getbulk_request ($non_repeaters,$max_repetitions,@oids),
 	 get_response, \@oids, 1);
 }
 
-sub trap_request_send ($$$$$$@)
-{
+sub trap_request_send ($$$$$$@) {
     my($this, $ent, $agent, $gen, $spec, $dt, @pairs) = @_;
     my($req);
 
@@ -297,8 +283,7 @@ sub trap_request_send ($$$$$$@)
     return 1;
 }
 
-sub v2_trap_request_send ($$$@)
-{
+sub v2_trap_request_send ($$$@) {
     my($this, $trap_oid, $dt, @pairs) = @_;
     my @sysUptime_OID = ( 1,3,6,1,2,1,1,3 );
     my @snmpTrapOID_OID = ( 1,3,6,1,6,3,1,1,4,1 );
@@ -316,8 +301,7 @@ sub v2_trap_request_send ($$$@)
     return 1;
 }
 
-sub request_response_5 ($$$$$)
-{
+sub request_response_5 ($$$$$) {
     my ($this, $req, $response_tag, $oids, $errorp) = @_;
     my $retries = $this->retries;
     my $timeout = $this->timeout;
@@ -357,8 +341,7 @@ sub request_response_5 ($$$$$)
 }
 
 
-sub error_return ($$)
-{
+sub error_return ($$) {
     my ($this,$message) = @_;
     $SNMP_Session::errmsg = $message;
     unless ($SNMP_Session::suppress_warnings) {
@@ -368,8 +351,7 @@ sub error_return ($$)
     return undef;
 }
 
-sub error ($$)
-{
+sub error ($$) {
     my ($this,$message) = @_;
     my $session = $this->to_string;
     $SNMP_Session::errmsg = $message."\n".$session;
@@ -381,8 +363,7 @@ sub error ($$)
     return undef;
 }
 
-sub ber_error ($$)
-{
+sub ber_error ($$) {
   my ($this,$type) = @_;
   my ($errmsg) = $BER::errmsg;
 
@@ -493,8 +474,7 @@ sub oid_diff ($$) {
   substr ($full_dotnot, length ($base_dotnot)+1);
 }
 
-sub pretty_address
-{
+sub pretty_address {
     my($addr) = shift;
     my($port,$ipaddr) = unpack_sockaddr_in($addr);
     return sprintf ("[%s].%d",inet_ntoa($ipaddr),$port);
@@ -515,8 +495,7 @@ use IO::Socket;
 
 sub snmp_version { 0 }
 
-sub open
-{
+sub open {
     my($this,$remote_hostname,$community,$port,
        $max_pdu_len,$bind_to_port,$max_repetitions) = @_;
     my($remote_addr,$socket);
@@ -579,16 +558,14 @@ sub default_max_repetitions {
 	    : $_[0]->{default_max_repetitions} }
 sub debug { defined $_[1] ? $_[0]->{debug} = $_[1] : $_[0]->{debug} }
 
-sub close
-{
+sub close {
     my($this) = shift;
     if (! defined $the_socket || $this->sock ne $the_socket) {
 	close ($this->sock) || $this->error ("close: $!");
     }
 }
 
-sub wrap_request
-{
+sub wrap_request {
     my($this) = shift;
     my($request) = shift;
 
@@ -605,8 +582,7 @@ my @error_status_code = qw(noError tooBig noSuchName badValue readOnly
 			   commitFailed undoFailed authorizationError
 			   notWritable inconsistentName);
 
-sub unwrap_response_5b
-{
+sub unwrap_response_5b {
     my ($this,$response,$tag,$oids,$errorp) = @_;
     my ($community,$request_id,@rest,$snmpver);
 
@@ -644,14 +620,28 @@ sub unwrap_response_5b
     ($community, $request_id, @rest);
 }
 
-sub send_query ($$)
-{
+sub send_query ($$) {
     my ($this,$query) = @_;
     send ($this->sock,$query,0,$this->remote_addr);
 }
 
-sub receive_response_3
-{
+## Compare two sockaddr_in structures for equality.  This is used when
+## matching incoming responses with outstanding requests.  Previous
+## versions of the code simply did a bytewise comparison ("eq") of the
+## two sockaddr_in structures, but this didn't work on some systems
+## where sockaddr_in contains other elements than just the IP address
+## and port number, notably FreeBSD.
+##
+sub sa_equal_p ($$) {
+    my ($sa1, $sa2) = @_;
+    my ($p1, $a1) = sockaddr_in ($sa1);
+    my ($p2, $a2) = sockaddr_in ($sa2);
+    return 0 if $a1 ne $a2;
+    return 0 if $p1 != $p2;
+    return 1;
+}
+
+sub receive_response_3 {
     my ($this, $response_tag, $oids, $errorp) = @_;
     my ($remote_addr);
     $remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,0);
@@ -667,7 +657,7 @@ sub receive_response_3
     ## it, as it may relate to another request.
     ##
     if (defined $this->{'remote_addr'}) {
-	if ($remote_addr ne $this->{'remote_addr'}) {
+	if (! sa_equal_p ($remote_addr, $this->{'remote_addr'})) {
 	    if ($this->{'debug'} && !$SNMP_Session::recycle_socket) {
 		warn "Response came from ".&SNMP_Session::pretty_address($remote_addr)
 		    .", not ".&SNMP_Session::pretty_address($this->{'remote_addr'})
@@ -700,8 +690,7 @@ sub receive_response_3
     return length $this->pdu_buffer;
 }
 
-sub receive_trap
-{
+sub receive_trap {
     my ($this) = @_;
     my ($remote_addr, $iaddr, $port, $trap);
     $remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,0);
@@ -711,14 +700,12 @@ sub receive_trap
     return ($trap, $iaddr, $port);
 }
 
-sub describe
-{
+sub describe {
     my($this) = shift;
     print $this->to_string (),"\n";
 }
 
-sub to_string
-{
+sub to_string {
     my($this) = shift;
     my ($class,$prefix);
 
@@ -744,8 +731,7 @@ sub to_string
 ### SNMP Agent support
 ### contributed by Mike McCauley <mikem@open.com.au>
 ###
-sub receive_request
-{
+sub receive_request {
     my ($this) = @_;
     my ($remote_addr, $iaddr, $port, $request);
 
@@ -757,8 +743,7 @@ sub receive_request
     return ($request, $iaddr, $port);
 }
 
-sub decode_request
-{
+sub decode_request {
     my ($this, $request) = @_;
     my ($snmp_version, $community, $requestid, $errorstatus, $errorindex, $bindings);
 
@@ -801,8 +786,7 @@ use BER;
 
 sub snmp_version { 1 }
 
-sub open
-{
+sub open {
     my $session = SNMPv1_Session::open (@_);
     return bless $session;
 }
