@@ -39,6 +39,7 @@ This program is free software; you can redistribute it under the
            Christopher J. Tengi  <tengi@CS.Princeton.EDU>
                     Luc Pauwels  <Luc.Pauwels@xalasys.com>
                    Milen Pavlov  <milen@batmbg.com>
+       Andrew Cornford-Matheson  <andrew.matheson@corenetworks.com>
 
 	http://www.switch.ch/misc/leinen/snmp/perl/index.html
 
@@ -267,10 +268,11 @@ also recognized.
 
 To receive traps, you have to create a special SNMP session that
 passively listens on the SNMP trap transport address (usually UDP port
-162).  Then you can receive traps using the receive_trap method and
-decode them using decode_trap_request.  The enterprise, agent,
-generic, specific and sysUptime return values are only defined
-for SNMPv1 traps.  In SNMPv2 traps, the equivalent information is
+162).  Then you can receive traps (actually, SNMPv1 traps, SNMPv2
+traps, and SNMPv2 informs) using the receive_trap method and decode
+them using decode_trap_request.  The enterprise, agent, generic,
+specific and sysUptime return values are only defined for SNMPv1
+traps.  In SNMPv2 traps and informs, the equivalent information is
 contained in the bindings.
 
 	my $trap_session = SNMPv1_Session->open_trap_session ()
