@@ -10,16 +10,6 @@ srand();
 %ugly_oids = qw(sysDescr.0			1.3.6.1.2.1.1.1.0
 		sysContact.0			1.3.6.1.2.1.1.4.0
 		ipForwarding.0			1.3.6.1.2.1.4.1.0
-		computerSystemUsers.0		1.3.6.1.4.1.11.2.3.1.1.2.0
-		computerSystemAvgJobs1.0	1.3.6.1.4.1.11.2.3.1.1.3.0
-		computerSystemAvgJobs5.0	1.3.6.1.4.1.11.2.3.1.1.4.0
-		computerSystemAvgJobs15.0	1.3.6.1.4.1.11.2.3.1.1.5.0
-		computerSystemFreeMemory.0	1.3.6.1.4.1.11.2.3.1.1.7.0
-		computerSystemPhysMemory.0	1.3.6.1.4.1.11.2.3.1.1.8.0
-		computerSystemFreeSwap.0	1.3.6.1.4.1.11.2.3.1.1.12.0
-		computerSystemUserCpu.0		1.3.6.1.4.1.11.2.3.1.1.13.0
-		computerSystemSystemCpu.0	1.3.6.1.4.1.11.2.3.1.1.14.0
-		computerSystemIdleCpu.0		1.3.6.1.4.1.11.2.3.1.1.15.0
 		ifNumber.0			1.3.6.1.2.1.2.1.0
 		ifMtu.1				1.3.6.1.2.1.2.2.1.4.1
 		ifMtu.2				1.3.6.1.2.1.2.2.1.4.2
@@ -39,16 +29,6 @@ print "Content-type: text/html\n\n",
 $session = SNMP_Session->open ('liasg7', 'public', 161)
     || die "open session: $!";
 snmp_get ($session, qw(sysDescr.0 sysContact.0 ipForwarding.0
-		       computerSystemUsers.0
-		       computerSystemAvgJobs1.0 
-		       computerSystemAvgJobs5.0
-		       computerSystemAvgJobs15.0
-		       computerSystemFreeMemory.0
-		       computerSystemPhysMemory.0
-		       computerSystemFreeSwap.0
-		       computerSystemUserCpu.0
-		       computerSystemSystemCpu.0
-		       computerSystemIdleCpu.0
 		       ifNumber.0
 		       ifMtu.1 ifInOctets.1 ifOutOctets.1
 		       ifMtu.2 ifInOctets.2 ifOutOctets.2));
