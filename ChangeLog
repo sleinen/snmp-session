@@ -1,3 +1,96 @@
+1998-06-03  Simon Leinen  <simon@limmat.switch.ch>
+
+	* BER.pm: Added exported subroutine `encode_timeticks'.
+
+	Upped version to 0.58.
+
+1998-06-02  Simon Leinen  <simon@limmat.switch.ch>
+
+	* SNMP_util.pm: New version from Mike Mitchell:
+
+	I've changed the API so that the first argument is
+	'community@host:port'.
+
+	* SNMP_util.pm: New file.
+
+1998-05-13  Simon Leinen  <simon@limmat.switch.ch>
+
+	* SNMP_Session.pm (get_request_response,
+	set_request_response,getnext_request_response): Pass 1 rather
+	than 0 as the $error argument.
+
+	(receive_response_3): Fix a bug which prevented the $errorp
+	argument from being passed correctly.
+
+1998-05-06  Simon Leinen  <simon@babar.switch.ch>
+
+	* Makefile (TESTSRCS): Added test/if-to-routes.pl.
+
+1998-05-05  Simon Leinen  <simon@limmat.switch.ch>
+
+	* BER.pm: Upped verision number to 0.57.
+
+	Added credit to Mike Diehn for encode_ip_address.
+
+	* index.html: Added sections about walking tables and sending traps.
+
+1998-04-30  Simon Leinen  <simon@limmat.switch.ch>
+
+	* SNMP_Session.pm ($VERSION): Upped to 0.58.
+
+	(trap_request_send): Return 1, not 0, on success.
+
+	* BER.pm (encode_ip_address): New exported subroutine.
+
+	(encode_intlike): New subroutine, could be used to encode
+	integer-like data such as uptime.
+
+1998-04-21  Simon Leinen  <simon@limmat.switch.ch>
+
+	* SNMP_Session.pm: Added encoding of traps, courtesy Mike Mitchell
+	<mcm@unx.sas.com>.
+
+1998-04-09  Simon Leinen  <simon@limmat.switch.ch>
+
+	* SNMP_Session.pm (request_response_5, receive_response_3,
+	unwrap_response_6): Replace request_response_4,
+	receive_response_2, and unwrap_response_5, respectively.  Added
+	$errorp argument to control error handling.
+
+	(map_table): Count calls to walk function and return the total
+	number.
+
+	No longer pretty_print the table entries before passing them to
+	the walk function.
+
+	(get_request_response, set_request_response,
+	getnext_request_response, send_query): Added formal argument
+	lists.
+
+	(SNMPv1_Session::open): Initialize new slots `error_status' and
+	`error_index' to be used for user-supplied error handling.
+
+1998-04-06  Simon Leinen  <simon@limmat.switch.ch>
+
+	* Makefile (TESTSRCS): Renamed test/test_table.pl to
+	test/test-table.pl for consistency.
+
+	* SNMP_Session.pm (map_table, map_table_start_end, index_compare,
+	oid_diff): New subroutines.
+
+	(index_compare, oid_diff): New exported names.
+
+	* Makefile (TESTSRCS): Added new table test scripts.
+
+1998-03-25  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Document two new fixes.
+
+	* BER.pm (encode_int): New version by Mike Mitchell
+	<mcm@unx.sas.com>.
+
+	* README: Added Mike Mitchell to the list of contributors.
+
 1998-03-25  Simon Leinen  <simon@limmat.switch.ch>
 
 	* README: Added Mike Mitchell to the list of contributors.
