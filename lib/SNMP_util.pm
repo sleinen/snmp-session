@@ -69,6 +69,7 @@ sub snmpset (@);
 sub snmptrap (@);
 sub toOID (@);
 sub snmpmapOID (@);
+sub encode_oid_with_errmsg ($);
 
 sub version () { $VERSION; }
 
@@ -129,6 +130,7 @@ sub snmpget (@) {
   }
 
   @enoid = &toOID(@vars);
+  return undef unless defined $enoid[0];
 
   if ($session->get_request_response(@enoid)) {
     $response = $session->pdu_buffer;
@@ -260,7 +262,9 @@ sub snmpwalk (@) {
       }
       if ($ok)
       {
-	push @nnoid, encode_oid(split(/\./, $tempo));
+	my $tmp = encode_oid_with_errmsg (split(/\./, $tempo));
+	return undef unless defined $tmp;
+	push @nnoid, $tmp;
 	my $tempv = pretty_print($value);
 	$tempo=~s/^$upoid\.//;
 	push @retvals, "$tempo:$tempv";
@@ -313,8 +317,9 @@ sub snmpset(@) {
 	}
 	elsif ($type =~ /oid/i)
 	{
-	    $value = encode_oid(split(/\./, $value));
-	    push @enoid, [$oid,$value];
+	    my $tmp = encode_oid_with_errmsg(split(/\./, $value));
+	    return undef unless defined $tmp;
+	    push @enoid, [$oid,$tmp];
 	}
 	else
 	{
@@ -385,8 +390,9 @@ sub snmptrap(@) {
 	}
 	elsif ($type =~ /oid/i)
 	{
-	    $value = encode_oid(split(/\./, $value));
-	    push @enoid, [$oid,$value];
+	    my $tmp = encode_oid_with_errmsg(split(/\./, $value));
+	    return undef unless defined $tmp;
+	    push @enoid, [$oid,$tmp];
 	}
 	else
 	{
@@ -401,6 +407,7 @@ sub snmptrap(@) {
 #  Given an OID in either ASN.1 or mixed text/ASN.1 notation, return an
 #  encoded OID.
 #
+
 sub toOID(@)
 {
     my(@vars) = @_;
@@ -421,7 +428,9 @@ sub toOID(@)
 	    }
 	}
 	print "toOID: $var\n" if $SNMP_util::Debug;
-	push(@retvar, encode_oid(split(/\./, $var)));
+	$tmp = encode_oid_with_errmsg(split(/\./, $var));
+	return undef unless defined $tmp;
+	push(@retvar, $tmp);
     }
     return @retvar;
 }
@@ -447,6 +456,16 @@ sub snmpmapOID(@)
 	print "snmpmapOID: $txt => $oid\n" if $SNMP_util::Debug;
     }
     return undef;
+}
+
+sub encode_oid_with_errmsg ($) {
+    my ($oid) = @_;
+    my $tmp = encode_oid(split(/\./, $oid));
+    if (! defined $tmp) {
+	warn "cannot encode Object ID $oid: $BER::errmsg";
+	return undef;
+    }
+    return $tmp;
 }
 
 1;
