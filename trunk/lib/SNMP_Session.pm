@@ -17,6 +17,7 @@
 ### Tobias Oetiker <oetiker@ee.ethz.ch>
 ### Heine Peters <peters@dkrz.de>
 ### Daniel L. Needles <dan_needles@INS.COM>
+### Mike Mitchell <mcm@unx.sas.com>
 ######################################################################
 
 package SNMP_Session;		
@@ -70,6 +71,7 @@ sub get_request  { 0 | context_flag };
 sub getnext_request  { 1 | context_flag };
 sub get_response { 2 | context_flag };
 sub set_request { 3 | context_flag };
+sub trap_request { 4 | context_flag };
 
 sub standard_udp_port { 161 };
 
@@ -82,7 +84,7 @@ sub timeout { $_[0]->{timeout} }
 sub retries { $_[0]->{retries} }
 sub backoff { $_[0]->{backoff} }
 
-sub encode_request
+sub encode_request ($$@)
 {
     my($this, $reqtype, @encoded_oids_or_pairs) = @_;
     my($request);
@@ -125,6 +127,27 @@ sub encode_set_request
     return encode_request ($this, set_request, @encoded_pairs);
 }
 
+sub encode_trap_request ($$$$$$@)
+{
+    my($this, $ent, $agent, $gen, $spec, $dt, @pairs) = @_;
+    my($request);
+    local($_);
+
+    foreach $_ (@pairs) {
+      if (ref ($_) eq 'ARRAY') {
+	$_ = &encode_sequence ($_->[0], $_->[1])
+	  || return $this->ber_error ("encoding pair");
+      } else {
+	$_ = &encode_sequence ($_, encode_null())
+	  || return $this->ber_error ("encoding value/null pair");
+      }
+    }
+    $request = encode_tagged_sequence
+	(trap_request, $ent, $agent, $gen, $spec, $dt, encode_sequence (@pairs))
+	  || return $this->ber_error ("encoding trap PDU");
+    return $this->wrap_request ($request);
+}
+
 sub decode_get_response
 {
     my($this, $response) = @_;
@@ -163,14 +186,27 @@ sub getnext_request_response ($@)
 				      get_response, \@oids, 0);
 }
 
-sub request_response_5
+sub trap_request_send ($$$$$$@)
+{
+    my($this, $ent, $agent, $gen, $spec, $dt, @pairs) = @_;
+    my($req);
+
+    $req = $this->encode_trap_request ($ent, $agent, $gen, $spec, $dt, @pairs);
+    ## Encoding may have returned an error.
+    return undef unless defined $req;
+    $this->send_query($req)
+	|| return $this->error ("send_trap: $!");
+    return 0;
+}
+
+sub request_response_5 ($$$$$)
 {
     my ($this, $req, $response_tag, $oids, $errorp) = @_;
     my $retries = $this->retries;
     my $timeout = $this->timeout;
 
     ## Encoding may have returned an error.
-    return undef unless defined($req);
+    return undef unless defined $req;
 
     $this->send_query ($req)
 	|| return $this->error ("send_query: $!");
@@ -197,10 +233,9 @@ sub request_response_5
 }
 
 
-sub error_return
+sub error_return ($$)
 {
-    my $this = shift;
-    my $message = shift;
+    my ($this,$message) = @_;
     $SNMP_Session::errmsg = $message;
     unless ($SNMP_Session::suppress_warnings) {
 	$message =~ s/^/  /mg;
@@ -209,10 +244,9 @@ sub error_return
     return undef;
 }
 
-sub error
+sub error ($$)
 {
-    my $this = shift;
-    my $message = shift;
+    my ($this,$message) = @_;
     my $session = $this->to_string;
     $SNMP_Session::errmsg = $message."\n".$session;
     unless ($SNMP_Session::suppress_warnings) {
@@ -223,7 +257,7 @@ sub error
     return undef;
 }
 
-sub ber_error ($ )
+sub ber_error ($$)
 {
   my ($this,$type) = @_;
   my ($errmsg) = $BER::errmsg;
@@ -439,7 +473,7 @@ sub unwrap_response_6
 	return $this->error ("Received SNMP response with error code\n"
 			     ."  error status: $errmsg\n"
 			     ."  index ".$this->{error_index}
-			     .(defined($oid)
+			     .(defined $oid
 			       ? " (OID: ".&BER::pretty_oid($oid).")"
 			       : ""));
       } else {
