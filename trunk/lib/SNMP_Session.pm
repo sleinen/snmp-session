@@ -11,8 +11,9 @@
 ### to communicate with SNMP entities.  It has methods to send
 ### requests to and receive responses from an agent.
 ###
-### Currently it has one subclass, SNMPv1_Session, which implements
-### the SNMPv1 protocol.
+### Two instantiable subclasses are defined:
+### SNMPv1_Session implements SNMPv1 (RFC 1157) functionality
+### SNMPv2c_Session implements community-based SNMPv2.
 ######################################################################
 ### Created by:  Simon Leinen  <simon@switch.ch>
 ###
