@@ -24,6 +24,10 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_Session 0.100: Added Luc Pauwels' implementation of the
+<tt>use_16bit_request_ids</tt> option.  Some SMC devices seem to
+require this. </li>
+
 <li> SNMP_Session 0.99: Improved request ID generation so that
 <tt>avoid_negative_request_ids</tt> is always obeyed. </li>
 
@@ -593,7 +597,7 @@ use SNMP_Session "0.52";
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20031109
+20031214
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
