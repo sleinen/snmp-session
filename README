@@ -1,16 +1,16 @@
 		       SNMP support for Perl 5
 		       -----------------------
 
-	     Author: Simon Leinen  <simon@lia.di.epfl.ch>
+	     Author: Simon Leinen  <simon@instrumatic.ch>
 
 This archive contains Perl 5 modules SNMP_Session.pm and BER.pm,
 which, when used together, provide rudimentary access to remote SNMP
 (v1) agents.
 
-The only SNMP operation currently supported is "get".  That means that
-you can neither set values, nor read tables using these routines.
-Hopefully I will get around to implementing these other operations one
-day.
+The SNMP operations currently supported are "get" and "get-next".
+That means that you cannot set values or receive or generate SNMP
+traps using these routines.  Hopefully I will get around to
+implementing these other operations one day.
 
 				Usage
 				.....
