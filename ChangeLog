@@ -1,3 +1,34 @@
+1998-07-01  Simon Leinen  <simon@limmat.switch.ch>
+
+	* SNMP_Session.pm ($VERSION): Upped version to 0.60.
+
+	(open): Accept optional additional argument BIND_TO_PORT.
+
+	(open_trap_session): New method, calls open with BIND_TO_PORT 162
+	(or an alternate port given as an optional argument).
+
+	(decode_trap_request, receive_trap): New methods for decoding and
+	receiving SNMPv1 traps, respectively.
+
+	* BER.pm (pretty_uptime_value):
+	New function split off from pretty_uptime.
+
+	($template_debug): New variable, controls debugging output in
+	decode_by_template_2.
+
+	(decode_by_template_2): Added debugging output.
+
+	Fixed computation of position of error in template string.
+
+	Added %A (IP address), %u (uptime).
+
+	(decode_int, decode_string): Better error reporting, include
+	erroneous tags.
+
+	* Makefile (TESTSRCS): Added trap-send and trap-listener.
+
+	* index.html, README: Added documentation about receiving traps.
+
 1998-06-24  Simon Leinen  <simon@limmat.switch.ch>
 
 	* SNMP_Session.pm (set_timeout, set_retries, set_backoff):
@@ -7,7 +38,8 @@
 
 	* index.html: Documented new methods and map_table fix.
 
-	* SNMP_Session.pm (set_timeout, set_retries, set_backoff): New methods.
+	* SNMP_Session.pm (set_timeout, set_retries, set_backoff): 
+	New methods.
 
 	(map_table_start_end): Fixed comparison logic so that an index of
 	"0" no longer terminates the table.
