@@ -140,7 +140,8 @@ sub encode_request_3 ($$$@) {
     my($request);
     local($_);
 
-    ++$this->{request_id};
+    $this->{request_id} = ($this->{request_id} == 0x7fffffff)
+	? -0x80000000 : $this->{request_id}+1;
     foreach $_ (@{$encoded_oids_or_pairs}) {
       if (ref ($_) eq 'ARRAY') {
 	$_ = &encode_sequence ($_->[0], $_->[1])
@@ -536,7 +537,8 @@ sub open {
 	   'remote_addr' => $remote_addr,
 	   'max_pdu_len' => $max_pdu_len,
 	   'pdu_buffer' => '\0' x $max_pdu_len,
-	   'request_id' => int (rand 0x80000000 + rand 0xffff),
+	   'request_id' => ((int (rand 0x10000) << 16) + int (rand 0x10000))
+	       - 0x80000000,
 	   'timeout' => $default_timeout,
 	   'retries' => $default_retries,
 	   'backoff' => $default_backoff,
