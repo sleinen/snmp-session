@@ -666,11 +666,8 @@ sub open {
 	   'sockfamily' => $sockfamily,
 	   'max_pdu_len' => $max_pdu_len,
 	   'pdu_buffer' => '\0' x $max_pdu_len,
-	   'request_id' =>
-	       $SNMP_Session::default_avoid_negative_request_ids
-	       ? (int (rand 0x8000) << 16) + int (rand 0x10000)
-	       : (int (rand 0x10000) << 16) + int (rand 0x10000)
-	       - 0x80000000,
+	   'request_id' => (int (rand 0x10000) << 16)
+	       + int (rand 0x10000) - 0x80000000,
 	   'timeout' => $default_timeout,
 	   'retries' => $default_retries,
 	   'backoff' => $default_backoff,
