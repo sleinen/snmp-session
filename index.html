@@ -51,7 +51,7 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 <li> SNMP_Session 0.75: Fixed a bug in versions 0.73-0.74 where
 creation of trap listener sockets would fail.  Rather than using
 <tt>bind</tt> to bind to the trap port, we now pass a
-<tt>LocalPort</tt> argument to <tt>INET->new</tt>.
+<tt>LocalPort</tt> argument to <tt>INET-&gt;new</tt>.
 
 <li> SNMP_Session 0.75: Parse SNMPv2-Trap-Requests in addition to
 SNMPv1 ones.  A caller can tell whether an SNMPv1 or an SNMPv2 request
@@ -75,7 +75,7 @@ an "unitialized variable" warning was removed. (Changes by <a
 href="mailto:mcm@unx.sas.com">Mike Mitchell</a>, the author) </li>
 
 <li> SNMP_Session 0.73: The UDP socket associated with each SNMP
-session object is now created using <tt>IO::Socket::INET->new</tt>.
+session object is now created using <tt>IO::Socket::INET-&gt;new</tt>.
 Before this change, a Perl file descriptor name was generated for each
 new socket.  Apparently this caused a file descriptor leak.  The new
 code is much cleaner and doesn't have that problem anymore.  Hopefully
@@ -538,7 +538,6 @@ my $trap_community = "SNMP_Traps";
 my $trap_session = $version eq '1'
     ? SNMP_Session-&gt;open ($trap_receiver, $trap_community, 162)
     : SNMPv2c_Session-&gt;open ($trap_receiver, $trap_community, 162);
-my $trap_session = SNMP_Session-&gt;open ($trap_receiver, $trap_community, 162);
 my $myIpAddress = ...;
 my $start_time = time;
 
@@ -554,7 +553,7 @@ sub link_down_trap ($$) {
 
   warn "Sending trap failed"
     unless ($version eq '1')
-	? $trap_session->trap_request_send (encode_oid (@myOID),
+	? $trap_session-&gt;trap_request_send (encode_oid (@myOID),
 					    encode_ip_address ($myIpAddress),
 					    encode_int ($genericTrap),
 					    encode_int ($specificTrap),
@@ -563,7 +562,7 @@ sub link_down_trap ($$) {
 					     encode_int ($if_index)],
 					    [encode_oid (@ifDescr_OID,$if_index),
 					     encode_string ("foo")])
-	    : $trap_session->v2_trap_request_send (\@linkDown_OID, $upTime,
+	    : $trap_session-&gt;v2_trap_request_send (\@linkDown_OID, $upTime,
 						   [encode_oid (@ifIndex_OID,$if_index),
 						    encode_int ($if_index)],
 						   [encode_oid (@ifDescr_OID,$if_index),
@@ -646,7 +645,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19991005
+19991215
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
