@@ -175,10 +175,9 @@ sub pretty_print
     my($type,$rest);
     my $result = ord (substr ($packet, 0, 1));
     return pretty_intlike ($packet)
-	if $result == int_tag;
-    return pretty_unsignedlike ($packet)
-	if $result == snmp_counter32_tag
-	    || $result == snmp_gauge32_tag;
+	if ($result == int_tag
+	    || $result == snmp_counter32_tag
+	    || $result == snmp_gauge32_tag);
     return pretty_string ($packet) if $result == octet_string_tag;
     return pretty_oid ($packet) if $result == object_id_tag;
     return pretty_uptime($packet) if $result == uptime_tag;
