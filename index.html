@@ -395,13 +395,15 @@ my $trap_session = SNMP_Session-&gt;open_trap_session ()
 my ($trap, $sender_addr, $sender_port) = $trap_session-&gt;receive_trap ()
   || die "cannot receive trap";
 my ($community, $enterprise, $agent,
-    $generic, $specific, $sysUptime, @bindings)
+    $generic, $specific, $sysUptime, $bindings)
   = $session-&gt;decode_trap_request ($trap)
     || die "cannot decode trap received"
 ...
-foreach $binding (@bindings) {
-    my ($key, $value) = decode_by_template ("%O%@");
-    print BER::pretty_oid ($key)," =&gt; ",pretty_print ($value),"\n";
+my ($binding, $oid, $value);
+while ($bindings ne '') {
+    ($binding,$bindings) = &amp;decode_sequence ($bindings);
+    ($oid, $value) = decode_by_template ("%O%@");
+    print BER::pretty_oid ($oid)," =&gt; ",pretty_print ($value),"\n";
 }
 </pre>
 
@@ -445,7 +447,7 @@ foreach $binding (@bindings) {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19980810
+19980908
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
