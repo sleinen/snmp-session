@@ -1,0 +1,188 @@
+#!/usr/local/bin/perl -w
+
+use strict;
+use SNMP_Session "0.58";
+use BER;
+use Socket;
+
+my $mrouters =
+[
+ 'hctiws@swiCE1.switch.ch',
+ 'hctiws@swiZHX.switch.ch',
+ 'hctiws@swiGEX.switch.ch',
+ 'hctiws@swiEL1.switch.ch',
+ 'hctiws@swiBE1.switch.ch',
+ 'hctiws@swiCS1.switch.ch',
+ 'hctiws@swiCS2.switch.ch',
+ 'hctiws@swiGE1.switch.ch',
+ 'hctiws@swiEZ1.switch.ch',
+ ];
+
+my %pretty_protocol_name =
+(
+  1 => "other",
+  2 => "local",
+  3 => "netmgmt",
+  4 => "dvmrp",
+  5 => "mospf",
+  6 => "pimSparseDense",
+  7 => "cbt",
+  8 => "pimSparseMode",
+  9 => "pimDenseMode",
+  10 => "igmpOnly",
+  11 => "bgmp",
+  12 => "msdp",
+);
+
+## Define this if you want WorkDir set in the generated configuration
+## file.
+##
+my $work_dir = '/home/noc/stat';
+
+## Define this if you want IconDir set in the generated configuration
+## file.
+##
+my $icon_dir = '/lan/stat/images';
+
+## Define this if you want Directory[] set in each target.
+##
+my $directory = 'multicast';
+
+## An absolute maximum for traffic rates over tunnels, in Bytes per
+## second.  You probably don't need to change this.
+##
+my $abs_max = '100000000';
+
+my $ipMRouteInterfaceTtl = [1,3,6,1,3,60,1,1,4,1,2];
+my $ipMRouteInterfaceProtocol = [1,3,6,1,3,60,1,1,4,1,3];
+my $ipMRouteInterfaceRateLimit = [1,3,6,1,3,60,1,1,4,1,4];
+my $ipMRouteInterfaceInMcastOctets = [1,3,6,1,3,60,1,1,4,1,5];
+my $ipMRouteInterfaceOutMcastOctets = [1,3,6,1,3,60,1,1,4,1,6];
+
+## Print head of configuration file
+print "WorkDir: $work_dir\n" if defined $work_dir;
+print "IconDir: $icon_dir\n" if defined $icon_dir;
+print "WriteExpires: Yes\nWeekformat[^]: V\nWithPeak[_]: wmy\n";
+
+foreach my $target (@{$mrouters}) {
+    my $session;
+    my ($community, $mrouter, $port);
+
+    if ($target =~ /^(.*)@(.*):([0-9]+)$/) {
+	$community = $1; $mrouter = $2; $port = $3;
+    } elsif ($target =~ /^(.*)@(.*)$/) {
+	$community = $1; $mrouter = $2; $port = 161;
+    } else {
+	warn "Malformed target $target\n";
+	next;
+    }
+    $session = SNMP_Session->open ($mrouter, $community, $port)
+	|| (warn ("Opening SNMP session to $mrouter\n"), next);
+
+    my $if_table = $session->get_if_table;
+
+    my $snmp_target = $community.'@'.$mrouter;
+    $snmp_target .= ":".$port
+	unless $port == 161;
+## eval
+    {
+	$session->map_table
+	([$ipMRouteInterfaceTtl,
+	  $ipMRouteInterfaceProtocol,
+	  $ipMRouteInterfaceRateLimit], sub
+	 { 
+	     my ($index, $ttl, $protocol, $rate_limit) = @_;
+	     grep (defined $_ && ($_=pretty_print $_),
+		   ($protocol, $ttl, $rate_limit));
+	     my ($if_entry, $abs_max_bytes, $rate_limit_bytes,
+		 $interface, $mr, $graph_name);
+	     die unless defined ($if_entry = $if_table->{$index});
+	     if (defined $if_entry->{ifSpeed}) {
+		 if ($rate_limit == 0 || $if_entry->{ifSpeed} < $rate_limit) {
+		     $rate_limit = $if_entry->{ifSpeed} / 1000;
+		 }
+		 $abs_max_bytes = $if_entry->{ifSpeed} >> 3
+		     if defined $if_entry->{ifSpeed};
+	     } else {
+	     }
+	     $abs_max_bytes = $abs_max >> 3
+		 unless defined $abs_max_bytes;
+	     $rate_limit_bytes = $rate_limit * 1000 >> 3;
+
+	     $protocol = $pretty_protocol_name{$protocol}
+	     if exists $pretty_protocol_name{$protocol};
+##	       my $peer_name = gethostbyaddr(pack ("C4",split ('\.',$peer_addr)),
+##					     AF_INET)
+##		   || $peer_addr;
+	     my $peer_name = "?";
+	     $interface = $index;
+	     if (defined ($if_entry->{ifDescr})) {
+		 $interface = $if_entry->{ifDescr};
+	     }
+	     print STDERR "IF $interface TTL $ttl $protocol\n";
+	     $mr = $mrouter;
+	     $mr =~ s/\..*//;
+	     $graph_name = lc ($mr.'-multicast-'.cleanup ($interface));
+	      if (defined ($if_entry->{ifAlias}) && $if_entry->{ifAlias} ne '') {
+		  $interface .= " (".$if_entry->{ifAlias}.")";
+	      } elsif (defined ($if_entry->{locIfDescr}) && $if_entry->{locIfDescr} ne '') {
+		  $interface .= " (".$if_entry->{locIfDescr}.")";
+	      }
+		 print <<EOM;
+
+Target[$graph_name]: 1.3.6.1.3.60.1.1.4.1.5.$index&1.3.6.1.3.60.1.1.4.1.6.$index:$snmp_target
+MaxBytes[$graph_name]: $rate_limit_bytes
+AbsMax[$graph_name]: $abs_max_bytes
+Options[$graph_name]: growright,bits
+Title[$graph_name]: Multicast Traffic on $mrouter:$interface
+PageTop[$graph_name]: <hr><H3>Multicast Traffic on $mrouter:$interface</H3>
+EOM
+    print "Directory[$graph_name]: $directory\n"
+	if $directory;
+	 })
+};
+    $session->close ();
+}
+
+sub cleanup ($ ) {
+    local ($_) = @_;
+    s@/@-@g;
+    s@-(aal5|cef) layer$@@;
+    $_;
+}
+
+package SNMP_Session;
+
+sub get_if_table ($) {
+    my ($session) = @_;
+
+    my $result = {};
+
+    my $ifDescr = [1,3,6,1,2,1,2,2,1,2];
+    my $ifSpeed = [1,3,6,1,2,1,2,2,1,5];
+    my $locIfDescr = [1,3,6,1,4,1,9,2,2,1,1,28];
+    my $ifAlias = [1,3,6,1,2,1,31,1,1,1,18];
+    $session->map_table ([$ifDescr,$ifSpeed],
+			 sub ($$$) {
+			     my ($index, $ifDescr, $ifSpeed) = @_;
+			     grep (defined $_ && ($_=pretty_print $_),
+				   ($ifDescr, $ifSpeed));
+			     $result->{$index} = {'ifDescr' => $ifDescr,
+						  'ifSpeed' => $ifSpeed};
+			 });
+    $session->map_table ([$locIfDescr],
+			 sub ($$$) {
+			     my ($index, $locIfDescr) = @_;
+			     grep (defined $_ && ($_=pretty_print $_),
+				   ($locIfDescr));
+			     $result->{$index}->{'locIfDescr'} = $locIfDescr;
+			 });
+    $session->map_table ([$ifAlias],
+			 sub ($$$) {
+			     my ($index, $ifAlias) = @_;
+			     grep (defined $_ && ($_=pretty_print $_),
+				   ($ifAlias));
+			     $result->{$index}->{'ifAlias'} = $ifAlias;
+			 });
+    $result;
+}
