@@ -1,5 +1,12 @@
 #!/usr/local/bin/perl -w
+######################################################################
+### Observe interface counters in real time.
+######################################################################
+### Copyright (c) 1995-2000, Simon Leinen.
 ###
+### This program is free software; you can redistribute it under the
+### "Artistic License" included in this distribution (file "Artistic").
+######################################################################
 ### Author:       Simon Leinen  <simon@switch.ch>
 ### Date Created: 21-Feb-1999
 ###
