@@ -1,3 +1,11 @@
+Sun Aug 25 23:49:15 1996  Simon Leinen  <simon@instrumatic.ch>
+
+	* SNMP_Session.pm (request_response):
+	Perform retries with exponential backoff.
+
+	(retries, backoff): New slots of the SNMP_Session object.  Default
+ 	values are 3 and 1.5, respectively.
+
 Wed Jul 10 08:18:16 1996  Simon Leinen  <simon@instrumatic.ch>
 
 	* README: Added Heine Peters to contributors list.
