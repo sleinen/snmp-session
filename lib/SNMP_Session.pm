@@ -320,9 +320,10 @@ sub map_table_start_end ($$$$$) {
     my $base_index = $start;
 
     do {
-	@encoded_oids = @{$columns};
-	@encoded_oids = grep ($_=encode_oid (@{$_},split '\.',$base_index),
-			      @encoded_oids);
+	foreach (@encoded_oids = @{$columns}) {
+	    $_=encode_oid (@{$_},split '\.',$base_index)
+		|| return $session->ber_error ("encoding OID $base_index");
+	}
 	if ($session->getnext_request_response (@encoded_oids)) {
 	    my $response = $session->pdu_buffer;
 	    my ($bindings) = $session->decode_get_response ($response);
