@@ -6,12 +6,14 @@
 ### structures using the Basic Encoding Rules (BER).  Only the subset
 ### necessary for SNMP is implemented.
 ######################################################################
-#
-# Andrzej Tobola <san@iem.pw.edu.pl>:  Added long String decode
-#
-# Tobias Oetiker <oetiker@ee.ethz.ch>:  Added 5 Byte Integer decode ...
-#
-# Dave Rand <dlr@Bungi.com>:  Added SysUpTime decode
+### Created by:  Simon Leinen  <simon@instrumatic.ch>
+###
+### Contributions and fixes by:
+###
+### Andrzej Tobola <san@iem.pw.edu.pl>:  Added long String decode
+### Tobias Oetiker <oetiker@ee.ethz.ch>:  Added 5 Byte Integer decode ...
+### Dave Rand <dlr@Bungi.com>:  Added SysUpTime decode
+######################################################################
 
 package BER;
 
