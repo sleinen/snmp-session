@@ -600,7 +600,7 @@ sub snmpwalk_flg ($$@) {
 	  #
 	  # extract name of the oid, if possible, the rest becomes the instance
 	  #
-	  my $inst;
+	  my $inst = '';
 	  while (!exists($revOIDS{$tempo}) && length($tempo)) {
 	    $tempo =~ s/(\.\d+?)$//;
 	    $inst = $1.$inst;
