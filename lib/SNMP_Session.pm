@@ -13,6 +13,7 @@
 ###
 ### Contributions and fixes by:
 ###
+### Matthew Trunnell <matter@dune.media.mit.edu>
 ### Tobias Oetiker <oetiker@ee.ethz.ch>
 ### Heine Peters <peters@dkrz.de>
 ######################################################################
@@ -59,6 +60,7 @@ my $default_backoff = 1.0;
 sub get_request  { 0 | context_flag };
 sub getnext_request  { 1 | context_flag };
 sub get_response { 2 | context_flag };
+sub set_request { 3 | context_flag };
 
 sub standard_udp_port { 161 };
 
@@ -73,19 +75,19 @@ sub backoff { $_[0]->{backoff} }
 
 sub encode_request
 {
-    my($this, $reqtype, @encoded_oids) = @_;
+    my($this, $reqtype, @encoded_oids_or_pairs) = @_;
     my($request);
 
-    # turn each of the encoded OIDs into an encoded pair of the OID
-    # and a NULL.
-    grep($_ = encode_sequence($_,encode_null()),@encoded_oids);
-
     ++$this->{request_id};
+    grep ($_=(ref ($_) eq 'ARRAY'
+	      ? &encode_sequence ($_->[0], $_->[1])
+	      : &encode_sequence ($_, encode_null())),
+	  @encoded_oids_or_pairs);
     $request = encode_tagged_sequence
 	($reqtype,
 	 encode_int ($this->{request_id}),
 	 encode_int_0, encode_int_0,
-	 encode_sequence (@encoded_oids));
+	 encode_sequence (@encoded_oids_or_pairs));
     return $this->wrap_request ($request);
 }
 
@@ -99,6 +101,12 @@ sub encode_getnext_request
 {
     my($this, @oids) = @_;
     return encode_request ($this, getnext_request, @oids);
+}
+
+sub encode_set_request
+{
+    my($this, @encoded_pairs) = @_;
+    return encode_request ($this, set_request, @encoded_pairs);
 }
 
 sub decode_get_response
@@ -124,6 +132,14 @@ sub get_request_response
     my(@oids) = @_;
     return $this->request_response_4 ($this->encode_get_request (@oids),
 				      get_response, \@oids);
+}
+
+sub set_request_response
+{
+    my($this) = shift;
+    my(@pairs) = @_;
+    return $this->request_response_4 ($this->encode_set_request (@pairs),
+				      get_response, \@pairs);
 }
 
 sub getnext_request_response
@@ -153,6 +169,8 @@ sub request_response_4
 		= $this->receive_response_2 ($response_tag, $oids);
 	    if ($response_length) {
 		return $response_length;
+	    } else {
+		return undef;
 	    }
 	} else {
 	    ## No response received - retry
@@ -256,15 +274,18 @@ sub unwrap_response_5
     return $this->error ("Received SNMP response with unknown snmp-version field $snmpver")
 	unless $snmpver == $this->snmp_version;
     if ($error_status != 0 || $error_index != 0) {
-	$error_status = $error_status_code[$error_status] || $error_status;
+	my ($oid, $errmsg);
+	$errmsg = $error_status_code[$error_status] || $error_status;
+	$oid = $oids->[$error_index-1]
+	    if $error_index > 0 && $error_index-1 <= $#{$oids};
+	$oid = $oid->[0]
+	    if ref($oid) eq 'ARRAY';
 	return $this->error ("Received SNMP response with error code\n"
-			     ."  error status: $error_status\n"
-			     ."  index ".$error_index
-			     .($error_index > 0 && $error_index-1 <= $#{$oids}
-			       ? " (OID: "
-			       .&BER::pretty_oid($oids->[$error_index-1])
-			       .")"
-			       : ""));
+				."  error status: $errmsg\n"
+				."  index ".$error_index
+				.(defined($oid)
+				  ? " (OID: ".&BER::pretty_oid($oid).")"
+				  : ""));
     }
     if ($this->{'debug'}) {
 	warn "$community != $this->{community}"
@@ -306,6 +327,7 @@ sub receive_response_2
     my @unwrapped = ();
     eval '@unwrapped = $this->unwrap_response_5 ($response, $response_tag, $this->{"request_id"}, $oids)';
     if ($@ || !$unwrapped[0]) {
+	$this->{'unwrapped'} = undef;
 	return 0;
     }
     $this->{'unwrapped'} = \@unwrapped;
