@@ -548,10 +548,7 @@ sub link_down_trap ($$) {
 					     encode_int ($if_index)],
 					    [encode_oid (@ifDescr_OID,$if_index),
 					     encode_string ("foo")])
-	    : $trap_session->v2_trap_request_send ([encode_oid (@sysUptime_OID,0),
-						    encode_timeticks ($upTime)],
-						   [encode_oid (@snmpTrapOID_OID,0),
-						    encode_oid (@linkDown_OID)],
+	    : $trap_session->v2_trap_request_send (\@linkDown_OID, $upTime,
 						   [encode_oid (@ifIndex_OID,$if_index),
 						    encode_int ($if_index)],
 						   [encode_oid (@ifDescr_OID,$if_index),
