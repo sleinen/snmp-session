@@ -49,6 +49,25 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_Session.pm 0.83: The source address in response packets is
+now ignored when matching responses against outstanding queries.  In a
+couple of previous revisions, the source address in response packets
+had to match the destination address in the corresponding query.
+Unfortunately some agents may use a different source address in
+responses.  If you want the strict behavior back, you can send the
+<tt>lenient_source_address_matching</tt> slot of the session object to
+zero. </li>
+
+<li> SNMP_Session.pm 0.83: The source address for outgoing packets can
+now be specified as an additional optional argument to
+<tt>open</tt>.  If you don't specify it, the system will choose the
+source address by itself, usually corresponding to the interface on
+which packets are sent. </li>
+
+<li> SNMP_Session.pm 0.83: Fixed a bug which had caused requests to be
+resent upon receipt of packets which don't match the outstanding
+query. </li>
+
 <li> SNMP_Session.pm 0.82: Fixed retry logic to avoid sending a last
 retry without waiting for the response anymore.  Thanks to <a
 href="mailto:wardenb@eluminant.com">Brett T Warden</a> for the
@@ -728,7 +747,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20001210
+20001218
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
