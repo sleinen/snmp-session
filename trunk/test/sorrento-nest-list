@@ -13,6 +13,7 @@ snmpmapOID ("slotCardName", "1.3.6.1.4.1.2522.1.1.2.1.1.2",
 my %nestmasters =
     qw(muxCE1 public@130.59.48.16
        muxLS1 public@130.59.48.81
+       muxBE1 public@130.59.48.144
        muxBA1 public@130.59.48.208
        muxEZ1 public@130.59.49.16);
 
