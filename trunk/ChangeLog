@@ -1,3 +1,43 @@
+Mon Apr 28 18:55:20 1997  Simon Leinen  <simon@limmat.switch.ch>
+
+	* README, index.html: Moved my home page to
+ 	http://www.switch.ch/misc/leinen/.
+
+Thu Apr  3 14:08:26 1997  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Point to .tar.gz rather than .shar.
+
+	* Makefile (shar): Make a tar.gz file, too, and install both under
+ 	$(DESTDIR).
+
+	* BER.pm (encode_int_0): New exported subroutine that generates
+ 	the BER encoding for the integer zero.
+
+	* SNMP_Session.pm: Never die on exceptional situations, but write
+ 	a warning and return undef.
+
+	(encode_request): Use encode_int_0.
+
+	(unwrap_response_4): Better diagnostics for unparseable and error
+ 	responses.
+
+Mon Mar 24 09:16:03 1997  Simon Leinen  <simon@limmat.switch.ch>
+
+	* BER.pm: Handle unsigned integers correctly.
+
+Fri Feb 21 09:07:03 1997  Simon Leinen  <simon@limmat.switch.ch>
+
+	* SNMP_Session.pm (unwrap_response_4): Integrated fix by Tobi
+ 	Oetiker for doubly declared lexical variable $request_id.
+
+Mon Feb 17 13:31:39 1997  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Mrtg: Don't mention beta version 2.0 anymore, since
+ 	this has now been released.
+
+	* README, index.html: SNMP_Session::open -> SNMP_Session->open
+ 	(thanks to "Robert Weatherford(grim)" <rweather@ctron.com>)
+
 Mon Feb 17 13:26:16 1997  switch  <switch@celeste.switch.ch>
 
 	* BER.pm (@EXPORT): Export `encoded_oid_prefix_p'.
