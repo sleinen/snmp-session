@@ -362,7 +362,8 @@ sub snmpopen ($$$) {
   ($host, $port, $timeout, $retries, $backoff, $version) = split(':', $host, 6)
     if ($host =~ /:/);
   $version = '1' unless defined $version;
-  if ($port =~ /^([^!]*)!(.*)$/)
+  undef($port) if (defined($port) && length($port) <= 0);
+  if (defined($port) && ($port =~ /^([^!]*)!(.*)$/))
   {
     ($port, $lhost) = ($1, $2);
     $nlhost = $lhost;
@@ -370,7 +371,6 @@ sub snmpopen ($$$) {
     undef($lhost) if (defined($lhost) && (length($lhost) <= 0));
     undef($lport) if (defined($lport) && (length($lport) <= 0));
   }
-  undef($port) if (defined($port) && length($port) <= 0);
   $port = 162 if ($type == 1 && !defined($port));
   $nhost = "$community\@$host";
   $nhost .= ":" . $port if (defined($port));
