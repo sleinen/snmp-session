@@ -29,10 +29,15 @@ sub write_query_form;
 sub html_error_message;
 sub html_quote;
 
-my @allowed_hosts=qw(liasg1.epfl.ch liasg2.epfl.ch liasg3.epfl.ch
-	liasg4.epfl.ch liasg5.epfl.ch liasg6.epfl.ch
-	liasg7.epfl.ch liasg8.epfl.ch liasg9.epfl.ch);
+my @allowed_hosts=qw(swiEG1.switch.ch swiCS1.switch.ch swiZHX.switch.ch swiCE1.switch.ch swiNY1.switch.ch);
 my %allowed_hosts;
+
+my $intro = <<EOM;
+<P> This is a sample application of an
+<A HREF="http://www.switch.ch/misc/leinen/snmp/perl/">SNMP Module</A>
+I have written for Perl 5. </P>
+EOM
+
 foreach (@allowed_hosts) { $allowed_hosts{$_} = 1; }
 
 my $query_string = $ENV{'QUERY_STRING'};
@@ -64,15 +69,7 @@ sub parse_query
 sub init_oids
 {
     %ugly_oids = qw(sysDescr.0		1.3.6.1.2.1.1.1.0
-		    sysContact.0	1.3.6.1.2.1.1.4.0
-		    ipForwarding.0	1.3.6.1.2.1.4.1.0
-		    ifNumber.0		1.3.6.1.2.1.2.1.0
-		    ifMtu.1		1.3.6.1.2.1.2.2.1.4.1
-		    ifMtu.2		1.3.6.1.2.1.2.2.1.4.2
-		    ifInOctets.1	1.3.6.1.2.1.2.2.1.10.1
-		    ifInOctets.2	1.3.6.1.2.1.2.2.1.10.2
-		    ifOutOctets.1	1.3.6.1.2.1.2.2.1.16.1
-		    ifOutOctets.2	1.3.6.1.2.1.2.2.1.16.2
+		    sysLocation.0	1.3.6.1.2.1.1.6.0
 		    );
     foreach (keys %ugly_oids) {
 	$ugly_oids{$_} = encode_oid (split (/\./, $ugly_oids{$_}));
@@ -84,18 +81,23 @@ sub query_to_html_response
 {
     local($hostname, $community) = @_;
 
+    if ($community eq 'public'
+	&& -r "/home/leinen/snmp/.zxc") {
+	open (COMM, "/home/leinen/snmp/.zxc");
+	$community = <COMM>;
+	chomp $community;
+	close COMM;
+    }
     print "Content-type: text/html\n\n",
     "<HTML><HEAD><TITLE>Perl SNMP Module Test</TITLE>\n",
-    "</HEAD>\n<BODY>\n<H1>SNMP query to ",
-    html_quote ($hostname), "</H1>\n<HR>\n";
+    "</HEAD>\n<BODY BGCOLOR=\"#ffffff\">\n",
+    "<H1>SNMP query to ",
+    html_quote ($community), "@", html_quote ($hostname), "</H1>\n<HR>\n";
 
     srand();
     eval '$session = SNMP_Session->open ($hostname, $community, 161)';
     html_error_message ("opening SNMP session", $@), return 0 if $@;
-    eval 'snmp_get ($session, qw(sysDescr.0 sysContact.0 ipForwarding.0
-			   ifNumber.0
-			   ifMtu.1 ifInOctets.1 ifOutOctets.1
-			   ifMtu.2 ifInOctets.2 ifOutOctets.2))';
+    eval { snmp_get ($session, qw(sysDescr.0 sysLocation.0)) };
     html_error_message ("executing SNMP query", $@), return 0 if $@;
     $session->close ();
 
@@ -117,8 +119,8 @@ sub snmp_get
 	    ($binding,$bindings) = decode_sequence ($bindings);
 	    ($oid,$value) = decode_by_template ($binding, "%O%@");
 	    print "<TR>",
-	    "<TD ALIGN=RIGHT>", &html_quote (pretty_print ($value)), "</SAMP></TD>",
-	    "<TH ALIGN=LEFT>", $pretty_oids{$oid}, "</TH>",
+	    "<TH ALIGN=RIGHT>", $pretty_oids{$oid}, "</TH>",
+	    "<TD ALIGN=LEFT><PRE>", &html_quote (pretty_print ($value)), "</PRE></SAMP></TD>",
 	    "</TR>\n";
 	}
 	print "</TABLE>\n";
@@ -136,21 +138,18 @@ Content-transfer-encoding: binary
 
 <HTML>
 <HEAD><TITLE>Perl SNMP Module Test</TITLE></HEAD>
-<BODY>
+<BODY BGCOLOR="#ffffff">
 <H1>Perl SNMP Module Test</H1>
 <HR>
+$intro
 <FORM>
 Host name:
 <SELECT NAME=hostname>
-<OPTION VALUE="liasg1.epfl.ch">liasg1.epfl.ch
-<OPTION VALUE="liasg2.epfl.ch">liasg2.epfl.ch
-<OPTION VALUE="liasg3.epfl.ch">liasg3.epfl.ch
-<OPTION VALUE="liasg4.epfl.ch">liasg4.epfl.ch
-<OPTION VALUE="liasg5.epfl.ch">liasg5.epfl.ch
-<OPTION VALUE="liasg6.epfl.ch">liasg6.epfl.ch
-<OPTION SELECTED VALUE="liasg7.epfl.ch">liasg7.epfl.ch
-<OPTION VALUE="liasg8.epfl.ch">liasg8.epfl.ch
-<OPTION VALUE="liasg9.epfl.ch">liasg9.epfl.ch
+<OPTION SELECTED VALUE="swiEG1.switch.ch">swiEG1.switch.ch
+<OPTION VALUE="swiCS1.switch.ch">swiCS1.switch.ch
+<OPTION VALUE="swiZHX.switch.ch">swiZHX.switch.ch
+<OPTION VALUE="swiCE1.switch.ch">swiCE1.switch.ch
+<OPTION VALUE="swiNY1.switch.ch">swiNY1.switch.ch
 </SELECT>
 Community name:
 <SELECT NAME=community>
@@ -161,15 +160,9 @@ Community name:
 <INPUT TYPE=reset VALUE="Clear">
 </FORM>
 <HR>
-<P> This is a sample application of an
- <A HREF="http://liawww.epfl.ch/simon/snmp/perl/">SNMP Module</A>
- I have written for Perl 5.
- Here is the
- <A HREF="http://liawww.epfl.ch/simon/snmp/perl/wwwtest">source code</A>
- of this particular application.</P>
 <ADDRESS>
-<A HREF="http://liawww.epfl.ch/simon.html">
- Simon Leinen &lt;simon.leinen\@lia.di.epfl.ch&gt;</A>
+<A HREF="http://www.switch.ch/misc/leinen/">
+ Simon Leinen &lt;simon\@switch.ch&gt;</A>
 </ADDRESS>
 </BODY>
 </HTML>
