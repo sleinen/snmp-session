@@ -50,7 +50,8 @@ sub query_to_html_response
     local($hostname, $community) = @_;
 
     print "Content-type: text/html\n\n",
-    "<HTML><HEAD><TITLE>SNMP Test</TITLE></HEAD>\n<BODY>\n<H1>SNMP query to ",
+    "<HTML><HEAD><TITLE>Perl SNMP Module Test</TITLE>\n",
+    "</HEAD>\n<BODY>\n<H1>SNMP query to ",
     html_quote ($hostname), "</H1>\n<HR>\n";
 
     srand();
@@ -65,15 +66,6 @@ sub query_to_html_response
 
     print "</BODY>\n</HTML>\n";
     1;
-}
-
-sub html_error_message
-{
-    my($context, $errmsg) = @_;
-
-    print "<H2>SNMP Error</H2>\n";
-    print "<P>While ",$context,", the following error occurred:</P>\n";
-    print "<PRE>",&html_quote($errmsg),"</PRE></BODY></HTML>";
 }
 
 sub snmp_get
@@ -99,17 +91,6 @@ sub snmp_get
     } else {
 	die "No response received.\n";
     }
-}
-
-sub html_quote
-{
-    local ($_) = @_;
-
-    return $_ unless /[<>&]/;
-    s/&/&amp;/g;
-    s/</&lt;/g;
-    s/>/&gt;/g;
-    $_;
 }
 
 sub write_query_form
@@ -147,4 +128,24 @@ Community name:
 </BODY>
 </HTML>
 EOM
+}
+
+sub html_error_message
+{
+    my($context, $errmsg) = @_;
+
+    print "<H2>SNMP Error</H2>\n";
+    print "<P>While ",$context,", the following error occurred:</P>\n";
+    print "<PRE>",&html_quote($errmsg),"</PRE></BODY></HTML>";
+}
+
+sub html_quote
+{
+    local ($_) = @_;
+
+    return $_ unless /[<>&]/;
+    s/&/&amp;/g;
+    s/</&lt;/g;
+    s/>/&gt;/g;
+    $_;
 }
