@@ -275,11 +275,9 @@ sub receive_response_1
     ## request to.  If this is not the case, we should probably ignore
     ## it, as it may relate to another request.
     ##
-    if ($remote_addr ne $this->{'remote_addr'}) {
-	if ($this->{'debug'}) {
-	    warn "Response came from ".&pretty_address ($remote_addr)
-		.", not ".&pretty_address($this->{'remote_addr'});
-	}
+    if ($this->{'debug'} && $remote_addr ne $this->{'remote_addr'}) {
+	warn "Response came from ".&pretty_address ($remote_addr)
+	    .", not ".&pretty_address($this->{'remote_addr'});
     }
 
     my @unwrapped = ();
