@@ -16,6 +16,7 @@
 ### Matthew Trunnell <matter@media.mit.edu>
 ### Tobias Oetiker <oetiker@ee.ethz.ch>
 ### Heine Peters <peters@dkrz.de>
+### Daniel L. Needles <dan_needles@INS.COM>
 ######################################################################
 
 package SNMP_Session;		
@@ -208,9 +209,19 @@ sub open
     $port = SNMP_Session::standard_udp_port unless defined $port;
     $max_pdu_len = 8000 unless defined $max_pdu_len;
 
-    $remote_addr = inet_aton ($remote_hostname)
+    ## Changed upon a suggestion by "Daniel L. Needles"
+    ## <dan_needles@INS.COM>: on Windows'95, passing numeric IP
+    ## addresses to inet_aton() seems to work, but is apparently very
+    ## slow.  So if we detect that case, we use a simple conversion.
+    ##
+    if ($remote_hostname =~ /^\d+\.\d+\.\d+\.\d+(.*)/ )
+    {
+      $remote_addr = pack("C*",split /\./, $remote_hostname);
+    } else {
+      $remote_addr = inet_aton ($remote_hostname)
 	|| return &error_return ($this."::open(\"$remote_hostname\",...): "
 				 ."couldn't resolve host name to IP address");
+    }
     $socket = 'SNMP'.sprintf ("%s:04x", inet_ntoa ($remote_addr), $port);
     (($name,$aliases,$udp_proto) = getprotobyname('udp'))
 	unless $udp_proto;
