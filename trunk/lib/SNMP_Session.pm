@@ -191,14 +191,14 @@ sub open
     $max_pdu_len = 8000 unless defined $max_pdu_len;
 
     $remote_addr = inet_aton ($remote_hostname)
-	|| return &error_return ("inet_aton($remote_hostname) failed");
-    $socket = 'SNMP'.sprintf ("%s:04x",
-			      inet_ntoa ($remote_addr), $port);
+	|| return &error_return ($this."::open(\"$remote_hostname\",...): "
+				 ."couldn't resolve host name to IP address");
+    $socket = 'SNMP'.sprintf ("%s:04x", inet_ntoa ($remote_addr), $port);
     (($name,$aliases,$udp_proto) = getprotobyname('udp'))
 	unless $udp_proto;
     $udp_proto=17 unless $udp_proto;
     socket ($socket, PF_INET, SOCK_DGRAM, $udp_proto)
-	|| return &error_return ("open($remote_hostname): socket: $!");
+	|| return &error_return ($this."::open(\"$remote_hostname\",...): socket: $!");
     $remote_addr = pack_sockaddr_in ($port, $remote_addr);
     bless {
 	'sock' => $socket,
@@ -347,7 +347,9 @@ sub to_string
 
 sub error_return
 {
-    warn @_;
+    my $message = shift;
+    $message =~ s/^/  /mg;
+    warn ("Error:\n".$message."\n");
     return undef;
 }
 
