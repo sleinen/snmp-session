@@ -28,6 +28,9 @@
 ### Alan Nichols <Alan.Nichols@Ebay.Sun.COM>
 ### Mike McCauley <mikem@open.com.au>
 ### Andrew W. Elble <elble@icculus.nsg.nwu.edu>
+### Brett T Warden <wardenb@eluminant.com>: pretty UInteger32
+### Michael Deegan <michael@cnspc18.murdoch.edu.au>
+### Sergio Macedo <macedo@tmp.com.br>
 ######################################################################
 
 package SNMP_Session;		
