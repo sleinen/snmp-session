@@ -71,12 +71,14 @@ use Math::BigInt;
 
 ### Forward declarations
 sub out_interface ($$$$$$@);
-sub pretty_bps ($$);
+sub pretty_ps ($$);
 sub usage ($ );
 
 my $version = '1';
 
 my $desired_interval = 5.0;
+
+my $switch_engine_p = 0;
 
 my $all_p = 0;
 
@@ -153,6 +155,8 @@ while (defined $ARGV[0]) {
 	} else {
 	    usage (1);
 	}
+    } elsif ($ARGV[0] eq '-s') {
+	$switch_engine_p = 1;
     } elsif ($ARGV[0] eq '-a') {
 	$all_p = 1;
     } elsif ($ARGV[0] eq '-c') {
@@ -204,6 +208,15 @@ my $ifHCOutOctets = [1,3,6,1,2,1,31,1,1,1,10];
 my $locIfInCRC = [1,3,6,1,4,1,9,2,2,1,1,12];
 my $locIfOutCRC = [1,3,6,1,4,1,9,2,2,1,1,12];
 
+my $cseL3SwitchedTotalPkts = [1,3,6,1,4,1,9,9,97,1,4,1,1,1];
+my $cseL3SwitchedTotalOctets = [1,3,6,1,4,1,9,9,97,1,4,1,1,];
+my $cseL3CandidateFlowHits = [1,3,6,1,4,1,9,9,97,1,4,1,1,];
+my $cseL3EstablishedFlowHits = [1,3,6,1,4,1,9,9,97,1,4,1,1,];
+my $cseL3ActiveFlows = [1,3,6,1,4,1,9,9,97,1,4,1,1,];
+my $cseL3FlowLearnFailures = [1,3,6,1,4,1,9,9,97,1,4,1,1,];
+my $cseL3IntFlowInvalids = [1,3,6,1,4,1,9,9,97,1,4,1,1,];
+my $cseL3ExtFlowInvalids = [1,3,6,1,4,1,9,9,97,1,4,1,1,];
+
 my $clock_ticks = POSIX::sysconf( &POSIX::_SC_CLK_TCK );
 
 my $win = new Curses
@@ -246,8 +259,10 @@ sub rate ($$$$@) {
 	: rate_32 ($old, $new, $interval, $multiplier);
 }
 
-sub rate_or_0 ($$$$$) {
+sub rate_or_0 ($$$@) {
     my ($old, $new, $interval, $counter64_p, $multiplier) = @_;
+    $counter64_p = 0 unless defined $counter64_p;
+    $multiplier = 1 unless defined $multiplier;
     return defined $new
 	? rate ($old, $new, $interval, $counter64_p, $multiplier)
 	: 0;
@@ -299,8 +314,8 @@ sub out_interface ($$$$$$@) {
 	$interval = ($clock-$old->{'clock'}) * 1.0 / $clock_ticks;
 	my $d_in = rate_or_0 ($old->{'in'}, $in, $interval, $counter64_p, 8);
 	my $d_out = rate_or_0 ($old->{'out'}, $out, $interval, $counter64_p, 8);
-	my $d_drops = rate_or_0 ($old->{'drops'}, $drops, $interval, 0, 1);
-	my $d_crc = rate_or_0 ($old->{'crc'}, $crc, $interval, 0, 1);
+	my $d_drops = rate_or_0 ($old->{'drops'}, $drops, $interval, 0);
+	my $d_crc = rate_or_0 ($old->{'crc'}, $crc, $interval, 0);
 	$alarm = ($d_crc != 0)
 	    || 0 && ($d_out > 0 && $d_in == 0);
 	print STDERR "\007" if $alarm && !$old->{'alarm'};
@@ -310,8 +325,8 @@ sub out_interface ($$$$$$@) {
 		      sprintf ("%2d  %-24s %s %s",
 			       $index,
 			       defined $descr ? $descr : '',
-			       pretty_bps ($in, $d_in),
-			       pretty_bps ($out, $d_out)))
+			       pretty_ps ($in, $d_in),
+			       pretty_ps ($out, $d_out)))
 	    unless $suppress_output;
 	if ($show_out_discards) {
 	    $win->addstr (sprintf (" %8.1f %s",
@@ -339,7 +354,65 @@ sub out_interface ($$$$$$@) {
 	unless $suppress_output;
 }
 
-sub pretty_bps ($$) {
+sub out_switching_engine ($$$$$$@) {
+    my ($index,
+	$pkts, $octets,
+	$candidate_flow_hits,
+	$established_flow_hits,
+	$active_flows,
+	$flow_learn_failures,
+	$int_flow_invalids,
+	$ext_flow_invalids) = @_;
+    my ($clock) = POSIX::times();
+    my $alarm = 0;
+
+    grep (defined $_ && ($_=pretty_print $_),
+	  ($pkts, $octets,
+	   $candidate_flow_hits,
+	   $established_flow_hits,
+	   $active_flows,
+	   $flow_learn_failures,
+	   $int_flow_invalids,
+	   $ext_flow_invalids));
+    $win->clrtoeol ()
+	unless $suppress_output;
+    return unless defined $pkts and defined $octets;
+    ## Suppress interfaces called "unrouted VLAN..."
+    if (!defined $old{$index}) {
+	$win->addstr ($linecount, 0,
+		      sprintf ("%2d %10s %10s",
+			       $index,
+			       defined $pkts ? $pkts : '-',
+			       defined $octets ? $octets : '-'))
+	    unless $suppress_output;
+    } else {
+	my $old = $old{$index};
+
+	$interval = ($clock-$old->{'clock'}) * 1.0 / $clock_ticks;
+	my $d_pkts = rate_or_0 ($old->{'pkts'}, $pkts, $interval, 0);
+	my $d_octets = rate_or_0 ($old->{'octets'}, $octets, $interval, 1);
+	$alarm = 0;
+	print STDERR "\007" if $alarm && !$old->{'alarm'};
+	print STDERR "\007" if !$alarm && $old->{'alarm'};
+	$win->standout() if $alarm && !$suppress_output;
+	$win->addstr ($linecount, 0,
+		      sprintf ("%2d  %s %s",
+			       $index,
+			       pretty_ps ($pkts, $d_pkts),
+			       pretty_ps ($octets, $d_octets)))
+	    unless $suppress_output;
+	$win->standend() if $alarm && !$suppress_output;
+    }
+    $old{$index} = {'pkts' => $pkts,
+		    'octets' => $octets,
+		    'clock' => $clock,
+		    'alarm' => $alarm};
+    ++$linecount;
+    $win->refresh ()
+	unless $suppress_output;
+}
+
+sub pretty_ps ($$) {
     my ($count, $bps) = @_;
     if (! defined $count) {
 	return '      -   ';
@@ -409,20 +482,39 @@ while (1) {
 	$win->standend();
     }
     $linecount = 3;
-    my @oids = ($ifDescr,$ifAdminStatus,$ifOperStatus);
-    if ($counter64_p) {
-	@oids = (@oids,$ifHCInOctets,$ifHCOutOctets);
+    my @oids;
+
+    if ($switch_engine_p) {
+	@oids = (
+		 $cseL3SwitchedTotalPkts,
+		 $cseL3SwitchedTotalOctets,
+		 $cseL3CandidateFlowHits,
+		 $cseL3EstablishedFlowHits,
+		 $cseL3ActiveFlows,
+		 $cseL3FlowLearnFailures,
+		 $cseL3IntFlowInvalids,
+		 $cseL3ExtFlowInvalids
+		 );
     } else {
-	@oids = (@oids,$ifInOctets,$ifOutOctets);
+	@oids = ($ifDescr,$ifAdminStatus,$ifOperStatus);
+	if ($counter64_p) {
+	    @oids = (@oids,$ifHCInOctets,$ifHCOutOctets);
+	} else {
+	    @oids = (@oids,$ifInOctets,$ifOutOctets);
+	}
+	@oids = (@oids,$ifAlias);
+	if ($cisco_p) {
+	    push @oids, $locIfInCRC;
+	}
+	if ($show_out_discards) {
+	    push @oids, $ifOutDiscards;
+	}
     }
-    @oids = (@oids,$ifAlias);
-    if ($cisco_p) {
-	push @oids, $locIfInCRC;
-    }
-    if ($show_out_discards) {
-	push @oids, $ifOutDiscards;
-    }
-    my $calls = $session->map_table_4
+    my $calls =
+	$switch_engine_p
+	? $session->map_table_4
+	(\@oids, \&out_switching_engine, $max_repetitions)
+	: $session->map_table_4
 	(\@oids, \&out_interface, $max_repetitions);
     $win->clrtobot (), $win->refresh ()
 	unless $suppress_output;
