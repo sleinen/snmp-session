@@ -3,7 +3,7 @@
 ### Name:	  ber-test.pl
 ### Date Created: Sat Feb  1 16:09:46 1997
 ### Author:	  Simon Leinen  <simon@switch.ch>
-### RCS $Id: ber-test.pl,v 1.8 2000-03-29 14:07:33 leinen Exp $
+### RCS $Id: ber-test.pl,v 1.9 2004-02-17 21:38:56 leinen Exp $
 ######################################################################
 ### Regression Tests for BER encoding/decoding
 ######################################################################
@@ -12,30 +12,41 @@ use BER;
 use Carp;
 use integer;
 
+use strict;
+
+## Prototypes
+sub regression_test ();
+sub encode_int_test ($$);
+sub decode_intlike_test ($$);
+sub eq_test ($$);
+sub equal_test ($$);
+sub string_hex ($ );
+sub encode_int_regression_test ();
+
 my $exitcode = 0;
-&regression_test;
+regression_test;
 exit ($exitcode);
 
 #### Regression Tests
 
-sub regression_test
+sub regression_test ()
 {
-    &eq_test ('encode_string ("public")', "\x04\x06\x70\x75\x62\x6C\x69\x63");
-    &eq_test ('encode_ip_address ("\x82\x3b\x04\x02")', "\x40\x04\x82\x3b\x04\x02");
-    &eq_test ('encode_ip_address ("130.59.4.2")', "\x40\x04\x82\x3b\x04\x02");
-    &encode_int_test (0x4aec3116, "\x02\x04\x4A\xEC\x31\x16");
-    &encode_int_test (0xec3116, "\x02\x04\x00\xEC\x31\x16");
-    &encode_int_test (0x3c3116, "\x02\x03\x3C\x31\x16");
-    &encode_int_test (-1234, "\x02\x02\xfb\x2e");
-    &decode_intlike_test ('"\x02\x01\x01"', 1);
-    &decode_intlike_test ('"\x02\x01\xff"', -1);
-    &decode_intlike_test ('"\x02\x02\x01\x02"', 258);
-    &decode_intlike_test ('"\x02\x02\xff\xff"', -1);
-    &decode_intlike_test ('"\x02\x03\x00\xff\xfe"', 65534);
-    &decode_intlike_test ('"\x02\x03\xff\xff\xfd"', -3);
-    &decode_intlike_test ('"\x02\x04\x00\xff\xff\xfd"', 16777213);
-    &decode_intlike_test ('"\x02\x04\xff\xff\xff\xfc"', -4);
-    &decode_intlike_test ('"\x02\x05\x00\xff\xff\xff\xfc"', 4294967292);
+    eq_test ('encode_string ("public")', "\x04\x06\x70\x75\x62\x6C\x69\x63");
+    eq_test ('encode_ip_address ("\x82\x3b\x04\x02")', "\x40\x04\x82\x3b\x04\x02");
+    eq_test ('encode_ip_address ("130.59.4.2")', "\x40\x04\x82\x3b\x04\x02");
+    encode_int_test (0x4aec3116, "\x02\x04\x4A\xEC\x31\x16");
+    encode_int_test (0xec3116, "\x02\x04\x00\xEC\x31\x16");
+    encode_int_test (0x3c3116, "\x02\x03\x3C\x31\x16");
+    encode_int_test (-1234, "\x02\x02\xfb\x2e");
+    decode_intlike_test ('"\x02\x01\x01"', 1);
+    decode_intlike_test ('"\x02\x01\xff"', -1);
+    decode_intlike_test ('"\x02\x02\x01\x02"', 258);
+    decode_intlike_test ('"\x02\x02\xff\xff"', -1);
+    decode_intlike_test ('"\x02\x03\x00\xff\xfe"', 65534);
+    decode_intlike_test ('"\x02\x03\xff\xff\xfd"', -3);
+    decode_intlike_test ('"\x02\x04\x00\xff\xff\xfd"', 16777213);
+    decode_intlike_test ('"\x02\x04\xff\xff\xff\xfc"', -4);
+    decode_intlike_test ('"\x02\x05\x00\xff\xff\xff\xfc"', 4294967292);
 
     ## Tests for integers > 2^32
     ##
@@ -45,56 +56,63 @@ sub regression_test
     ## Perl.  The comparisons still work right thanks to Math::BigInt,
     ## which is used by BER.pm for large integers.
     ##
-    &decode_intlike_test ('"\x02\x06\x00\x01\x00\x00\x00\x00"', 4294967296);
-    &decode_intlike_test ('"\x02\x09\x00\xff\xff\xff\xff\xff\xff\xff\xff"',
-			      "18446744073709551615");
-    require 'Math/BigInt.pm';
-
+    decode_intlike_test ('"\x02\x06\x00\x01\x00\x00\x00\x00"', 4294967296);
+    decode_intlike_test ('"\x02\x09\x00\xff\xff\xff\xff\xff\xff\xff\xff"',
+			 "18446744073709551615");
+    use Math::BigInt lib => 'GMP';
     {
 	## We have to disable warnings because of Math::BigInt
 	##
 	local $^W = 0;
-	&eq_test ('encode_int (new Math::BigInt ("18446744073709551615"))', "\x02\x09\x00\xff\xff\xff\xff\xff\xff\xff\xff");
+	eq_test ('encode_int (new Math::BigInt ("18446744073709551615"))',
+		 "\x02\x09\x00\xff\xff\xff\xff\xff\xff\xff\xff");
     }
 
-    &eq_test ('(&BER::decode_string ("\x04\x06public"))[0]', "public");
-    &eq_test ('(&BER::decode_oid ("\x06\x04\x01\x03\x06\x01"))[0]', 
-	      "\x06\x04\x01\x03\x06\x01");
+    eq_test ('(BER::decode_string ("\x04\x06public"))[0]', "public");
+    eq_test ('(BER::decode_oid ("\x06\x04\x01\x03\x06\x01"))[0]', 
+	     "\x06\x04\x01\x03\x06\x01");
     die unless encode_int_regression_test ();
 }
 
-sub encode_int_test {
-  my ($int, $encoded) = @_;
-  &eq_test ("encode_int ($int)", $encoded);
+sub encode_int_test ($$) {
+    my ($int, $encoded) = @_;
+    eq_test ("encode_int ($int)", $encoded);
 }
 
 
-sub decode_intlike_test
-{
+sub decode_intlike_test ($$) {
     my ($pdu, $wanted) = @_;
-    &equal_test ("(&BER::decode_intlike ($pdu))[0]", $wanted);
+    equal_test ("(BER::decode_intlike ($pdu))[0]", $wanted);
 }
 
-sub eq_test
-{
+sub eq_test ($$) {
     my ($expr, $wanted) = @_;
-    local ($result);
+    my $result;
     undef $@;
-    eval "\$result = $expr";
+    $result = eval $expr;
     croak "$@" if $@;
-    (warn $expr." => ".$result." != ".$wanted), ++$exitcode
+    (warn $expr." => ".string_hex ($result)." != ".string_hex ($wanted)), ++$exitcode
 	unless $result eq $wanted;
 }
 
-sub equal_test
-{
+sub equal_test ($$) {
     my ($expr, $wanted) = @_;
-    local ($result);
+    my $result;
     undef $@;
-    eval "\$result = $expr";
+    $result = eval $expr;
     croak "$@" if $@;
     (warn $expr." => ".$result." != ".$wanted), ++$exitcode
 	unless $result == $wanted;
+}
+
+sub string_hex ($ ) {
+    my $result = '';
+    my ($string) = @_;
+    my ($i);
+    for ($i = 0; $i < length $string; ++$i) {
+	$result .= sprintf "%02x", ord (substr ($string, $i, 1));
+    }
+    $result;
 }
 
 ### Test cases and harness kindly contributed by
@@ -177,7 +195,7 @@ EOM
     my ($r, $jnk, $val, @vals, $output, $wanted);
     undef @vals;
     
-    $r = &BER::encode_int($try);
+    $r = BER::encode_int($try);
     
     $output = "$try: ";
     @vals = unpack("C*", $r);
@@ -185,7 +203,7 @@ EOM
       {
 	$output .= sprintf ("%02x ", $val);
       }
-    ($r, $jnk) = &BER::decode_intlike_s($r, 1);
+    ($r, $jnk) = BER::decode_intlike_s($r, 1);
     $output .= "Decode to $r didn't match!" if ($r != $try);
     $wanted = shift @wanted;
     die "Mismatch in encode_int_regression_test:\n"
