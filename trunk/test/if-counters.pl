@@ -94,7 +94,11 @@ my $cisco_p = 0;
 
 my $counter64_p = 0;
 
-while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
+my $host;
+
+my $community;
+
+while (defined $ARGV[0]) {
     if ($ARGV[0] =~ /^-v/) {
 	if ($ARGV[0] eq '-v') {
 	    shift @ARGV;
@@ -161,13 +165,21 @@ while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
     } elsif ($ARGV[0] eq '-h') {
 	usage (0);
 	exit 0;
-    } else {
+    } elsif ($ARGV[0] =~ /^-/) {
 	usage (1);
+    } else {
+	if (!defined $host) {
+	    $host = $ARGV[0];
+	} elsif (!defined $community) {
+	    $community = $ARGV[0];
+	} else {
+	    usage (1);
+	}
     }
     shift @ARGV;
 }
-my $host = shift @ARGV || usage (1);
-my $community = shift @ARGV || "public";
+defined $host or usage (1);
+defined $community or $community = 'public';
 usage (1) if $#ARGV >= $[;
 
 my $ifDescr = [1,3,6,1,2,1,2,2,1,2];
