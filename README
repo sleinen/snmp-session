@@ -14,10 +14,16 @@ This archive contains Perl 5 modules SNMP_Session.pm and BER.pm,
 which, when used together, provide rudimentary access to remote SNMP
 (v1) agents.
 
+This module differs from existing SNMP packages in that it is
+completely stand-alone, i.e. you don't need to have another SNMP
+package such as CMU SNMP.  It is also written entirely in Perl, so you
+don't have to compile any C modules.  It uses the Perl 5 Socket.pm
+module and should therefore be very portable, even to non-Unix systems.
+
 The SNMP operations currently supported are "get" and "get-next".
-That means that you cannot set values or receive or generate SNMP
-traps using these routines.  Hopefully I will get around to
-implementing these other operations one day.
+That means that you can neither set variables in an agent, nor receive
+or generate SNMP traps using these routines.  Hopefully I will get
+around to implementing these other operations one day.
 
 For an excellent example of the type of application this is useful
 for, see version 2.0 (currently in beta) of Tobias Oetiker's ``mrtg''
@@ -43,7 +49,6 @@ The basic usage of these routines works like this:
 	# variables you want to get.
 
 	if ($session->get_request_response ($oid1, $oid2, ...)) {
-	    $session->{pdu_buffer};
 	    ($bindings) = $session->decode_get_response ($session->{pdu_buffer});
 	
 	    while ($bindings ne '') {
@@ -84,3 +89,61 @@ the returned bindings are simply printed using the BER::pretty_print
 function.  The hash %pretty_oids in the example contains a mapping
 from BER-encoded OIDs to "readable" instance names.  Look at the
 source of the real example programs to see how this is constructed.
+
+			     Future Plans
+			     ............
+
+			    SNMPv2 Support
+
+The SNMP_Session type has already been subclassed into SNMPv1_Session
+and SNMPv2_Session.  There is also some code to parse party database
+from the CMU SNMPv2 package.  The same should be done for the context
+database.  Then I can to write a method that creates a SNMPv2_Session
+from source and destination parties and a context, and write PDU
+encoding/decoding methods that handle the SNMPv2 packet formats.  MD5
+hashing and DES encryption should be added so that authentication and
+privacy can be used.  Then the getBulk PDU should be implemented.
+
+Unfortunately(?) this is all more or less moot since the
+``traditional'' SNMPv2 party model has been abandoned because it was
+considered to be too difficult to deploy.  The current standard is
+SNMPv2C, which is basically SNMPv2 with the community-based
+``security'' model from SNMPv1.  This would still be worthwhile
+because of the addition of getBulk and other improvements.  However, I
+don't have any agent implementation I could test my code against.
+
+			   More Operations
+
+Adding the set operation should not be very difficult.  Support for
+receiving and/or sending traps would be useful for some management
+applications.
+
+			     MIB parsing
+
+Currently, users of the module must provide numeric object IDs, and
+should know the types of the variables they request.  It would be nice
+if we could read MIBs in some form, and provide the possibility to use
+symbolic variable names and do automatic decoding according to the
+variable types specified in the MIB.
+
+However, parsing MIBs in their full ASN.1 syntax looks like overkill
+for such a small package.  As a compromise, we could use the output of
+an existing MIB compiler as input.  I have done this in another
+project (see http://celeste.switch.ch/~leinen/snmp/lisp/) with files
+from ISODE SNMP's MIB compiler.  A problem with ISODE SNMP is that it
+is itself part of a rather huge package, and I would prefer to use a
+small standalone MIB parser.  Ideally this MIB parser would handle all
+kinds of MIBs, also SNMPv2 ones, and be able to generate easily
+readable files with the information we need (name-to-oid and
+name-to-type or oid-to-type mappings).
+
+			  Higher-Level APIs
+
+The current programming interface is very close to the level of SNMP
+operations and PDUs.  For actual management applications, there are
+probably more convenient interfaces that could be defined.
+
+At the very least, there should be an interface to traverse tables,
+but of course this will only become relevant once the getNext is
+implemented.  The implementation of the table-traversing interface
+should use getBulk on SNMPv2 sessions.
