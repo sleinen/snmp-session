@@ -27,7 +27,7 @@ use strict qw(vars subs);	# cannot use strict subs here
 				# because of the way we use
 				# generated file handles
 use Exporter;
-use vars qw(@ISA $VERSION @EXPORT);
+use vars qw(@ISA $VERSION @EXPORT $errmsg $suppress_warnings);
 use Socket;
 use BER;
 
@@ -35,7 +35,7 @@ $VERSION = '0.55';
 
 @ISA = qw(Exporter);
 
-@EXPORT = qw();
+@EXPORT = qw(errmsg suppress_warnings);
 
 my $default_debug = 0;
 
