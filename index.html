@@ -26,11 +26,10 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
  <SAMP>Socket.pm</SAMP> module and should therefore be very
  portable, even to non-Unix systems. </P>
 
-<p> The SNMP operations currently supported are "get" and
- "get-next". That means that you can neither set variables in an
- agent, nor receive or generate SNMP traps using these routines.
- Hopefully I will get around to implementing these other operations
- one day. </p>
+<p> The SNMP operations currently supported are "get", "get-next", and
+ "set".  That means that you cannot receive or generate SNMP traps
+ using these routines.  Hopefully I will get around to implementing
+ these other operations one day. </p>
 
 <p> For an excellent example of the type of application this is useful
  for, see Tobias Oetiker's <a
@@ -45,17 +44,26 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 <ul>
 
-<li> The <b>BER</b> and <b>SNMP_Session</b> modules both have version
- numbers according to the convention in <b>Exporter.pm</b>.  That is,
- you can now insist on a minimal version of the modules by saying
- e.g.
+<li> SNMP_Session 0.52: setRequest support based on code contributed
+ by <a href="matter@dune.media.mit.edu">Matthew Trunnell.  See ``<a
+ href="#set-req-use">Set Requests</a>'' below for how this is used.
+
+<li> SNMP_Session 0.51: Improved error messages by printing the
+ session in error messages if possible, and the OID and error message
+ whenever the agent sends back an error.
+
+<li> SNMP_Session 0.50, BER 0.50: The <b>BER</b> and
+ <b>SNMP_Session</b> modules both have version numbers according to
+ the convention in <b>Exporter.pm</b>.  That is, you can now insist on
+ a minimal version of the modules by saying e.g.
 
 <pre>
 use BER "0.50";
-use SNMP_Session "0.50";
+use SNMP_Session "0.52";
 </pre>
 
  The initial version numbers are 0.50 for both modules.
+
 <li> The pretty printer should now print unsigned 32-bit values (such
  as Counters and Gauges) correctly, i.e. values larger than
  2<sup><font size=-2>31</font></sup> are printed as large positive
@@ -190,6 +198,14 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
  instance names.  Look at the source of the real example programs to
  see how this is constructed. </P>
 
+<H2><a name="set-req-use">Set Requests</a></H2>
+
+<p> Set requests are generated much like get or getNext requests are,
+ with the exception that you have to specify not just OIDs, but also
+ the values the variables should be set to.  Every binding is passed
+ as a reference to a two-element array, the first element being the
+ encoded OID and the second one the encoded value. </p>
+
 <H2>Future Plans</H2>
 
 <H3>SNMPv2 Support</H3>
@@ -215,9 +231,10 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
 
 <H3>More Operations</H3>
 
-<p> Adding the <SAMP>set</SAMP> operation should not be very
- difficult.  Support for receiving and/or sending traps would be
- useful for some management applications. </p>
+<p> Support for receiving traps would be useful for some management
+ applications.  There may even be use for sending traps, but I cannot
+ imagine any except when people would start agents using this library,
+ and I don't know whether that would be a good idea. </p>
 
 <H3>MIB parsing</H3>
 
@@ -245,15 +262,13 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
  are probably more convenient interfaces that could be defined. </P>
 
 <P> At the very least, there should be an interface to traverse
- tables, but of course this will only become relevant once the
- <SAMP>getNext</SAMP> is implemented.  The implementation of the
- table-traversing interface should use <SAMP>getBulk</SAMP> on SNMPv2
- sessions. </P>
+ tables.  The implementation of the table-traversing interface should
+ use <SAMP>getBulk</SAMP> on SNMPv2 sessions. </P>
 
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-Last modified: Wed Jul  9 18:17:10 MET DST 1997
+Last modified: Sat Aug 16 01:51:16 MDT 1997
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
