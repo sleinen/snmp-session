@@ -1,5 +1,11 @@
 README
+README.SNMP_util
+Makefile.PL
+MANIFEST
 index.html
+lib/BER.pm
+lib/SNMP_Session.pm
+lib/SNMP_util.pm
 test/README
 test/test.pl
 test/set-test.pl
@@ -16,10 +22,5 @@ test/map-table.pl
 test/test-table.pl
 test/if-status.pl
 test/if-to-routes.pl
+test/if-counters.pl
 test/sun-ps
-README.SNMP_util
-Makefile.PL
-MANIFEST
-lib/BER.pm
-lib/SNMP_Session.pm
-lib/SNMP_util.pm
