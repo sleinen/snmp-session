@@ -444,7 +444,7 @@ sub open
     if (defined $bind_to_port) {
 	my $sockaddr = sockaddr_in ($bind_to_port, INADDR_ANY);
 	bind ($socket, $sockaddr)
-	    || return $this->error_return ("binding to port %bind_to_port: $!");
+	    || return $this->error_return ("binding to port $bind_to_port: $!");
     }
     $remote_addr = pack_sockaddr_in ($port, $remote_addr);
     bless {
