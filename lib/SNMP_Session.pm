@@ -58,6 +58,9 @@ my $default_retries = 5;
 ###
 my $default_backoff = 1.0;
 
+$SNMP_Session::errmsg = '';
+$SNMP_Session::suppress_warnings = 0;
+
 sub get_request  { 0 | context_flag };
 sub getnext_request  { 1 | context_flag };
 sub get_response { 2 | context_flag };
@@ -78,17 +81,24 @@ sub encode_request
 {
     my($this, $reqtype, @encoded_oids_or_pairs) = @_;
     my($request);
+    local($_);
 
     ++$this->{request_id};
-    grep ($_=(ref ($_) eq 'ARRAY'
-	      ? &encode_sequence ($_->[0], $_->[1])
-	      : &encode_sequence ($_, encode_null())),
-	  @encoded_oids_or_pairs);
+    foreach $_ (@encoded_oids_or_pairs) {
+      if (ref ($_) eq 'ARRAY') {
+	$_ = &encode_sequence ($_->[0], $_->[1])
+	  || return $this->ber_error ("encoding pair");
+      } else {
+	$_ = &encode_sequence ($_, encode_null())
+	  || return $this->ber_error ("encoding value/null pair");
+      }
+    }
     $request = encode_tagged_sequence
 	($reqtype,
 	 encode_int ($this->{request_id}),
 	 encode_int_0, encode_int_0,
-	 encode_sequence (@encoded_oids_or_pairs));
+	 encode_sequence (@encoded_oids_or_pairs))
+	  || return $this->ber_error ("encoding request PDU");
     return $this->wrap_request ($request);
 }
 
@@ -160,6 +170,9 @@ sub request_response_4
     my $retries = $this->retries;
     my $timeout = $this->timeout;
 
+    ## Encoding may have returned an error.
+    return undef unless defined($req);
+
     $this->send_query ($req)
 	|| return $this->error ("send_query: $!");
     while ($retries > 0) {
@@ -182,6 +195,41 @@ sub request_response_4
 	}
     }
     0;
+}
+
+
+sub error_return
+{
+    my $message = shift;
+    $SNMP_Session::errmsg = $message;
+    unless ($SNMP_Session::suppress_warnings) {
+	$message =~ s/^/  /mg;
+	warn ("Error:\n".$message."\n");
+    }
+    return undef;
+}
+
+sub error
+{
+    my $this = shift;
+    my $message = shift;
+    my $session = $this->to_string;
+    $SNMP_Session::errmsg = $message."\n".$session;
+    unless ($SNMP_Session::suppress_warnings) {
+	$session =~ s/^/  /mg;
+	$message =~ s/^/  /mg;
+	warn ("SNMP Error:\n".$SNMP_Session::errmsg."\n");
+    }
+    return undef;
+}
+
+sub ber_error ($ )
+{
+  my ($this,$type) = @_;
+  my ($errmsg) = $BER::errmsg;
+
+  $errmsg =~ s/^/  /mg;
+  return $this->error ("$type:\n$errmsg");
 }
 
 sub version { $VERSION; }
@@ -264,7 +312,8 @@ sub wrap_request
 
     encode_sequence (encode_int ($this->snmp_version),
 		     encode_string ($this->{community}),
-		     $request);
+		     $request)
+      || return $this->ber_error ("wrapping up request PDU");
 }
 
 my @error_status_code = qw(noError tooBig noSuchName badValue readOnly
@@ -283,7 +332,7 @@ sub unwrap_response_5
     ($snmpver,$community,$request_id,$error_status,$error_index,@rest)
 	= decode_by_template ($response, "%{%i%s%*{%i%i%i%{%@",
 			      $tag);
-    return $this->ber_error ("BER decoding error")
+    return $this->ber_error ("Error decoding response PDU")
       unless defined $snmpver;
     return $this->error ("Received SNMP response with unknown snmp-version field $snmpver")
 	unless $snmpver == $this->snmp_version;
@@ -303,9 +352,11 @@ sub unwrap_response_5
     }
     if ($this->{'debug'}) {
 	warn "$community != $this->{community}"
-	    unless $community eq $this->{community};
+	    unless $SNMP_Session::suppress_warnings
+	      || $community eq $this->{community};
 	warn "$request_id != $this->{request_id}"
-	    unless $request_id == $this->{request_id};
+	    unless $SNMP_Session::suppress_warnings
+	      || $request_id == $this->{request_id};
     }
     return undef unless $community eq $this->{community};
     return undef unless $request_id == $this->{request_id};
@@ -335,12 +386,13 @@ sub receive_response_2
     ##
     if ($this->{'debug'} && $remote_addr ne $this->{'remote_addr'}) {
 	warn "Response came from ".&pretty_address ($remote_addr)
-	    .", not ".&pretty_address($this->{'remote_addr'});
+	    .", not ".&pretty_address($this->{'remote_addr'})
+		unless $SNMP_Session::suppress_warnings;
     }
 
     my @unwrapped = ();
-    eval '@unwrapped = $this->unwrap_response_5 ($response, $response_tag, $this->{"request_id"}, $oids)';
-    if ($@ || !$unwrapped[0]) {
+    @unwrapped = $this->unwrap_response_5 ($response, $response_tag, $this->{"request_id"}, $oids);
+    if (!defined $unwrapped[0]) {
 	$this->{'unwrapped'} = undef;
 	return 0;
     }
@@ -379,34 +431,6 @@ sub to_string
 ##    sprintf ("SNMP_Session: %s (size %d timeout %g)",
 ##	       &pretty_address ($this->remote_addr),$this->max_pdu_len,
 ##	       $this->timeout);
-}
-
-sub error_return
-{
-    my $message = shift;
-    $message =~ s/^/  /mg;
-    warn ("Error:\n".$message."\n");
-    return undef;
-}
-
-sub error
-{
-    my $this = shift;
-    my $message = shift;
-    my $session = $this->to_string;
-    $session =~ s/^/  /mg;
-    $message =~ s/^/  /mg;
-    warn ("SNMP Error:\n".$message."\n".$session."\n");
-    return undef;
-}
-
-sub ber_error ($ )
-{
-  my ($this,$type) = @_;
-  my ($errmsg) = $BER::errmsg;
-
-  $errmsg =~ s/^/  /mg;
-  return $this->error ("$type:\n$errmsg");
 }
 
 1;
