@@ -194,12 +194,13 @@ sub request_response_4
 		|| return $this->error ("send_query: $!");
 	}
     }
-    0;
+    $this->error ("no response received");
 }
 
 
 sub error_return
 {
+    my $this = shift;
     my $message = shift;
     $SNMP_Session::errmsg = $message;
     unless ($SNMP_Session::suppress_warnings) {
@@ -267,15 +268,14 @@ sub open
       $remote_addr = pack("C*",split /\./, $remote_hostname);
     } else {
       $remote_addr = inet_aton ($remote_hostname)
-	|| return &error_return ($this."::open(\"$remote_hostname\",...): "
-				 ."couldn't resolve host name to IP address");
+	|| return $this->error_return ("can't resolve \"$remote_hostname\" to IP address");
     }
     $socket = 'SNMP'.sprintf ("%s:04x", inet_ntoa ($remote_addr), $port);
     (($name,$aliases,$udp_proto) = getprotobyname('udp'))
 	unless $udp_proto;
     $udp_proto=17 unless $udp_proto;
     socket ($socket, PF_INET, SOCK_DGRAM, $udp_proto)
-	|| return &error_return ($this."::open(\"$remote_hostname\",...): socket: $!");
+	|| return $this->error_return ("creating socket: $!");
     $remote_addr = pack_sockaddr_in ($port, $remote_addr);
     bless {
 	'sock' => $socket,
