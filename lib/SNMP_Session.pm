@@ -32,6 +32,8 @@
 ### Michael Deegan <michael@cnspc18.murdoch.edu.au>
 ### Sergio Macedo <macedo@tmp.com.br>
 ### Jakob Ilves (/IlvJa) <jakob.ilves@oracle.com>: PDU capture
+### Valerio Bontempi <v.bontempi@inwind.it>: IPv6 support
+### Lorenzo Colitti <lorenzo@colitti.com>: IPv6 support
 ######################################################################
 
 package SNMP_Session;		
@@ -45,13 +47,19 @@ use Socket;
 use BER;
 use Carp;
 
+BEGIN {
+    if (eval {require Socket6;})  {
+	import Socket6;
+    }
+}
+
 sub map_table ($$$ );
 sub map_table_4 ($$$$);
 sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.95';
+$VERSION = '0.96';
 
 @ISA = qw(Exporter);
 
@@ -488,10 +496,29 @@ sub oid_diff ($$) {
   substr ($full_dotnot, length ($base_dotnot)+1);
 }
 
+# Pretty_address returns a human-readable representation of an IPv4 or IPv6 address.
 sub pretty_address {
     my($addr) = shift;
-    my($port,$ipaddr) = unpack_sockaddr_in($addr);
-    return sprintf ("[%s].%d",inet_ntoa($ipaddr),$port);
+    my($port, $addrunpack, $addrstr);
+
+    # Disable strict subs to stop old versions of perl from
+    # complaining about AF_INET6 when Socket6 is not available
+    no strict "subs";
+
+    # Use eval() both to check that we have IPv6 support and that
+    # the address is an IPv6 address.
+    eval {
+	($port,$addrunpack) = unpack_sockaddr_in6 ($addr);
+	$addrstr = inet_ntop (AF_INET6, $addrunpack);
+    };
+    if($@) {
+	($port,$addrunpack) = unpack_sockaddr_in ($addr);
+	$addrstr = inet_ntoa ($addrunpack);
+    }
+
+    use strict "subs";
+
+    return sprintf ("[%s].%d", $addrstr, $port);
 }
 
 sub version { $VERSION; }
@@ -537,22 +564,47 @@ use BER;
 use IO::Socket;
 use Carp;
 
+# Check whether IPv6 libraries are available, and if so load them
+my $ipv6available;
+
+BEGIN {
+    $ipv6available = 0;
+    if (eval {require Socket6;})  {
+	import Socket6;
+
+	if (eval {require IO::Socket::INET6;})  {
+	    import IO::Socket::INET6;
+	}
+	if ( ! $@ ) {
+	    $ipv6available = 1;
+	}
+    }
+}
+
 @ISA = qw(SNMP_Session);
 
 sub snmp_version { 0 }
 
+# Supports both IPv4 and IPv6.
+# Numeric IPv6 addresses must be passed between square brackets []
 sub open {
     my($this,
        $remote_hostname,$community,$port,
        $max_pdu_len,$local_port,$max_repetitions,
-       $local_hostname) = @_;
-    my($remote_addr,$socket);
+       $local_hostname,$ipv4only) = @_;
+    my($remote_addr,$socket,$sockfamily);
+
+    $ipv4only = 1 unless defined $ipv4only;
+    $sockfamily = AF_INET;
 
     $community = 'public' unless defined $community;
     $port = SNMP_Session::standard_udp_port unless defined $port;
     $max_pdu_len = 8000 unless defined $max_pdu_len;
     $max_repetitions = $default_max_repetitions
 	unless defined $max_repetitions;
+
+    if ($ipv4only || ! $ipv6available) {
+	# IPv4-only code, uses only Socket and INET calls
     if (defined $remote_hostname) {
 	$remote_addr = inet_aton ($remote_hostname)
 	    or return $this->error_return ("can't resolve \"$remote_hostname\" to IP address");
@@ -570,12 +622,52 @@ sub open {
     }
     $remote_addr = pack_sockaddr_in ($port, $remote_addr)
 	if defined $remote_addr;
+    } else {
+	# IPv6-capable code. Will use IPv6 or IPv4 depending on the address.
+	# Uses Socket6 and INET6 calls.
+
+	# Turn off strict subs because NI_NUMERICHOST and NI_NUMERICSERV
+	# are only defined in Socket6.pm, which may not be available,
+	# and AF_INET6 is defined in Socket.pm only in recent versions.
+	no strict "subs";
+
+	# If it's a numeric IPv6 addresses, remove square brackets
+	if ($remote_hostname =~ /^\[.*\]$/) {
+	    $remote_hostname = substr($remote_hostname, 1);
+	    chop $remote_hostname;
+	}
+
+	my (@res, $socktype_tmp, $proto_tmp, $canonname_tmp);
+	@res = getaddrinfo($remote_hostname, $port, AF_UNSPEC, SOCK_DGRAM);
+	($sockfamily, $socktype_tmp, $proto_tmp, $remote_addr, $canonname_tmp) = @res;
+	if (scalar(@res) < 5) {
+	    return $this->error_return ("can't resolve \"$remote_hostname\" to IPv6 address");
+	}
+
+	# Turn strict back on.
+	use strict "subs";
+
+	if ($SNMP_Session::recycle_socket && defined $the_socket) {
+	    $socket = $the_socket;
+	} else {
+	    $socket = IO::Socket::INET6->new(Proto => 17,
+					     Type => SOCK_DGRAM,
+					     LocalAddr => $local_hostname,
+					     LocalPort => $local_port,
+					     PeerAddr => $remote_hostname,
+					     PeerPort => $port)
+	         || return $this->error_return ("creating socket: $!");
+	    $the_socket = $socket
+	        if $SNMP_Session::recycle_socket;
+	}
+    }
     bless {
 	   'sock' => $socket,
 	   'sockfileno' => fileno ($socket),
 	   'community' => $community,
 	   'remote_hostname' => $remote_hostname,
 	   'remote_addr' => $remote_addr,
+	   'sockfamily' => $sockfamily,
 	   'max_pdu_len' => $max_pdu_len,
 	   'pdu_buffer' => '\0' x $max_pdu_len,
 	   'request_id' =>
@@ -696,10 +788,30 @@ sub send_query ($$) {
 ## agents that don't respond from UDP port 161, and there are agents
 ## that don't respond from the IP address the query had been sent to.
 ##
+## The address family is stored in the session object. We could use
+## sockaddr_family() to determine it from the sockaddr, but this function
+## is only available in recent versions of Socket.pm.
 sub sa_equal_p ($$$) {
     my ($this, $sa1, $sa2) = @_;
-    my ($p1, $a1) = sockaddr_in ($sa1);
-    my ($p2, $a2) = sockaddr_in ($sa2);
+    my ($p1,$a1,$p2,$a2);
+
+    # Disable strict subs to stop old versions of perl from
+    # complaining about AF_INET6 when Socket6 is not available
+    no strict "subs";
+    if($this->{'sockfamily'} == AF_INET) {
+	# IPv4 addresses
+	($p1,$a1) = unpack_sockaddr_in ($sa1);
+	($p2,$a2) = unpack_sockaddr_in ($sa2);
+    } elsif($this->{'sockfamily'} == AF_INET6) {
+	# IPv6 addresses
+	($p1,$a1) = unpack_sockaddr_in6 ($sa1);
+	($p2,$a2) = unpack_sockaddr_in6 ($sa2);
+    } else {
+	use strict "subs";
+	return 0;
+    }
+    use strict "subs";
+
     if (! $this->{'lenient_source_address_matching'}) {
 	return 0 if $a1 ne $a2;
     }
@@ -763,7 +875,15 @@ sub receive_trap {
     my ($remote_addr, $iaddr, $port, $trap);
     $remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,0);
     return undef unless $remote_addr;
-    ($port, $iaddr) = sockaddr_in($remote_addr);
+    # Hack. The proper way would be to use sockaddr_family, but this
+    # is only available in recent versions of Socket.pm.
+    eval {
+	($port,$iaddr) = unpack_sockaddr_in6($remote_addr);
+    };
+    if($@) {
+	($port,$iaddr) = unpack_sockaddr_in($remote_addr);
+    }
+
     $trap = $this->{'pdu_buffer'};
     return ($trap, $iaddr, $port);
 }
@@ -806,7 +926,16 @@ sub receive_request {
     $remote_addr = recv($this->sock, $this->{'pdu_buffer'}, 
 			$this->{'max_pdu_len'}, 0);
     return undef unless $remote_addr;
-    ($port, $iaddr) = sockaddr_in($remote_addr);
+
+    # Hack. The proper way would be to use sockaddr_family, but this
+    # is only available in recent versions of Socket.pm.
+    eval {
+	($port,$iaddr) = unpack_sockaddr_in6($remote_addr);
+    };
+    if($@) {
+	($port,$iaddr) = unpack_sockaddr_in($remote_addr);
+    }
+
     $request = $this->{'pdu_buffer'};
     return ($request, $iaddr, $port);
 }
