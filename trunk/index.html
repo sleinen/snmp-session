@@ -45,6 +45,13 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 <ul>
 
+<li> SNMP_Session.pm 0.62: Scoping problem with pretty_address()
+ fixed.
+
+<li> Makefile.PL: New file which allows for easy installation
+ according to standard Perl convention.  Kudos to <a
+ href="mailto:clintdw@netcom.com">Clinton Wong</a>.
+
 <li> SNMP_Session.pm 0.61: The sender address of the last response
  received for a session is stored in
  <em>$session->{'last_sender_addr'}</em>.  In connection with
@@ -454,7 +461,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19981021
+19981022
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
