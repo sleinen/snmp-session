@@ -65,6 +65,8 @@ my $version = '1';
 
 my $desired_interval = 5.0;
 
+my $all_p = 0;
+
 while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
     if ($ARGV[0] =~ /^-v/) {
 	if ($ARGV[0] eq '-v') {
@@ -92,6 +94,8 @@ while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
 	} else {
 	    usage (1);
 	}
+    } elsif ($ARGV[0] eq '-a') {
+	$all_p = 1;
     } elsif ($ARGV[0] eq '-h') {
 	usage (0);
 	exit 0;
@@ -133,8 +137,9 @@ sub out_interface {
     grep (defined $_ && ($_=pretty_print $_),
 	  ($descr, $admin, $oper, $in, $out, $crc, $comment));
     $win->clrtoeol ();
-    return unless defined $oper && $oper == 1;	# up
-    return unless defined $in && defined $out && defined $crc;
+    return unless $all_p || defined $oper && $oper == 1;	# up
+    return unless defined $in && defined $out;
+
     if (!defined $old{$index}) {
 	$win->addstr ($linecount, 0,
 		      sprintf ("%2d  %-24s %10s %10s %10s %s\n",
@@ -152,16 +157,16 @@ sub out_interface {
 	my $d_out = $out ? ($out-$old->{'out'})*8/$interval : 0;
 	my $d_crc = $crc ? ($crc-$old->{'crc'})/$interval : 0;
 	$alarm = ($d_crc != 0)
-	    || ($d_out > 0 && $d_in == 0);
+	    || 0 && ($d_out > 0 && $d_in == 0);
 	print STDERR "\007" if $alarm && !$old->{'alarm'};
 	print STDERR "\007" if !$alarm && $old->{'alarm'};
 	$win->standout() if $alarm;
 	$win->addstr ($linecount, 0,
-		      sprintf ("%2d  %-24s %10.1f %10.1f %10.1f %s\n",
+		      sprintf ("%2d  %-24s %s %s %10.1f %s\n",
 			       $index,
 			       defined $descr ? $descr : '',
-			       defined $in ? $d_in : 0,
-			       defined $out ? $d_out : 0,
+			       pretty_bps ($in, $d_in),
+			       pretty_bps ($out, $d_out),
 			       defined $crc ? $d_crc : 0,
 			       defined $comment ? $comment : ''));
 	$win->standend() if $alarm;
@@ -173,6 +178,19 @@ sub out_interface {
 		    'alarm' => $alarm};
     ++$linecount;
     $win->refresh ();
+}
+
+sub pretty_bps ($$) {
+    my ($count, $bps) = @_;
+    if (! defined $count) {
+	return '      -   ';
+    } elsif ($bps > 1000000) {
+	return sprintf ("%8.4f M", $bps/1000000);
+    } elsif ($bps > 1000) {
+	return sprintf ("%9.1fk", $bps/1000);
+    } else {
+	return sprintf ("%10.0f", $bps);
+    }
 }
 
 $win->erase ();
