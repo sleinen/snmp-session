@@ -3,8 +3,8 @@
 ### Author:       Simon Leinen  <simon@switch.ch>
 ### Date Created: 21-Feb-1999
 ###
-### Real-time full-screen display of the octet and CRC error counters
-### on interfaces of an SNMP-capable node
+### Real-time full-screen display of the octet and (Cisco-specific)
+### CRC error counters on interfaces of an SNMP-capable node
 ###
 ### Description: 
 ###
@@ -67,6 +67,14 @@ my $desired_interval = 5.0;
 
 my $all_p = 0;
 
+my $max_repetitions = 0;
+
+my $suppress_output = 0;
+
+my $debug = 0;
+
+my $cisco_p = 0;
+
 while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
     if ($ARGV[0] =~ /^-v/) {
 	if ($ARGV[0] eq '-v') {
@@ -79,6 +87,18 @@ while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
 	    $version = '1';
 	} elsif ($ARGV[0] eq '2c') {
 	    $version = '2c';
+	} else {
+	    usage (1);
+	}
+    } elsif ($ARGV[0] =~ /^-m/) {
+	if ($ARGV[0] eq '-m') {
+	    shift @ARGV;
+	    usage (1) unless defined $ARGV[0];
+	} else {
+	    $ARGV[0] = substr($ARGV[0], 2);
+	}
+	if ($ARGV[0] =~ /^[0-9]+$/) {
+	    $max_repetitions = $ARGV[0];
 	} else {
 	    usage (1);
 	}
@@ -96,6 +116,13 @@ while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
 	}
     } elsif ($ARGV[0] eq '-a') {
 	$all_p = 1;
+    } elsif ($ARGV[0] eq '-c') {
+	$cisco_p = 1;
+    } elsif ($ARGV[0] eq '-n') {
+	$suppress_output = 1;
+    } elsif ($ARGV[0] eq '-d') {
+	$suppress_output = 1;
+	$debug = 1;
     } elsif ($ARGV[0] eq '-h') {
 	usage (0);
 	exit 0;
@@ -115,14 +142,14 @@ my $ifInOctets = [1,3,6,1,2,1,2,2,1,10];
 my $ifOutOctets = [1,3,6,1,2,1,2,2,1,16];
 my $ifInUcastPkts = [1,3,6,1,2,1,2,2,1,11];
 my $ifOutUcastPkts = [1,3,6,1,2,1,2,2,1,17];
+## Cisco-specific variables enabled by `-c' option
 my $locIfInCRC = [1,3,6,1,4,1,9,2,2,1,1,12];
-my $locIfInBitsSec = [1,3,6,1,4,1,9,2,2,1,1,6];
-my $locIfOutBitsSec = [1,3,6,1,4,1,9,2,2,1,1,8];
 my $locIfDescr = [1,3,6,1,4,1,9,2,2,1,1,28];
 
 my $clock_ticks = POSIX::sysconf( &POSIX::_SC_CLK_TCK );
 
-my $win = new Curses;
+my $win = new Curses
+    unless $suppress_output;
 
 my %old;
 my $sleep_interval = $desired_interval + 0.0;
@@ -136,19 +163,31 @@ sub out_interface {
 
     grep (defined $_ && ($_=pretty_print $_),
 	  ($descr, $admin, $oper, $in, $out, $crc, $comment));
-    $win->clrtoeol ();
+    $win->clrtoeol ()
+	unless $suppress_output;
     return unless $all_p || defined $oper && $oper == 1;	# up
     return unless defined $in && defined $out;
 
     if (!defined $old{$index}) {
-	$win->addstr ($linecount, 0,
-		      sprintf ("%2d  %-24s %10s %10s %10s %s\n",
-			       $index,
-			       defined $descr ? $descr : '',
-			       defined $in ? $in : '-',
-			       defined $out ? $out : '-',
-			       defined $crc ? $crc : '-',
-			       defined $comment ? $comment : ''));
+	if ($cisco_p) {
+	    $win->addstr ($linecount, 0,
+			  sprintf ("%2d  %-24s %10s %10s %10s %s\n",
+				   $index,
+				   defined $descr ? $descr : '',
+				   defined $in ? $in : '-',
+				   defined $out ? $out : '-',
+				   defined $crc ? $crc : '-',
+				   defined $comment ? $comment : ''))
+		unless $suppress_output;
+	} else {
+	    $win->addstr ($linecount, 0,
+			  sprintf ("%2d  %-24s %10s %10s\n",
+				   $index,
+				   defined $descr ? $descr : '',
+				   defined $in ? $in : '-',
+				   defined $out ? $out : '-'))
+		unless $suppress_output;
+	}
     } else {
 	my $old = $old{$index};
 
@@ -160,16 +199,27 @@ sub out_interface {
 	    || 0 && ($d_out > 0 && $d_in == 0);
 	print STDERR "\007" if $alarm && !$old->{'alarm'};
 	print STDERR "\007" if !$alarm && $old->{'alarm'};
-	$win->standout() if $alarm;
-	$win->addstr ($linecount, 0,
-		      sprintf ("%2d  %-24s %s %s %10.1f %s\n",
-			       $index,
-			       defined $descr ? $descr : '',
-			       pretty_bps ($in, $d_in),
-			       pretty_bps ($out, $d_out),
-			       defined $crc ? $d_crc : 0,
-			       defined $comment ? $comment : ''));
-	$win->standend() if $alarm;
+	$win->standout() if $alarm && !$suppress_output;
+	if ($cisco_p) {
+	    $win->addstr ($linecount, 0,
+			  sprintf ("%2d  %-24s %s %s %10.1f %s\n",
+				   $index,
+				   defined $descr ? $descr : '',
+				   pretty_bps ($in, $d_in),
+				   pretty_bps ($out, $d_out),
+				   defined $crc ? $d_crc : 0,
+				   defined $comment ? $comment : ''))
+		unless $suppress_output;
+	} else {
+	    $win->addstr ($linecount, 0,
+			  sprintf ("%2d  %-24s %s %s\n",
+				   $index,
+				   defined $descr ? $descr : '',
+				   pretty_bps ($in, $d_in),
+				   pretty_bps ($out, $d_out)))
+		unless $suppress_output;
+	}
+	$win->standend() if $alarm && !$suppress_output;
     }
     $old{$index} = {'in' => $in,
 		    'out' => $out,
@@ -177,7 +227,8 @@ sub out_interface {
 		    'clock' => $clock,
 		    'alarm' => $alarm};
     ++$linecount;
-    $win->refresh ();
+    $win->refresh ()
+	unless $suppress_output;
 }
 
 sub pretty_bps ($$) {
@@ -193,12 +244,14 @@ sub pretty_bps ($$) {
     }
 }
 
-$win->erase ();
+$win->erase ()
+    unless $suppress_output;
 my $session =
     ($version eq '1' ? SNMPv1_Session->open ($host, $community, 161)
      : $version eq '2c' ? SNMPv2c_Session->open ($host, $community, 161)
      : die "Unknown SNMP version $version")
   || die "Opening SNMP_Session";
+$session->debug (1) if $debug;
 
 ### max_repetitions:
 ###
@@ -209,31 +262,48 @@ my $session =
 ### map_table needs an extra set of bindings to detect the end of the
 ### table.
 ###
-my $max_repetitions = $session->default_max_repetitions;
+$max_repetitions = $session->default_max_repetitions
+    unless $max_repetitions;
 while (1) {
-    $win->addstr (0, 0, sprintf ("%-20s interval %4.1fs %d reps",
-				 $host,
-				 $interval || $desired_interval,
-				 $max_repetitions));
-    $win->standout();
-    $win->addstr (1, 0,
-		  sprintf ("%2s  %-24s %10s %10s %10s %s\n",
-			   "ix", "name",
-			   "bits/s", "bits/s",
-			   "pkts/s",
-			   "description"));
-    $win->addstr (2, 0,
-		  sprintf ("%2s  %-24s %10s %10s %10s %s\n",
-			   "", "",
-			   "in", "out",
-			   "CRC",
-			   ""));
-    $win->clrtoeol ();
-    $win->standend();
+    unless ($suppress_output) {
+	$win->addstr (0, 0, sprintf ("%-20s interval %4.1fs %d reps",
+				     $host,
+				     $interval || $desired_interval,
+				     $max_repetitions));
+	$win->standout();
+	if ($cisco_p) {
+	    $win->addstr (1, 0,
+			  sprintf (("%2s  %-24s %10s %10s %10s %s\n"),
+				   "ix", "name",
+				   "bits/s", "bits/s",
+				   "pkts/s",
+				   "description"));
+	    $win->addstr (2, 0,
+			  sprintf (("%2s  %-24s %10s %10s %10s %s\n"),
+				   "", "",
+				   "in", "out",
+				   "CRC",
+				   ""));
+	} else {
+	    $win->addstr (1, 0,
+			  sprintf (("%2s  %-24s %10s %10s\n"),
+				   "ix", "name",
+				   "bits/s", "bits/s"));
+	    $win->addstr (2, 0,
+			  sprintf (("%2s  %-24s %10s %10s\n"),
+				   "", "",
+				   "in", "out"));
+	}
+	$win->clrtoeol ();
+	$win->standend();
+    }
     $linecount = 3;
     my $calls = $session->map_table_4
-	([$ifDescr,$ifAdminStatus,$ifOperStatus,
-	  $ifInOctets,$ifOutOctets,$locIfInCRC,$locIfDescr],
+	(($cisco_p 
+	  ? [$ifDescr,$ifAdminStatus,$ifOperStatus,
+	     $ifInOctets,$ifOutOctets,$locIfInCRC,$locIfDescr]
+	  : [$ifDescr,$ifAdminStatus,$ifOperStatus,
+	     $ifInOctets,$ifOutOctets]),
 	 \&out_interface,
 	 $max_repetitions);
     $max_repetitions = $calls + 1
@@ -246,10 +316,12 @@ while (1) {
 
 sub usage ($) {
     warn <<EOM;
-Usage: $0 [-t secs] [-v (1|2c)] switch [community]
+Usage: $0 [-t secs] [-v (1|2c)] [-m max] hostname [community]
        $0 -h
 
   -h           print this usage message and exit.
+
+  -c           also use Cisco-specific variables (locIfInCrc and locIfDescr)
 
   -t secs      specifies the sampling interval.  Defaults to 5 seconds.
 
@@ -259,7 +331,10 @@ Usage: $0 [-t secs] [-v (1|2c)] switch [community]
    	       to the script.  SNMPv2c is much more efficient for walking
    	       tables, which is what this tool does.
 
-  switch       hostname or IP address of an LS1010 switch
+  -m max       specifies the maxRepetitions value to use in getBulk requests
+               (only relevant for SNMPv2c).
+
+  hostname     hostname or IP address of a router
 
   community    SNMP community string to use.  Defaults to "public".
 EOM
