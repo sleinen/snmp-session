@@ -169,21 +169,21 @@ sub get_request_response ($@)
 {
     my($this, @oids) = @_;
     return $this->request_response_5 ($this->encode_get_request (@oids),
-				      get_response, \@oids, 0);
+				      get_response, \@oids, 1);
 }
 
 sub set_request_response ($@)
 {
     my($this, @pairs) = @_;
     return $this->request_response_5 ($this->encode_set_request (@pairs),
-				      get_response, \@pairs, 0);
+				      get_response, \@pairs, 1);
 }
 
 sub getnext_request_response ($@)
 {
     my($this,@oids) = @_;
     return $this->request_response_5 ($this->encode_getnext_request (@oids),
-				      get_response, \@oids, 0);
+				      get_response, \@oids, 1);
 }
 
 sub trap_request_send ($$$$$$@)
@@ -520,7 +520,7 @@ sub receive_response_3
     }
 
     my @unwrapped = ();
-    @unwrapped = $this->unwrap_response_6 ($response, $response_tag, $this->{"request_id", $errorp}, $oids);
+    @unwrapped = $this->unwrap_response_6 ($response, $response_tag, $this->{"request_id"}, $oids, $errorp);
     if (!defined $unwrapped[0]) {
 	$this->{'unwrapped'} = undef;
 	return 0;
