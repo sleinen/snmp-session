@@ -24,11 +24,16 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_util.pm 0.86: New <samp>snmpmaptable</samp> subroutine.
+This is a more user-friendly version of <samp>map_table</samp> and is
+described in the <a href="README.SNMP_util">README.SNMP_util</a>
+file.  From Mike Mitchell. </li>
+
 <li> SNMP_util.pm 0.86: Support for the awesome <tt>get-bulk</tt>
 operator, both directly through the new <samp>snmpgetbulk</samp>
 subroutine, and transparently via <samp>snmpwalk</samp> when the
 session's SNMP version is &gt;= 2 and the <samp>use_getbulk</samp>
-slot is set (as it is by default). </li>
+slot is set (as it is by default).  From Mike Mitchell. </li>
 
 <li> SNMP_Session.pm 0.85: If a local address is specified in
 <samp>snmpopen</samp>, don't convert it using <samp>inet_aton</samp>,
@@ -458,7 +463,7 @@ use SNMP_Session "0.52";
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20010509
+20010523
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
