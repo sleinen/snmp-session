@@ -49,6 +49,19 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> BER.pm 0.81: Subids in the range 2^31 - 2^32-1 are now encoded
+correctly.  Thanks to <a href="mailto:rik.hoorelbeke@pandora.be">Rik
+Hoorelbeke</a> for noticing the problem. </li>
+
+<li> SNMP_Session.pm 0.81: A cosmetic bug in the SNMPv2 version of
+<tt>map_table</tt> (which uses <tt>get-bulk</tt>) was corrected.  The
+user-supplied function is now always called on the same number of
+arguments.  Before this, missing values at the end of a table row
+would lead to the function being called with fewer arguments.  Now
+there will be <tt>undef</tt> values for those, too.  Thanks to <a
+href="mailto:schmid@switch.ch">Ulrich Schmid</a> for pointing this
+out. </li>
+
 <li> SNMP_Session.pm 0.80: A portability bug was fixed in the code
 that matches incoming responses to outstanding requests.  The bug had
 manifested itself, notably on some FreeBSD versions, by timeouts
@@ -701,7 +714,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20001030
+20001115
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
