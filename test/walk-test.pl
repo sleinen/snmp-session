@@ -1,4 +1,4 @@
-#!/logiciels/public/divers/bin/perl -w
+#!/usr/local/bin/perl -w
 ###
 ### Small test program that uses GetNext requests to walk a table.
 ###
@@ -7,7 +7,7 @@ use strict;
 use BER;
 use SNMP_Session;
 
-my $hostname = $ARGV[0] || 'neon-tetra';
+my $hostname = $ARGV[0] || 'popocatepetl';
 my $community = $ARGV[1] || 'public';
 
 my $session;
