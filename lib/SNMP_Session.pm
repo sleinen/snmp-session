@@ -19,7 +19,9 @@
 
 package SNMP_Session;		
 
-use strict;
+use strict qw(vars subs);	# cannot use strict subs here
+				# because of the way we use
+				# generated file handles
 use vars qw(@ISA);
 use Socket;
 use BER;
@@ -152,7 +154,7 @@ sub request_response_3
 
 package SNMPv1_Session;
 
-use strict;
+use strict qw(vars subs);	# see above
 use vars qw(@ISA);
 use SNMP_Session;
 use Socket;
