@@ -97,6 +97,10 @@ my %pretty_card_type =
     546 => 'gsr-oc12chds3-sm', 605 => 'pm-atm25',
 );
 
+my $ciscoLS1010 = [1,3,6,1,4,1,9,1,107];
+
+my $sysObjectID_0 = [1,3,6,1,2,1,1,2,0];
+
 my $cardType = [1,3,6,1,4,1,9,3,6,11,1,2];
 my $cardDescr = [1,3,6,1,4,1,9,3,6,11,1,3];
 my $cardSerial = [1,3,6,1,4,1,9,3,6,11,1,4];
@@ -193,7 +197,7 @@ sub list_cards_with_children ($@) {
 	my $type = card_type ($card);
 ##	  my $pretty_type = ($pretty_card_type{$type}
 ##			     || $type);
-	printf STDOUT ("%-49s %-4s %7d %4s %5s %2s %2s\n",
+	printf STDOUT ("%-48s %-4s %8d %4s %5s %2s %2s\n",
 		       $indent.card_descr ($card),
 		       pretty_card_oper_status ($card->{oper_status}),
 		       $card->{serial},
@@ -207,7 +211,7 @@ sub list_cards_with_children ($@) {
 }
 
 sub print_cards_table_header () {
-    printf STDOUT ("%-49s %-4s %7s %4s %5s %2s %2s\n",
+    printf STDOUT ("%-48s %-4s %8s %4s %5s %2s %2s\n",
 		   "description",
 		   "stat",
 		   "serial",
