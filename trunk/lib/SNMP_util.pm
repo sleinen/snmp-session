@@ -36,7 +36,7 @@ use BER "0.82";
 use SNMP_Session "0.83";
 use Socket;
 
-$VERSION = '0.89';
+$VERSION = '0.90';
 
 @ISA = qw(Exporter);
 
@@ -319,6 +319,10 @@ $VERSION = '0.89';
     'enterprises' => '1.3.6.1.4.1',
   );
 
+# GIL
+my %revOIDS = ();	# Reversed %SNMP_util::OIDS hash
+my $RevNeeded = 1;
+
 my $agent_start_time = time;
 
 undef $SNMP_util::Host;
@@ -329,7 +333,7 @@ $SNMP_util::Debug = 0;
 $SNMP_util::CacheFile = "OID_cache.txt";
 $SNMP_util::CacheLoaded = 0;
 
-srand(time|$$);
+srand(time + $$);
 
 ### Prototypes
 sub snmpget ($@);
@@ -368,7 +372,6 @@ sub snmpopen ($$$) {
   ($host, $port, $timeout, $retries, $backoff, $version) = split(':', $host, 6)
     if ($host =~ /:/);
   $version = '1' unless defined $version;
-  undef($port) if (defined($port) && length($port) <= 0);
   if (defined($port) && ($port =~ /^([^!]*)!(.*)$/)) {
     ($port, $lhost) = ($1, $2);
     $nlhost = $lhost;
@@ -376,6 +379,7 @@ sub snmpopen ($$$) {
     undef($lhost) if (defined($lhost) && (length($lhost) <= 0));
     undef($lport) if (defined($lport) && (length($lport) <= 0));
   }
+  undef($port) if (defined($port) && length($port) <= 0);
   $port = 162 if ($type == 1 && !defined($port));
   $nhost = "$community\@$host";
   $nhost .= ":" . $port if (defined($port));
@@ -516,17 +520,26 @@ sub snmpgetnext ($@) {
 #
 sub snmpwalk ($@) {
   my($host, @vars) = @_;
-  return(&snmpwalk_flg($host, 0, @vars));
+  return(&snmpwalk_flg($host, undef, @vars));
+}
+
+#
+# Walk the MIB, puting everything you find into hashes.
+#
+sub snmpwalkhash($$@) {
+#  my($host, $hash_sub, @vars) = @_;
+  return(&snmpwalk_flg( @_ ));
 }
 
 sub snmpwalk_flg ($$@) {
-  my($host, $flg, @vars) = @_;
+  my($host, $hash_sub, @vars) = @_;
   my(@enoid, $var, $response, $bindings, $binding);
   my($value, $upoid, $oid, @retvals);
   my($got, @nnoid, $noid, $ok);
   my $session;
   my(%soid);
-
+  my(%done, %rethash);
+	
   $session = &snmpopen($host, 0, \@vars);
   if (!defined($session)) {
     carp "SNMPWALK Problem for $host\n"
@@ -536,6 +549,15 @@ sub snmpwalk_flg ($$@) {
 
   @enoid = toOID(@vars);
   return undef unless defined $enoid[0];
+
+  # GIL
+  #
+  # Create/Refresh a reversed hash with oid -> name
+  #
+  if (defined($hash_sub) && $RevNeeded) {
+    %revOIDS = reverse %SNMP_util::OIDS;
+    $RevNeeded = 0;
+  }
 
   $got = 0;
   @nnoid = @enoid;
@@ -569,18 +591,37 @@ sub snmpwalk_flg ($$@) {
       if ($ok) {
 	my $tmp = encode_oid_with_errmsg ($tempo);
 	return undef unless defined $tmp;
-	$soid{$upoid} = $tmp;
+	next if (exists($done{$tmp}));	# GIL
+	push @nnoid, $tmp;
 	my $tempv = pretty_print($value);
-	$tempo=~s/^$upoid\.// unless ($flg & 1);
-	push @retvals, "$tempo:$tempv";
+	if (defined($hash_sub)) {
+	  #
+	  # extract name of the oid, if possible, the rest becomes the instance
+	  #
+	  my $inst;
+	  while (!exists($revOIDS{$tempo}) && length($tempo)) {
+	    $tempo =~ s/(\.\d+?)$//;
+	    $inst = $1.$inst;
+	  }	
+	  #
+	  # call hash_sub
+	  #
+	  &$hash_sub(\%rethash, $host, $revOIDS{$tempo}, $tempo, $inst, $tempv);
+	} else {
+	  $tempo=~s/^$upoid\.//;
+	  push @retvals, "$tempo:$tempv";
+	}
+	$done{$tmp} = 1;	# GIL
       }
     }
-    @nnoid = values(%soid);
-    undef %soid;
     last if ($#nnoid < 0);
   }
   if ($got) {
-    return (@retvals);
+    if (defined($hash_sub)) {
+    	return (%rethash)
+    } else {
+    	return (@retvals);
+    }
   } else {
     $var = join(' ', @vars);
     carp "SNMPWALK Problem for $var on $host\n"
@@ -772,31 +813,6 @@ sub snmpmaptable($$@) {
 			      );
 }
 
-#
-# Walk the MIB, puting everything you find into hashes.
-#
-sub snmpwalkhash($$@) {
-  my($host, $hash_sub, @vars) = @_;
-  my($retflg, @retvals, %revOID, $ret, $tempo, $tempv, %rethash);
-
-  @retvals = snmpwalk_flg($host, 1, @vars);
-
-  %revOID = reverse %SNMP_util::OIDS;
-  foreach $ret (@retvals) {
-    my $inst;
-    ($tempo, $tempv) = split(':', $ret);
-    while (!exists($revOID{$tempo}) && length($tempo)) {
-      $tempo =~ s/(\.\d+?)$//;
-      $inst = $1.$inst;
-    }
-    if (defined($hash_sub)) {
-      &$hash_sub(\%rethash, $host, $revOID{$tempo}, $tempo, $inst, $tempv);
-    } else {
-      $rethash{$tempo}{$inst} = $tempv;
-    }
-  }
-  return(%rethash);
-}
 
 #
 #  Given an OID in either ASN.1 or mixed text/ASN.1 notation, return an
@@ -867,8 +883,10 @@ sub snmpmapOID(@)
     next unless($oid =~ /^((\d+.)*\d+)$/);
 
     $SNMP_util::OIDS{$txt} = $oid;
+    $RevNeeded = 1;
     print "snmpmapOID: $txt => $oid\n" if $SNMP_util::Debug;
   }
+  
   return undef;
 }
 
@@ -1070,6 +1088,7 @@ sub snmpMIB_to_OID ($) {
     }
   }
   close(MIB);
+  $RevNeeded = 1;
   return $ret;
 }
 
