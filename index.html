@@ -234,26 +234,15 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
 
 <H2>Future Plans</H2>
 
-<H3>SNMPv2 Support</H3>
+<H3>SNMPv3 Support</H3>
 
-<P> The <B>SNMP_Session</B> type has already been subclassed into
- <B>SNMPv1_Session</B> and <B>SNMPv2_Session</B>.  There is also some
- code to parse party database from the CMU SNMPv2 package.  The same
- should be done for the context database.  Then I can to write a
- method that creates a <B>SNMPv2_Session</B> from source and
- destination parties and a context, and write PDU encoding/decoding
- methods that handle the SNMPv2 packet formats.  MD5 hashing and DES
- encryption should be added so that authentication and privacy can be
- used.  Then the <SAMP>getBulk</SAMP> PDU should be implemented. </P>
-
-<p> Unfortunately(?) this is all more or less moot since the
- ``traditional'' SNMPv2 party model has been abandoned because it was
- considered to be too difficult to deploy.  The current standard is
- SNMPv2C, which is basically SNMPv2 with the community-based
- ``security'' model from SNMPv1.  This would still be worthwhile
- because of the addition of <SAMP>getBulk</SAMP> and other
- improvements.  However, I don't have any agent implementation I could
- test my code against. </p>
+<P> The code could first be restructured to follow the modularization
+ proposed in <a
+ href="ftp://sunsite.cnlab-switch.ch/doc/standard/rfc/22xx/2271">RFC
+ 2271</a> (An Architecture for Describing SNMP Management
+ Frameworks).  Later, one could add support for SNMPv2c and SNMPv3
+ encodings, and support for user-based security.  An interface to
+ <samp>getBulk</samp> requests should be provided. </p>
 
 <H3>More Operations</H3>
 
@@ -295,12 +284,12 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
 
 <P> At the very least, there should be an interface to traverse
  tables.  The implementation of the table-traversing interface should
- use <SAMP>getBulk</SAMP> on SNMPv2 sessions. </P>
+ use <SAMP>getBulk</SAMP> on SNMPv2c/SNMPv3 sessions. </P>
 
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19980120
+19980129
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
