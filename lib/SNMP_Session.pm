@@ -19,6 +19,8 @@
 
 package SNMP_Session;		
 
+require 5.002;
+
 use strict qw(vars subs);	# cannot use strict subs here
 				# because of the way we use
 				# generated file handles

@@ -19,11 +19,10 @@
 
 package BER;
 
-### The following two lines only work with Perl 5.002 or later.
-### We leave them commented out until everybody has that, including NT
-### users.
-##use strict;
-##use vars qw(@ISA @EXPORT);
+require 5.002;
+
+use strict;
+use vars qw(@ISA @EXPORT);
 use Exporter;
 
 use integer;
