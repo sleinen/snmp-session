@@ -44,3 +44,8 @@ trap-send
 trap-listener
 	sit there and listen for SNMPv1 traps, which are decoded and
 	written out in a readable form
+
+SNMPAgent.pm
+	simple SNMP agent returning nonsense replies.
+	Intended as an example of how to write agents.
+	Contributed by Mike McCauley <mikem@open.com.au>
