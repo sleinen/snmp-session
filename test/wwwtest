@@ -22,7 +22,7 @@ use lib qw(/home/leinen/perl/SNMP_Session-0.96/lib /home/leinen/perl/SNMP_Sessio
 
 use SNMP_Session;
 use BER;
-use CGI qw(:debug);
+use CGI qw(:standard start_table end_table :debug);
 use strict;
 
 sub init_oids ();
@@ -88,11 +88,13 @@ sub query_to_html_response ($$)
 	chomp $community;
 	close COMM;
     }
-    print "Content-type: text/html\n\n",
-    "<HTML><HEAD><TITLE>Perl SNMP Module Test</TITLE>\n",
-    "</HEAD>\n<BODY BGCOLOR=\"#ffffff\">\n",
-    "<H1>SNMP query to ",
-    html_quote ($community), "@", html_quote ($hostname), "</H1>\n<HR>\n";
+    print (header (),
+	   start_html ("Perl SNMP Module Test"),
+	   h1 ("SNMP query to "
+	       .html_quote ($community)
+	       .'@'
+	       .html_quote ($hostname)),
+	   hr ());
 
     srand();
     eval { $session = SNMPv2c_Session->open ($hostname, $community, 161,
@@ -105,7 +107,7 @@ sub query_to_html_response ($$)
     html_error_message ("executing SNMP query", $@), return 0 if $@;
     $session->close ();
 
-    print "</BODY>\n</HTML>\n";
+    print (end_html ());
     1;
 }
 
@@ -118,16 +120,16 @@ sub snmp_get ($@)
 	$response = $session->pdu_buffer;
 	($bindings) = $session->decode_get_response ($response);
 
-	print "<TABLE BORDER>\n";
+	print (start_table({border=>'1'}));
 	while ($bindings ne '') {
 	    ($binding,$bindings) = decode_sequence ($bindings);
 	    ($oid,$value) = decode_by_template ($binding, "%O%@");
-	    print "<TR>",
-	    "<TH ALIGN=RIGHT>", $pretty_oids{$oid}, "</TH>",
-	    "<TD ALIGN=LEFT><PRE>", &html_quote (pretty_print ($value)), "</PRE></SAMP></TD>",
-	    "</TR>\n";
+	    print Tr(th ({align=>'right'},
+			 $pretty_oids{$oid}),
+		     td ({align=>'left'},
+			 html_quote (pretty_print ($value))));
 	}
-	print "</TABLE>\n";
+	print (end_table ());
 	1;
     } else {
 	die "No response received.\n";
@@ -142,37 +144,29 @@ sub write_query_form ()
 	 map ({if ($first_p) {
 	     $first_p = 0; "<option selected value=\"$_\">$_</option>"; }
 	      else { "<option value=\"$_\">$_</option>"; }; } @allowed_hosts));
-    print <<EOM;
-Content-type: text/html
-Content-transfer-encoding: binary
-
-<HTML>
-<HEAD><TITLE>Perl SNMP Module Test</TITLE></HEAD>
-<BODY BGCOLOR="#ffffff">
-<H1>Perl SNMP Module Test</H1>
-<HR>
-$intro
-<FORM>
-Host name:
-<SELECT NAME=hostname>
-$options
-</SELECT>
-Community name:
-<SELECT NAME=community>
-<OPTION VALUE="public">public
-</SELECT>
-<BR>
-<INPUT TYPE=submit VALUE="Send request">
-<INPUT TYPE=reset VALUE="Clear">
-</FORM>
-<HR>
-<ADDRESS>
-<A HREF="http://www.switch.ch/misc/leinen/">
- Simon Leinen &lt;simon\@switch.ch&gt;</A>
-</ADDRESS>
-</BODY>
-</HTML>
-EOM
+    print (header (),
+	   start_html ("Perl SNMP Module Test"),
+	   h1 ("Perl SNMP Module Test"),
+	   $intro,
+	   hr (),
+	   $q->start_form (-method=>'GET'),
+	   "Host name: ",
+	   Select ({name => 'hostname'},
+		   $options),
+	   "Community name: ",
+	   Select ({name => 'community'},
+		   option ({value => 'public'},
+			   "public")),
+	   br (),
+	   input ({type => 'submit',
+		   value => "Send request"}),
+	   input ({type => 'reset',
+		   value => "Clear"}),
+	   $q->end_form (),
+	   hr (),
+	   address (a ({href=>"http://www.switch.ch/misc/leinen/"},
+		       "Simon Leinen &lt;simon\@switch.ch&gt;")),
+	   end_html ());
 }
 
 sub html_error_message ($$)
