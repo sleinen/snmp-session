@@ -10,15 +10,8 @@
 ###
 ### Contributions and fixes by:
 ###
-### tobias Oetiker <oetiker@ee.ethz.ch>: 
-###   raised default timeout to 10 sec
-### Heine Peters <peters@dkrz.de>:
-###   I made 2 changes to SNMP_Session.pm. The first is the fix for
-###   the problem mentioned above. The second change leaves the source
-###   address of the snmp request unspecified. The address picked by
-###   your old code was not in the access list of some routers. I
-###   couldn't change the access list, because these routers are owned
-###   and managed by the ISP
+### Tobias Oetiker <oetiker@ee.ethz.ch>
+### Heine Peters <peters@dkrz.de>
 ######################################################################
 
 package SNMP_Session;		
@@ -93,7 +86,9 @@ sub encode_getnext_request
 sub decode_get_response
 {
     my($this, $response) = @_;
-    $this->unwrap_response ($response, get_response);
+    my @rest;
+    eval '@rest = $this->unwrap_response ($response, get_response)';
+    $@ ? 0 : @rest;
 }
 
 sub wait_for_response
@@ -127,19 +122,21 @@ sub request_response
     my $retries = $this->retries;
     my $timeout = $this->timeout;
 
+    $this->send_query ($req)
+	|| die "send_query: $!";
     while ($retries > 0) {
-	$this->send_query ($req)
-	    || die "send_query: $!";
 	if ($this->wait_for_response($timeout)) {
 	    my($response_length);
-	    
-	    ($response_length = $this->receive_response())
-		|| die "receive_response: $!";
-	    return $response_length;
-	    ## print STDERR "$response_length bytes of response received.\n";
+
+	    $response_length = $this->receive_response();
+	    return $response_length if $response_length;
+	} else {
+	    ## No response received - retry
+	    --$retries;
+	    $timeout *= $this->backoff;
+	    $this->send_query ($req)
+		|| die "send_query: $!";
 	}
-	--$retries;
-	$timeout *= $this->backoff;
     }
     0;
 }
@@ -250,11 +247,15 @@ sub receive_response
     my($remote_addr);
     ($remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,0))
 	|| return 0;
-#print"response from $remote_addr ",length($remote_addr),", should be from $this->{'remote_addr'}",length($this->remote_addr),"\n";
-#    if ($remote_addr ne $this->{'remote_addr'}) {
-#	warn "Response came from $remote_addr, not ".$this->remote_addr;
-#	return 0;
-#    }
+    ##
+    ## Check whether the response came from the address we've sent the
+    ## request to.  If this is not the case, we should probably ignore
+    ## it, as it may relate to another request.
+    ##
+    if ($remote_addr ne $this->{'remote_addr'}) {
+	warn "Response came from $remote_addr, not ".$this->remote_addr;
+	return 0;
+    }
     return length $this->pdu_buffer;
 }
 
