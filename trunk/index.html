@@ -45,6 +45,11 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 <ul>
 
+<li> SNMP_session.pm 0.59: Added methods <tt>set_timeout</tt>,
+ <tt>set_retries</tt>, and <tt>set_backoff</tt> that can be used to
+ tune the retransmission algorithm.  Fixed a bug in <tt>map_table</tt>
+ that would cause an index of "0" to terminate the table walk. </p>
+
 <li> SNMP_util.pm 0.54: First version to be distributed with the
  package, courtesy <a href="mailto:mcm@unx.sas.com">Mike
  Mitchell</a>.
@@ -420,7 +425,7 @@ sub link_down_trap ($) {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19980611
+19980624
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
