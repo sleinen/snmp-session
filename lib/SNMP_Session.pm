@@ -52,7 +52,7 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.91';
+$VERSION = '0.92';
 
 @ISA = qw(Exporter);
 
