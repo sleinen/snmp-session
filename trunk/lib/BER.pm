@@ -19,8 +19,11 @@
 
 package BER;
 
-use strict;
-use vars qw(@ISA @EXPORT);
+### The following two lines only work with Perl 5.002 or later.
+### We leave them commented out until everybody has that, including NT
+### users.
+##use strict;
+##use vars qw(@ISA @EXPORT);
 use Exporter;
 
 @ISA = qw(Exporter);

@@ -19,7 +19,14 @@
 
 package SNMP_Session;		
 
-use vars qw(@ISA);
+### The following two lines only work with Perl 5.002 or later.
+### We leave them commented out until everybody has that, including NT
+### users.  In addition, use strict doesn't work with the current code
+### because of the file handle we construct.  We should really use
+### FileHandle objects or something similar, but this seems to be
+### somewhat in flux in Perl 5.
+##use strict;
+##use vars qw(@ISA);
 use Socket;
 use BER;
 
@@ -152,7 +159,14 @@ sub request_response_3
 
 package SNMPv1_Session;
 
-use vars qw(@ISA);
+### The following two lines only work with Perl 5.002 or later.
+### We leave them commented out until everybody has that, including NT
+### users.  In addition, use strict doesn't work with the current code
+### because of the file handle we construct.  We should really use
+### FileHandle objects or something similar, but this seems to be
+### somewhat in flux in Perl 5.
+##use strict;
+##use vars qw(@ISA);
 use SNMP_Session;
 use Socket;
 use BER;
