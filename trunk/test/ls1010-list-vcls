@@ -1,8 +1,47 @@
 #!/usr/local/bin/perl -w
 ###
+### ls1010-list-vcls
+###
+### Author:       Simon Leinen  <simon@switch.ch>
+### Date Created: 24-Feb-1999
+###
 ### Real-time full-screen display of the cell counts on VCLs (Virtual
 ### Channel Links) and VPLs (Virtual Path Links) on a Cisco LS1010 ATM
 ### switch.
+###
+### Description: 
+###
+### Call this script with "-h" to learn about command usage.
+###
+### The script will poll an LS1010's ciscoAtmVplTable and
+### ciscoAtmVclTable (from CISCO-ATM-CONN-MIB) at specified intervals
+### (default is every five seconds).
+###
+### For each VCL except for the standard signaling and ILMI VCs (0/5
+### and 0/16, respectively), a line is written to the terminal which
+### lists the VCL's connection info, as well as the input and output
+### transfer rates, as computed from the deltas of the respective cell
+### counts since the last sample.
+###
+### When a VCL is found to have had only output, but no input traffic
+### in the last sampling interval, it is shown in inverse video.  In
+### addition, when a VCL changes state (from normal to inverse or vice
+### versa), a bell character is sent to the terminal.
+###
+### Note that on the very first display, the actual SNMP counter
+### values are displayed.  THOSE ABSOLUTE COUNTER VALUES HAVE NO
+### DEFINED SEMANTICS WHATSOEVER.  However, in some versions of
+### Cisco's software, the values seem to correspond to the total
+### number of counted items since system boot (modulo 2^32).  This can
+### be useful for certain kinds of slowly advancing counters (such as
+### CRC errors, hopefully).
+###
+### The topmost screen line shows the name of the managed node, as
+### well as a few hard-to-explain items I found useful while debugging
+### the script.
+###
+### Please send any patches and suggestions for improvement to the
+### author (see e-mail address above).  Hope you find this useful!
 ###
 require 5.003;
 
