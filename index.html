@@ -262,14 +262,14 @@ whenever the agent sends back an error. </li>
 <li> SNMP_Session 0.50, BER 0.50: The <b>BER</b> and
 <b>SNMP_Session</b> modules both have version numbers according to the
 convention in <b>Exporter.pm</b>.  That is, you can now insist on a
-minimal version of the modules by saying e.g. </li>
+minimal version of the modules by saying e.g.
 
 <pre>
 use BER "0.50";
 use SNMP_Session "0.52";
 </pre>
 
- The initial version numbers are 0.50 for both modules.
+ The initial version numbers are 0.50 for both modules. </li>
 
 <li> The pretty printer should now print unsigned 32-bit values (such
  as Counters and Gauges) correctly, i.e. values larger than
