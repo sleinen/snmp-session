@@ -1,5 +1,13 @@
 package BER;
 
+@ISA = qw(Exporter);
+
+@EXPORT = qw(context_flag constructor_flag
+	     encode_sequence encode_tagged_sequence encode_string
+	     encode_int encode_null encode_oid
+	     decode_sequence decode_by_template
+	     pretty_print);
+
 sub universal_flag	{ 0x00 }
 sub application_flag	{ 0x40 }
 sub context_flag	{ 0x80 }
@@ -165,7 +173,7 @@ sub decode_by_template
 	    $_ = substr ($_,1);
 	    if (($expected) = /^(\d*|\*)\{(.*)/) {
 		$_ = $2;
-		$expected = shift if ($expected eq '*');
+		$expected = shift | constructor_flag if ($expected eq '*');
 		$expected = sequence_tag | constructor_flag
 		    if $expected eq '';
 		die "Expected sequence tag $expected, got ",
