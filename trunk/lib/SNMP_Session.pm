@@ -574,10 +574,10 @@ sub receive_response_3
 	if ($this->{'debug'}) {
 	    warn "$response_community != $this->{community}"
 		unless $SNMP_Session::suppress_warnings
-		    || $community eq $this->{community};
+		    || $response_community eq $this->{community};
 	    warn "$response_id != $this->{request_id}"
 		unless $SNMP_Session::suppress_warnings
-		    || $request_id == $this->{request_id};
+		    || $response_id == $this->{request_id};
 	}
 	return 0;
     }
