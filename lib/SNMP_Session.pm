@@ -48,7 +48,7 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.80';
+$VERSION = '0.82';
 
 @ISA = qw(Exporter);
 
@@ -62,10 +62,12 @@ my $default_debug = 0;
 ###
 my $default_timeout = 2.0;
 
-### Default number of retries for each SNMP request.  If no response
-### is received after TIMEOUT seconds, the request is resent and a new
-### response awaited with a longer timeout (see the documentation on
-### BACKOFF below).
+### Default number of attempts to get a reply for an SNMP request.  If
+### no response is received after TIMEOUT seconds, the request is
+### resent and a new response awaited with a longer timeout (see the
+### documentation on BACKOFF below).  The "retries" value should be at
+### least 1, because the first attempt counts, too (the name "retries"
+### is confusing, sorry for that).
 ###
 my $default_retries = 5;
 
@@ -798,6 +800,7 @@ sub map_table_start_end ($$$$$$) {
     my $call_counter = 0;
     my $base_index = $start;
     my $ncols = @{$columns};
+    my @collected_values = ();
 
     if (! $session->{'use_getbulk'}) {
 	return SNMP_Session::map_table_start_end ($session, $columns, $mapfn, $start, $end, $max_repetitions);
@@ -835,10 +838,10 @@ sub map_table_start_end ($$$$$$) {
 	    my $last_min_index = undef;
 	  walk_rows_from_pdu:
 	    for (;;) {
-		my @collected_values = ();
 		my $min_index = undef;
 
 		for ($k = 0; $k < $ncols; ++$k) {
+		    $collected_values[$k] = undef;
 		    my $pair = $colstack[$k]->[0];
 		    unless (defined $pair) {
 			$min_index = undef;
