@@ -17,6 +17,7 @@
 ### Johannes Demel <demel@zid.tuwien.ac.at>: MIB file parse problem
 ### Simon Leinen <simon@switch.ch>: more OIDs from Interface MIB
 ### Jacques Supcik <supcik@ip-plus.net>: Specify local IP, port
+### Tobias Oetiker <oetiker@ee.ethz.ch>: HASH as first OID to set SNMP options
 ######################################################################
 
 package SNMP_util;
@@ -26,12 +27,13 @@ require 5.002;
 use strict;
 use vars qw(@ISA @EXPORT $VERSION);
 use Exporter;
+use Carp;
 
 use BER "0.82";
 use SNMP_Session "0.83";
 use Socket;
 
-$VERSION = '0.84';
+$VERSION = '0.85';
 
 @ISA = qw(Exporter);
 
@@ -347,7 +349,7 @@ sub version () { $VERSION; }
 # Start an snmp session
 #
 sub snmpopen (@) {
-  my($host, $type) = @_;
+  my($host, $type, $vars) = @_;
   my($nhost, $port, $community, $lhost, $lport, $nlhost);
   my($timeout, $retries, $backoff, $version);
 
@@ -396,6 +398,37 @@ sub snmpopen (@) {
 
   if (defined($SNMP_util::Session))
   {
+    if (ref $vars->[0] eq 'HASH')
+    {
+	my $opts = shift @$vars;
+	foreach $type (keys %$opts)
+	{
+	    if (exists $SNMP_util::Session->{$type})
+	    {
+		if ($type eq 'timeout')
+		{
+		    $SNMP_util::Session->set_timeout($opts->{$type});
+		}
+		elsif ($type eq 'retries')
+		{
+		    $SNMP_util::Session->set_retries($opts->{$type});
+		}
+		elsif ($type eq 'backoff')
+		{
+		    $SNMP_util::Session->set_backoff($opts->{$type});
+		}
+		else
+		{
+		    $SNMP_util::Session->{$type} = $opts->{$type};
+		}
+	    }
+	    else
+	    {
+		carp "SNMPopen Unknown SNMP Option Key '$type'\n"
+		    unless ($SNMP_Session::suppress_warnings > 1);
+	    }
+	}
+    }
     $SNMP_util::Session->set_timeout($timeout)
       if (defined($timeout) && (length($timeout) > 0));
     $SNMP_util::Session->set_retries($retries)
@@ -415,9 +448,9 @@ sub snmpget (@) {
   my(@enoid, $var, $response, $bindings, $binding, $value, $oid, @retvals);
   my $session;
 
-  $session = &snmpopen($host, 0);
+  $session = &snmpopen($host, 0, \@vars);
   if (!defined($session)) {
-    warn "SNMPGET Problem for $host\n"
+    carp "SNMPGET Problem for $host\n"
       unless ($SNMP_Session::suppress_warnings > 1);
     return undef;
   }
@@ -437,7 +470,7 @@ sub snmpget (@) {
     return(@retvals);
   }
   $var = join(' ', @vars);
-  warn "SNMPGET Problem for $var on $host\n"
+  carp "SNMPGET Problem for $var on $host\n"
     unless ($SNMP_Session::suppress_warnings > 1);
   return undef;
 }
@@ -452,9 +485,9 @@ sub snmpgetnext (@) {
   my($noid, $ok);
   my $session;
 
-  $session = &snmpopen($host, 0);
+  $session = &snmpopen($host, 0, \@vars);
   if (!defined($session)) {
-    warn "SNMPGETNEXT Problem for $host\n"
+    carp "SNMPGETNEXT Problem for $host\n"
       unless ($SNMP_Session::suppress_warnings > 1);
     return undef;
   }
@@ -484,7 +517,7 @@ sub snmpgetnext (@) {
   else
   {
     $var = join(' ', @vars);
-    warn "SNMPGETNEXT Problem for $var on $host\n"
+    carp "SNMPGETNEXT Problem for $var on $host\n"
       unless ($SNMP_Session::suppress_warnings > 1);
     return undef;
   }
@@ -500,9 +533,9 @@ sub snmpwalk (@) {
   my($got, @nnoid, $noid, $ok);
   my $session;
 
-  $session = &snmpopen($host, 0);
+  $session = &snmpopen($host, 0, \@vars);
   if (!defined($session)) {
-    warn "SNMPWALK Problem for $host\n"
+    carp "SNMPWALK Problem for $host\n"
       unless ($SNMP_Session::suppress_warnings > 1);
     return undef;
   }
@@ -556,7 +589,7 @@ sub snmpwalk (@) {
   else
   {
     $var = join(' ', @vars);
-    warn "SNMPWALK Problem for $var on $host\n"
+    carp "SNMPWALK Problem for $var on $host\n"
       unless ($SNMP_Session::suppress_warnings > 1);
     return undef;
   }
@@ -571,10 +604,10 @@ sub snmpset(@) {
     my($oid, @retvals, $type, $value);
     my $session;
 
-    $session = &snmpopen($host, 0);
+    $session = &snmpopen($host, 0, \@vars);
     if (!defined($session))
     {
-	warn "SNMPSET Problem for $host\n"
+	carp "SNMPSET Problem for $host\n"
 	    unless ($SNMP_Session::suppress_warnings > 1);
 	return undef;
     }
@@ -607,7 +640,7 @@ sub snmpset(@) {
 	}
 	else
 	{
-	    warn "unknown SNMP type: $type\n"
+	    carp "unknown SNMP type: $type\n"
 		unless ($SNMP_Session::suppress_warnings > 1);
 	    return undef;
 	}
@@ -637,10 +670,10 @@ sub snmptrap(@) {
     my(@enoid);
     my $session;
 
-    $session = &snmpopen($host, 1);
+    $session = &snmpopen($host, 1, \@vars);
     if (!defined($session))
     {
-	warn "SNMPTRAP Problem for $host\n"
+	carp "SNMPTRAP Problem for $host\n"
 	    unless ($SNMP_Session::suppress_warnings > 1);
 	return undef;
     }
@@ -681,7 +714,7 @@ sub snmptrap(@) {
 	}
 	else
 	{
-	    warn "unknown SNMP type: $type\n"
+	    carp "unknown SNMP type: $type\n"
 		unless ($SNMP_Session::suppress_warnings > 1);
 	    return undef;
 	}
@@ -735,7 +768,7 @@ sub toOID(@)
 	if ($oid) {
 	    $var =~ s/^$tmp/$oid/;
 	} else {
-	    warn "Unknown SNMP var $var\n"
+	    carp "Unknown SNMP var $var\n"
 		unless ($SNMP_Session::suppress_warnings > 1);
 	    next;
 	}
@@ -785,7 +818,7 @@ sub snmpLoad_OID_Cache ($)
 
     if (!open(CACHE, $arg))
     {
-	warn "snmpLoad_OID_Cache: Can't open $arg: $!"
+	carp "snmpLoad_OID_Cache: Can't open $arg: $!"
 	    unless ($SNMP_Session::suppress_warnings > 1);
 	return -1;
     }
@@ -874,7 +907,7 @@ sub snmpMIB_to_OID ($)
 
     if (!open(MIB, $arg))
     {
-	warn "snmpMIB_to_OID: Can't open $arg: $!"
+	carp "snmpMIB_to_OID: Can't open $arg: $!"
 	    unless ($SNMP_Session::suppress_warnings > 1);
 	return -1;
     }
@@ -973,7 +1006,7 @@ sub snmpMIB_to_OID ($)
 
 		if (!defined($SNMP_util::OIDS{$strt}))
 		{
-		    warn "snmpMIB_to_OID: $arg: \"$strt\" prefix unknown, load the parent MIB first.\n"
+		    carp "snmpMIB_to_OID: $arg: \"$strt\" prefix unknown, load the parent MIB first.\n"
 			unless ($SNMP_Session::suppress_warnings > 1);
 		}
 		$Link{$var} = $strt;
@@ -1002,7 +1035,7 @@ sub encode_oid_with_errmsg ($) {
     my ($oid) = @_;
     my $tmp = encode_oid(split(/\./, $oid));
     if (! defined $tmp) {
-	warn "cannot encode Object ID $oid: $BER::errmsg"
+	carp "cannot encode Object ID $oid: $BER::errmsg"
 	    unless ($SNMP_Session::suppress_warnings > 1);
 	return undef;
     }
