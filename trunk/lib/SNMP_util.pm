@@ -10,7 +10,7 @@ use BER "0.54";
 use SNMP_Session "0.56";
 use Socket;
 
-$VERSION = '0.54';
+$VERSION = '0.55';
 
 @ISA = qw(Exporter);
 
@@ -51,6 +51,8 @@ $VERSION = '0.54';
     'frInOctets' => '1.3.6.1.2.1.10.32.2.1.9',
     'frOutOctets' => '1.3.6.1.2.1.10.32.2.1.7',
   );
+
+my $agent_start_time = time;
 
 undef $SNMP_util::Host;
 undef $SNMP_util::Session;
@@ -340,10 +342,10 @@ sub snmptrap(@) {
 	$agent = inet_aton($agent);
     }
     push @enoid, toOID(($ent));
-    push @enoid, encode_string($agent);
+    push @enoid, encode_ip_address($agent);
     push @enoid, encode_int($gen);
     push @enoid, encode_int($spec);
-    push @enoid, encode_int(time);
+    push @enoid, encode_timeticks((time-$agent_start_time) * 100);
     while(@vars)
     {
 	($oid) = toOID((shift @vars));
