@@ -45,6 +45,10 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 <ul>
 
+<li> SNMP_Session 0.56: Fix a bug which occurs when an error should be 
+  signaled while an SNMPv1_Session is being opened.  Noticed by <a
+  href="mailto:dcox@lexmark.com">Dan Cox</a>.
+
 <li> BER 0.52: Ignore a leading dot when encoding an OID.  This is to
   avoid trouble when people cut&amp;paste OIDs from CMU/UCD SNMP,
   where a leading dot is  used to mark a "fully qualified" OID.
