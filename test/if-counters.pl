@@ -68,6 +68,7 @@ use SNMP_Session "0.96";	# requires map_table_4() and ipv4only
 use POSIX;			# for exact time
 use Curses;
 use Math::BigInt;
+use Math::BigFloat;
 
 ### Forward declarations
 sub out_interface ($$$$$$@);
@@ -88,6 +89,8 @@ my $max_repetitions = 0;
 
 my $suppress_output = 0;
 
+my $suppress_curses = 0;
+
 my $debug = 0;
 
 my $show_out_discards = 0;
@@ -103,6 +106,8 @@ my $ipv4_only_p = 0;
 my $host;
 
 my $community;
+
+my $use_getbulk_p = 1;
 
 while (defined $ARGV[0]) {
     if ($ARGV[0] =~ /^-v/) {
@@ -155,6 +160,8 @@ while (defined $ARGV[0]) {
 	} else {
 	    usage (1);
 	}
+    } elsif ($ARGV[0] eq '-B') {
+	$use_getbulk_p = 0;
     } elsif ($ARGV[0] eq '-s') {
 	$switch_engine_p = 1;
     } elsif ($ARGV[0] eq '-a') {
@@ -165,8 +172,13 @@ while (defined $ARGV[0]) {
 	$counter64_p = 1;
     } elsif ($ARGV[0] eq '-n') {
 	$suppress_output = 1;
+	$suppress_curses = 1;
+    } elsif ($ARGV[0] eq '-C') {
+	$suppress_output = 0;
+	$suppress_curses = 1;
     } elsif ($ARGV[0] eq '-d') {
-	$suppress_output = 1;
+	$suppress_output = 0;
+	$suppress_curses = 1;
 	$debug = 1;
     } elsif ($ARGV[0] eq '-D') {
 	$show_out_discards = 1;
@@ -209,18 +221,18 @@ my $locIfInCRC = [1,3,6,1,4,1,9,2,2,1,1,12];
 my $locIfOutCRC = [1,3,6,1,4,1,9,2,2,1,1,12];
 
 my $cseL3SwitchedTotalPkts = [1,3,6,1,4,1,9,9,97,1,4,1,1,1];
-my $cseL3SwitchedTotalOctets = [1,3,6,1,4,1,9,9,97,1,4,1,1,];
-my $cseL3CandidateFlowHits = [1,3,6,1,4,1,9,9,97,1,4,1,1,];
-my $cseL3EstablishedFlowHits = [1,3,6,1,4,1,9,9,97,1,4,1,1,];
-my $cseL3ActiveFlows = [1,3,6,1,4,1,9,9,97,1,4,1,1,];
-my $cseL3FlowLearnFailures = [1,3,6,1,4,1,9,9,97,1,4,1,1,];
-my $cseL3IntFlowInvalids = [1,3,6,1,4,1,9,9,97,1,4,1,1,];
-my $cseL3ExtFlowInvalids = [1,3,6,1,4,1,9,9,97,1,4,1,1,];
+my $cseL3SwitchedTotalOctets = [1,3,6,1,4,1,9,9,97,1,4,1,1,2];
+my $cseL3CandidateFlowHits = [1,3,6,1,4,1,9,9,97,1,4,1,1,3];
+my $cseL3EstablishedFlowHits = [1,3,6,1,4,1,9,9,97,1,4,1,1,4];
+my $cseL3ActiveFlows = [1,3,6,1,4,1,9,9,97,1,4,1,1,5];
+my $cseL3FlowLearnFailures = [1,3,6,1,4,1,9,9,97,1,4,1,1,6];
+my $cseL3IntFlowInvalids = [1,3,6,1,4,1,9,9,97,1,4,1,1,7];
+my $cseL3ExtFlowInvalids = [1,3,6,1,4,1,9,9,97,1,4,1,1,8];
 
 my $clock_ticks = POSIX::sysconf( &POSIX::_SC_CLK_TCK );
 
 my $win = new Curses
-    unless $suppress_output;
+    unless $suppress_curses;
 
 my %old;
 my $sleep_interval = $desired_interval + 0.0;
@@ -245,9 +257,21 @@ sub rate_64 ($$$@) {
     if ($diff < 0) {
 	$diff = $diff->add (2**64);
     }
+    warn "rate_64 ($old, $new, $interval, $multiplier)\n"
+	if $debug;
+    warn "  diff: $diff\n"
+	if $debug;
     ## hrm.  Why is this so complicated?
     ## I want a real programming language (such as Lisp).
-    my $result = $diff->bnorm () / $interval * $multiplier;
+    my $result = new Math::BigFloat ($diff->bnorm ());
+    warn "  result: $result\n"
+	if $debug;
+    $result /= $interval;
+    warn "  result: $result\n"
+	if $debug;
+    $result *= $multiplier;
+    warn "  result: $result\n"
+	if $debug;
     return $result;
 }
 
@@ -282,32 +306,56 @@ sub out_interface ($$$$$$@) {
     grep (defined $_ && ($_=pretty_print $_),
 	  ($descr, $admin, $oper, $in, $out, $crc, $comment, $drops));
     $win->clrtoeol ()
-	unless $suppress_output;
-    return unless $all_p || defined $oper && $oper == 1;	# up
+	unless $suppress_curses;
+    return unless $all_p || defined $oper && $oper == 1; # up
     return unless defined $in && defined $out;
     ## Suppress interfaces called "unrouted VLAN..."
     return if $descr =~ /^unrouted VLAN/;
     if (!defined $old{$index}) {
-	$win->addstr ($linecount, 0,
-		      sprintf ("%2d  %-24s %10s %10s",
-			       $index,
-			       defined $descr ? $descr : '',
-			       defined $in ? $in : '-',
-			       defined $out ? $out : '-'))
-	    unless $suppress_output;
+	if ($suppress_output) {
+	    # do nothing
+	} elsif ($suppress_curses) {
+	    printf STDOUT ("%5d  %-24s %10s %10s",
+			   $index,
+			   defined $descr ? $descr : '',
+			   defined $in ? $in : '-',
+			   defined $out ? $out : '-');
+	} else {
+	    $win->addstr ($linecount, 0,
+			  sprintf ("%5d  %-24s %10s %10s",
+				   $index,
+				   defined $descr ? $descr : '',
+				   defined $in ? $in : '-',
+				   defined $out ? $out : '-'));
+	}
 	if ($show_out_discards) {
-	    $win->addstr (sprintf (" %8s",
-				   defined $drops ? $drops : '-'))
-		unless $suppress_output;
+	    if ($suppress_output) {
+		# do nothing
+	    } elsif ($suppress_curses) {
+		printf STDOUT (" %8s", defined $drops ? $drops : '-');
+	    } else {
+		$win->addstr (sprintf (" %8s",
+				       defined $drops ? $drops : '-'));
+	    }
 	}
 	if ($cisco_p) {
-	    $win->addstr (sprintf (" %10s",
-				   defined $crc ? $crc : '-'))
-		unless $suppress_output;
+	    if ($suppress_output) {
+		# do nothing
+	    } elsif ($suppress_curses) {
+		printf STDOUT (" %10s", defined $crc ? $crc : '-');
+	    } else {
+		$win->addstr (sprintf (" %10s",
+				       defined $crc ? $crc : '-'));
+	    }
 	}
-	$win->addstr (sprintf (" %s",
-			       defined $comment ? $comment : ''))
-	    unless $suppress_output;
+	if ($suppress_output) {
+	    # do nothing
+	} elsif ($suppress_curses) {
+	    printf STDOUT (" %s", defined $comment ? $comment : '');
+	} else {
+	    $win->addstr (sprintf (" %s", defined $comment ? $comment : ''));
+	}
+	print "\n" if !$suppress_output and $suppress_curses;
     } else {
 	my $old = $old{$index};
 
@@ -320,28 +368,53 @@ sub out_interface ($$$$$$@) {
 	    || 0 && ($d_out > 0 && $d_in == 0);
 	print STDERR "\007" if $alarm && !$old->{'alarm'};
 	print STDERR "\007" if !$alarm && $old->{'alarm'};
-	$win->standout() if $alarm && !$suppress_output;
-	$win->addstr ($linecount, 0,
-		      sprintf ("%2d  %-24s %s %s",
-			       $index,
-			       defined $descr ? $descr : '',
-			       pretty_ps ($in, $d_in),
-			       pretty_ps ($out, $d_out)))
-	    unless $suppress_output;
+	$win->standout() if $alarm && !$suppress_curses;
+	if ($suppress_output) {
+	    # do nothing
+	} elsif ($suppress_curses) {
+	    printf STDOUT ("%5d  %-24s %s %s",
+			   $index,
+			   defined $descr ? $descr : '',
+			   pretty_ps ($in, $d_in),
+			   pretty_ps ($out, $d_out));
+	} else {
+	    $win->addstr ($linecount, 0,
+			  sprintf ("%5d  %-24s %s %s",
+				   $index,
+				   defined $descr ? $descr : '',
+				   pretty_ps ($in, $d_in),
+				   pretty_ps ($out, $d_out)));
+	}
 	if ($show_out_discards) {
-	    $win->addstr (sprintf (" %8.1f %s",
-				   defined $drops ? $d_drops : 0))
-		unless $suppress_output;
+	    if ($suppress_output) {
+		# do nothing
+	    } elsif ($suppress_curses) {
+		printf STDOUT (" %8.1f %s", defined $drops ? $d_drops : 0);
+	    } else {
+		$win->addstr (sprintf (" %8.1f %s",
+				       defined $drops ? $d_drops : 0));
+	    }
 	}
 	if ($cisco_p) {
-	    $win->addstr (sprintf (" %10.1f",
-				   defined $crc ? $d_crc : 0))
-		unless $suppress_output;
+	    if ($suppress_output) {
+		# do nothing
+	    } elsif ($suppress_curses) {
+		printf STDOUT (" %10.1f", defined $crc ? $d_crc : 0);
+	    } else {
+		$win->addstr (sprintf (" %10.1f",
+				       defined $crc ? $d_crc : 0));
+	    }
 	}
-	$win->addstr (sprintf (" %s",
-			       defined $comment ? $comment : ''))
-	    unless $suppress_output;
+	if ($suppress_output) {
+	    # do nothing
+	} elsif ($suppress_curses) {
+	    printf STDOUT (" %s", defined $comment ? $comment : '');
+	} else {
+	    $win->addstr (sprintf (" %s",
+				   defined $comment ? $comment : ''));
+	}
 	$win->standend() if $alarm && !$suppress_output;
+	print "\n" if !$suppress_output and $suppress_curses;
     }
     $old{$index} = {'in' => $in,
 		    'out' => $out,
@@ -374,34 +447,55 @@ sub out_switching_engine ($$$$$$@) {
 	   $flow_learn_failures,
 	   $int_flow_invalids,
 	   $ext_flow_invalids));
+    warn "RETRIEVED: pkts: $pkts\noctets: $octets\n"
+	if $debug;
     $win->clrtoeol ()
-	unless $suppress_output;
+	unless $suppress_curses;
     return unless defined $pkts and defined $octets;
     ## Suppress interfaces called "unrouted VLAN..."
     if (!defined $old{$index}) {
-	$win->addstr ($linecount, 0,
-		      sprintf ("%2d %10s %10s",
-			       $index,
-			       defined $pkts ? $pkts : '-',
-			       defined $octets ? $octets : '-'))
-	    unless $suppress_output;
+	if ($suppress_output) {
+	    # do nothing
+	} elsif ($suppress_curses) {
+	    printf STDOUT ("%5d %10s %10s\n",
+			   $index,
+			   defined $pkts ? $pkts : '-',
+			   defined $octets ? $octets : '-');
+	} else {
+	    $win->addstr ($linecount, 0,
+			  sprintf ("%5d %10s %10s",
+				   $index,
+				   defined $pkts ? $pkts : '-',
+				   defined $octets ? $octets : '-'));
+	}
     } else {
 	my $old = $old{$index};
 
 	$interval = ($clock-$old->{'clock'}) * 1.0 / $clock_ticks;
 	my $d_pkts = rate_or_0 ($old->{'pkts'}, $pkts, $interval, 0);
-	my $d_octets = rate_or_0 ($old->{'octets'}, $octets, $interval, 1);
+	my $d_octets = rate_or_0 ($old->{'octets'}, $octets, $interval, 1, 8);
+	warn "RATE: pkts: $d_pkts\nbits: $d_octets\n"
+	    if $debug;
 	$alarm = 0;
 	print STDERR "\007" if $alarm && !$old->{'alarm'};
 	print STDERR "\007" if !$alarm && $old->{'alarm'};
-	$win->standout() if $alarm && !$suppress_output;
-	$win->addstr ($linecount, 0,
-		      sprintf ("%2d  %s %s",
-			       $index,
-			       pretty_ps ($pkts, $d_pkts),
-			       pretty_ps ($octets, $d_octets)))
-	    unless $suppress_output;
-	$win->standend() if $alarm && !$suppress_output;
+	$win->standout() if $alarm && !$suppress_curses;
+	if ($suppress_output) {
+	    # do nothing
+	} elsif ($suppress_curses) {
+	    printf STDOUT ("%2d  %s %s",
+			   $index,
+			   pretty_ps ($pkts, $d_pkts),
+			   pretty_ps ($octets, $d_octets));
+	} else {
+	    $win->addstr ($linecount, 0,
+			  sprintf ("%2d  %s %s",
+				   $index,
+				   pretty_ps ($pkts, $d_pkts),
+				   pretty_ps ($octets, $d_octets)));
+	}
+	$win->standend() if $alarm && !$suppress_curses;
+	print "\n" if !$suppress_output and $suppress_curses;
     }
     $old{$index} = {'pkts' => $pkts,
 		    'octets' => $octets,
@@ -409,7 +503,7 @@ sub out_switching_engine ($$$$$$@) {
 		    'alarm' => $alarm};
     ++$linecount;
     $win->refresh ()
-	unless $suppress_output;
+	unless $suppress_curses;
 }
 
 sub pretty_ps ($$) {
@@ -426,13 +520,15 @@ sub pretty_ps ($$) {
 }
 
 $win->erase ()
-    unless $suppress_output;
+    unless $suppress_curses;
 my $session =
     ($version eq '1' ? SNMPv1_Session->open ($host, $community, $port, undef, undef, undef, undef, $ipv4_only_p)
      : $version eq '2c' ? SNMPv2c_Session->open ($host, $community, $port, undef, undef, undef, undef, $ipv4_only_p)
      : die "Unknown SNMP version $version")
   || die "Opening SNMP_Session";
 $session->debug (1) if $debug;
+$use_getbulk_p = 0 if $version eq '1';
+$session->{'use_getbulk'} = 0 unless $use_getbulk_p;
 
 ### max_repetitions:
 ###
@@ -447,39 +543,45 @@ $max_repetitions = $session->default_max_repetitions
     unless $max_repetitions;
 while (1) {
     unless ($suppress_output) {
-	$win->addstr (0, 0, sprintf ("%-20s interval %4.1fs %d reps",
-				     $host,
-				     $interval || $desired_interval,
-				     $max_repetitions));
-	$win->standout();
-	$win->addstr (1, 0,
-		      sprintf (("%2s  %-24s %10s %10s"),
-			       "ix", "name",
-			       "bits/s", "bits/s"));
-	if ($show_out_discards) {
-	    $win->addstr (sprintf ((" %8s"),
-				   "drops/s"));
-	}
-	if ($cisco_p) {
-	    $win->addstr (sprintf ((" %10s"), "pkts/s"));
-	}
-	$win->addstr (sprintf ((" %s"), "description"));
-	$win->addstr (2, 0,
-		      sprintf (("%2s  %-24s %10s %10s"),
-			       "", "",
-			       "in", "out"));
-	if ($show_out_discards) {
-	    $win->addstr (sprintf ((" %8s"),
-				   ""));
-	}
-	if ($cisco_p) {
+	if ($suppress_curses) {
+	    printf STDOUT ("interval: %4.1fs %d reps\n",
+			   $interval || $desired_interval,
+			   $max_repetitions);
+	} else {
+	    $win->addstr (0, 0, sprintf ("%-20s interval %4.1fs %d reps",
+					 $host,
+					 $interval || $desired_interval,
+					 $max_repetitions));
+	    $win->standout();
+	    $win->addstr (1, 0,
+			  sprintf (("%5s  %-24s %10s %10s"),
+				   "index", "name",
+				   "bits/s", "bits/s"));
+	    if ($show_out_discards) {
+		$win->addstr (sprintf ((" %8s"),
+				       "drops/s"));
+	    }
+	    if ($cisco_p) {
+		$win->addstr (sprintf ((" %10s"), "pkts/s"));
+	    }
+	    $win->addstr (sprintf ((" %s"), "description"));
 	    $win->addstr (2, 0,
-			  sprintf ((" %10s %s"),
-				   "CRC",
-				   ""));
+			  sprintf (("%2s  %-24s %10s %10s"),
+				   "", "",
+				   "in", "out"));
+	    if ($show_out_discards) {
+		$win->addstr (sprintf ((" %8s"),
+				       ""));
+	    }
+	    if ($cisco_p) {
+		$win->addstr (2, 0,
+			      sprintf ((" %10s %s"),
+				       "CRC",
+				       ""));
+	    }
+	    $win->clrtoeol ();
+	    $win->standend();
 	}
-	$win->clrtoeol ();
-	$win->standend();
     }
     $linecount = 3;
     my @oids;
@@ -517,7 +619,7 @@ while (1) {
 	: $session->map_table_4
 	(\@oids, \&out_interface, $max_repetitions);
     $win->clrtobot (), $win->refresh ()
-	unless $suppress_output;
+	unless $suppress_curses;
     $max_repetitions = $calls + 1
 	if $calls > 0;
     $sleep_interval -= ($interval - $desired_interval)
@@ -544,6 +646,8 @@ Usage: $0 [-t secs] [-v (1|2c)] [-c] [-l] [-m max] [-4] [-p port] host [communit
    	       supports SNMPv2c, you should enable this by passing "-v 2c"
    	       to the script.  SNMPv2c is much more efficient for walking
    	       tables, which is what this tool does.
+
+  -B           do not use get-bulk
 
   -m max       specifies the maxRepetitions value to use in getBulk requests
                (only relevant for SNMPv2c).
