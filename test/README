@@ -34,6 +34,10 @@ SNMPAgent.pm
 	Intended as an example of how to write agents.
 	Contributed by Mike McCauley <mikem@open.com.au>
 
+sun-find-process
+	Use SEA's "sun" MIB to find process ID(s) of processes with a
+	specific command name.
+
 sun-ps	List the process table of a remote system using the "sun" MIB
 	implemented in Sun's Solstice Enterprise Agents.
 
