@@ -48,6 +48,22 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_Session 0.75: Fixed a bug in versions 0.73-0.74 where
+creation of trap listener sockets would fail.  Rather than using
+<tt>bind</tt> to bind to the trap port, we now pass a
+<tt>LocalPort</tt> argument to <tt>INET->new</tt>.
+
+<li> SNMP_Session 0.75: Parse SNMPv2-Trap-Requests in addition to
+SNMPv1 ones.  A caller can tell whether an SNMPv1 or an SNMPv2 request
+has been received by testing whether the SNMPv1-specific fields are
+defined.  The sample script <tt>test/trap-listener</tt> has been
+updated to understand SNMPv2 Traps.
+
+<li> SNMP_Session 0.75: New subroutine <tt>v2_trap_request_send</tt>
+which sends SNMPv2 Trap PDUs.  The sample script
+<tt>test/trap-send</tt> has been extended to generate either type of
+trap on request.
+
 <li> SNMP_Session 0.74: Put under copyright and Artistic
 License. </li>
 
@@ -474,9 +490,9 @@ anyway. </p>
 <p> To send a trap, you have to open an SNMP session to the trap
  receiver.  Usually this is a process listening to UDP port 162 on a
  network management station.  Then you can use the
- <tt>trap_request_send</tt> method to encode and send the trap.  There 
- is no way to find out whether the trap was actually received at the
- management station - SNMP traps are fundamentally unreliable.
+ <tt>trap_request_send</tt> method to encode and send SNMPv1 traps.
+ There is no way to find out whether the trap was actually received at
+ the management station - SNMP traps are fundamentally unreliable.
 </p>
 
 <p> When constructing a trap, you must provide
@@ -504,14 +520,17 @@ anyway. </p>
 <pre>
 my $trap_receiver = "netman.noc";
 my $trap_community = "SNMP_Traps";
+my $trap_session = $version eq '1'
+    ? SNMP_Session-&gt;open ($trap_receiver, $trap_community, 162)
+    : SNMPv2c_Session-&gt;open ($trap_receiver, $trap_community, 162);
 my $trap_session = SNMP_Session-&gt;open ($trap_receiver, $trap_community, 162);
 my $myIpAddress = ...;
 my $start_time = time;
 
 ...
 
-sub link_down_trap ($) {
-  my ($if_index) = @_;
+sub link_down_trap ($$) {
+  my ($if_index, $version) = @_;
   my $genericTrap = 2;		# linkDown
   my $specificTrap = 0;
   my @ifIndexOID = ( 1,3,6,1,2,1,2,2,1,1 );
@@ -519,24 +538,42 @@ sub link_down_trap ($) {
   my @myOID = ( 1,3,6,1,4,1,2946,0,8,15 );
 
   warn "Sending trap failed"
-    unless $trap_session-&gt;trap_request_send (encode_oid (@myOID),
-					     encode_ip_address ($myIpAddress),
-					     encode_int ($genericTrap),
-					     encode_int ($specificTrap),
-					     encode_timeticks ($upTime),
-					     [encode_oid (@ifIndexOID,$if_index),
-					      encode_int ($if_index)]);
+    unless ($version eq '1')
+	? $trap_session->trap_request_send (encode_oid (@myOID),
+					    encode_ip_address ($myIpAddress),
+					    encode_int ($genericTrap),
+					    encode_int ($specificTrap),
+					    encode_timeticks ($upTime),
+					    [encode_oid (@ifIndex_OID,$if_index),
+					     encode_int ($if_index)],
+					    [encode_oid (@ifDescr_OID,$if_index),
+					     encode_string ("foo")])
+	    : $trap_session->v2_trap_request_send ([encode_oid (@sysUptime_OID,0),
+						    encode_timeticks ($upTime)],
+						   [encode_oid (@snmpTrapOID_OID,0),
+						    encode_oid (@linkDown_OID)],
+						   [encode_oid (@ifIndex_OID,$if_index),
+						    encode_int ($if_index)],
+						   [encode_oid (@ifDescr_OID,$if_index),
+						    encode_string ("foo")]);
 }
 </pre>
 
 <H2><a name="trap-recv">Receiving Traps</a></H2>
 
 <p> Since version 0.60, SNMP_Session.pm supports the receipt and
- decoding of SNMPv1 trap requests.  To receive traps, you have to
- create a special SNMP session that passively listens on the SNMP trap
- transport address (usually UDP port 162).  Then you can receive traps
- using the <tt>receive_trap</tt> method and decode them using
- <tt>decode_trap_request</tt>:
+ decoding of SNMPv1 trap requests.  Since version 0.75, SNMPv2 Trap
+ PDUs are also recognized. </p>
+
+<p> To receive traps, you have to create a special SNMP session that
+ passively listens on the SNMP trap transport address (usually UDP
+ port 162).  Then you can receive traps using the
+ <tt>receive_trap</tt> method and decode them using
+ <tt>decode_trap_request</tt>.  The <em>enterprise</em>,
+ <em>agent</em>, <em>generic</em>, <em>specific</em> and
+ <em>sysUptime</em> return values are only defined for SNMPv1 traps.
+ In SNMPv2 traps, the equivalent information is contained in the
+ bindings.
 </p>
 
 <pre>
@@ -597,7 +634,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19990914
+19991005
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
