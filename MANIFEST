@@ -24,6 +24,7 @@ test/if-status.pl
 test/if-to-routes.pl
 test/if-counters.pl
 test/sun-ps
+test/sun-find-process
 test/cisco-cpus
 test/cisco-memory
 test/SNMPAgent.pm
