@@ -83,7 +83,7 @@ require 'SNMP_Session.pm';
 # port on which the agent listens (usually 161).
 
 $session = SNMP_Session-&gt;open ($host, $community, $port)
-    || die "couldn't open SNMP session to $host";
+    or die "couldn't open SNMP session to $host";
 
 # Set $oid1, $oid2... to the BER-encoded OIDs of the MIB
 # variables you want to get.
@@ -348,14 +348,14 @@ sub link_down_trap ($$) {
 </p>
 
 <pre>
-my $trap_session = SNMP_Session-&gt;open_trap_session ()
-  || die "cannot open trap session";
+my $trap_session = SNMPv1_Session-&gt;open_trap_session ()
+  or die "cannot open trap session";
 my ($trap, $sender_addr, $sender_port) = $trap_session-&gt;receive_trap ()
-  || die "cannot receive trap";
+  or die "cannot receive trap";
 my ($community, $enterprise, $agent,
     $generic, $specific, $sysUptime, $bindings)
   = $session-&gt;decode_trap_request ($trap)
-    || die "cannot decode trap received"
+    or die "cannot decode trap received"
 ...
 my ($binding, $oid, $value);
 while ($bindings ne '') {
@@ -386,7 +386,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20020530
+20021002
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
