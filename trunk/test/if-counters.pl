@@ -74,6 +74,8 @@ my $desired_interval = 5.0;
 
 my $all_p = 0;
 
+my $port = 161;
+
 my $max_repetitions = 0;
 
 my $suppress_output = 0;
@@ -106,6 +108,18 @@ while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
 	}
 	if ($ARGV[0] =~ /^[0-9]+$/) {
 	    $max_repetitions = $ARGV[0];
+	} else {
+	    usage (1);
+	}
+    } elsif ($ARGV[0] =~ /^-p/) {
+	if ($ARGV[0] eq '-p') {
+	    shift @ARGV;
+	    usage (1) unless defined $ARGV[0];
+	} else {
+	    $ARGV[0] = substr($ARGV[0], 2);
+	}
+	if ($ARGV[0] =~ /^[0-9]+$/) {
+	    $port = $ARGV[0];
 	} else {
 	    usage (1);
 	}
@@ -254,8 +268,8 @@ sub pretty_bps ($$) {
 $win->erase ()
     unless $suppress_output;
 my $session =
-    ($version eq '1' ? SNMPv1_Session->open ($host, $community, 161)
-     : $version eq '2c' ? SNMPv2c_Session->open ($host, $community, 161)
+    ($version eq '1' ? SNMPv1_Session->open ($host, $community, $port)
+     : $version eq '2c' ? SNMPv2c_Session->open ($host, $community, $port)
      : die "Unknown SNMP version $version")
   || die "Opening SNMP_Session";
 $session->debug (1) if $debug;
@@ -323,7 +337,7 @@ while (1) {
 
 sub usage ($) {
     warn <<EOM;
-Usage: $0 [-t secs] [-v (1|2c)] [-m max] hostname [community]
+Usage: $0 [-t secs] [-v (1|2c)] [-m max] [-p port] hostname [community]
        $0 -h
 
   -h           print this usage message and exit.
@@ -340,6 +354,9 @@ Usage: $0 [-t secs] [-v (1|2c)] [-m max] hostname [community]
 
   -m max       specifies the maxRepetitions value to use in getBulk requests
                (only relevant for SNMPv2c).
+
+  -m port      can be used to specify a non-standard UDP port of the SNMP
+               agent (the default is UDP port 161).
 
   hostname     hostname or IP address of a router
 
