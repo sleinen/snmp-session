@@ -1,7 +1,7 @@
-#!/logiciels/public/divers/bin/perl5
+#!/usr/local/bin/perl -w
 # Minimal useful application of the SNMP package.
 # Author: Simon Leinen  <simon@lia.di.epfl.ch>
-# RCS $Header: /home/leinen/CVS/SNMP_Session/test/test.pl,v 1.13 1997-06-12 09:00:34 leinen Exp $
+# RCS $Header: /home/leinen/CVS/SNMP_Session/test/test.pl,v 1.14 1997-07-31 11:16:21 leinen Exp $
 ######################################################################
 # This application sends a get request for three fixed MIB-2 variable
 # instances (sysDescr.0, sysContact.0 and ipForwarding.0) to a given
