@@ -358,6 +358,40 @@ sub decode_length
     @result;
 }
 
+#### OID prefix check
+
+### encoded_oid_prefix_p OID1 OID2
+###
+### OID1 and OID2 should be BER-encoded OIDs.
+### The function returns non-zero iff OID1 is a prefix of OID2.
+### This can be used in the termination condition of a loop that walks
+### a table using GetNext or GetBulk.
+###
+sub encoded_oid_prefix_p
+{
+    my ($oid1, $oid2) = @_;
+    my ($i1, $i2);
+    my ($l1, $l2);
+    die unless ord (substr ($oid1, 0, 1)) == object_id_tag;
+    die unless ord (substr ($oid2, 0, 1)) == object_id_tag;
+    ($l1,$oid1) = decode_length (substr ($oid1, 1));
+    ($l2,$oid2) = decode_length (substr ($oid2, 1));
+    for ($i1 = 0, $i2 = 0;
+	 $i1 < $l1 && $i2 < $l2;
+	 ++$i1, ++$i2) {
+	## printf STDERR ("%2d %2d <> %2d %2d\n",
+	## 		  $i1, ord (substr ($oid1, $i1, 1)),
+	## 		  $i2, ord (substr ($oid2, $i2, 1)));
+	$subid1 = ord (substr ($oid1, $i1, 1));
+	$subid2 = ord (substr ($oid2, $i2, 1));
+	return 0 unless $subid1 == $subid2;
+	die "Subids > 127 not supported"
+	    unless $subid1 < 128 && $subid2 < 128;
+    }
+    return 1 if $i1 == $l1;
+    return 0;
+}
+
 #### Regression Tests
 
 sub regression_test
