@@ -314,10 +314,6 @@ sub snmpset(@) {
 	    ($binding,$bindings) = decode_sequence ($bindings);
 	    ($oid,$value) = decode_by_template ($binding, "%O%@");
 	    my $tempo = pretty_print($value);
-	    $tempo=~s/\t/ /g;
-	    $tempo=~s/\n/ /g;
-	    $tempo=~s/^\s+//;
-	    $tempo=~s/\s+$//;
 	    push @retvals,  $tempo;
 	}
 	return (@retvals);
