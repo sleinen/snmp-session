@@ -16,6 +16,10 @@ use SNMP_Session '0.58';
 
 my $version = '1';
 
+### Forward declarations
+sub link_down_trap ($$);
+sub usage ($);
+
 while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
     if ($ARGV[0] =~ /^-v/) {
 	if ($ARGV[0] eq '-v') {
