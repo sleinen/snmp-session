@@ -24,16 +24,21 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
-<li> SNMP_Session.pm 1.04: No change; version incremented for
-<tt>SNMP_util.pm</tt>. </li>
+<li> <tt>index.html</tt>: The code is no longer available from
+<tt>ftp.switch.ch</tt>, but via HTTP from
+<tt>www.switch.ch</tt>. </li>
+
+<li> SNMP_Session.pm 1.05: No change; version incremented for
+<tt>SNMP_util.pm</tt> and <tt>BER.pm</tt>. </li>
+
+<li> BER.pm 1.05: Internal restructuring: The new (BER.pm 1.02)
+pretty-printer registration method is now used for most standard SNMP
+types, too. </li>
 
 <li> SNMP_util.pm 1.04: The subroutines <tt>snmpget</tt>,
 <tt>snmpgetnext</tt> and <tt>snmpset</tt> will now detect when they
 are called in scalar context, and return only the first (and typically
 the only) of the retrieved values in this case. </li>
-
-<li> SNMP_Session.pm 1.03: No change; version incremented for
-<tt>BER.pm</tt> and <tt>SNMP_util.pm</tt>. </li>
 
 <li> SNMP_util.pm 1.03: Added a missing part of Mike Mitchell
 pretty-printer registration patch. </li>
@@ -631,7 +636,7 @@ use SNMP_Session "0.52";
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20040715
+20040823
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
