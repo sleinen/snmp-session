@@ -40,6 +40,9 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 <ul>
 
+<li> SNMP_util.pm 0.69: Enable parsing of community strings which
+contain <samp>@</samp> characters.
+
 <li> SNMP_util.pm 0.58: Check for errors from <tt>encode_oid</tt>, so
 that illegal OIDs generate error messages.  Allow for suppression of
 warnings by setting <tt>$SNMP_Session::suppress_warnings</tt> to a
@@ -547,7 +550,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19990222
+19990310
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
