@@ -15,6 +15,8 @@
 ### Simon Leinen <simon@switch.ch>: SNMP_session.pm/BER.pm
 ### Jeff Allen <jeff.allen@acm.org>: length() of undefined value
 ### Johannes Demel <demel@zid.tuwien.ac.at>: MIB file parse problem
+### Simon Leinen <simon@switch.ch>: more OIDs from Interface MIB
+### Jacques Supcik <supcik@ip-plus.net>: Specify local IP, port
 ######################################################################
 
 package SNMP_util;
@@ -25,11 +27,11 @@ use strict;
 use vars qw(@ISA @EXPORT $VERSION);
 use Exporter;
 
-use BER "0.58";
-use SNMP_Session "0.59";
+use BER "0.82";
+use SNMP_Session "0.83";
 use Socket;
 
-$VERSION = '0.77';
+$VERSION = '0.83';
 
 @ISA = qw(Exporter);
 
@@ -317,6 +319,7 @@ my $agent_start_time = time;
 undef $SNMP_util::Host;
 undef $SNMP_util::Session;
 undef $SNMP_util::Version;
+undef $SNMP_util::LHost;
 $SNMP_util::Debug = 0;
 $SNMP_util::CacheFile = "OID_cache.txt";
 $SNMP_util::CacheLoaded = 0;
@@ -344,23 +347,35 @@ sub version () { $VERSION; }
 # Start an snmp session
 #
 sub snmpopen (@) {
-  my($host) = @_;
-  my($nhost, $port, $community);
+  my($host, $type) = @_;
+  my($nhost, $port, $community, $lhost, $lport, $nlhost);
   my($timeout, $retries, $backoff, $version);
 
+  $type = 0 if (!defined($type));
   $community = "public";
-  $port = 161;
+  $nlhost = "";
 
   ($community, $host) = ($1, $2) if ($host =~ /^(.*)@([^@]+)$/);
   ($host, $port, $timeout, $retries, $backoff, $version) = split(':', $host, 6)
     if ($host =~ /:/);
   $version = '1' unless defined $version;
-  $port = 161 if (defined($port) && (length($port) <= 0));
-  $nhost = "$community\@$host:$port";
+  if ($port =~ /^([^!]*)!(.*)$/)
+  {
+    ($port, $lhost) = ($1, $2);
+    $nlhost = $lhost;
+    ($lhost, $lport) = ($1, $2) if ($lhost =~ /^(.*)!(.*)$/);
+    undef($lhost) if (defined($lhost) && (length($lhost) <= 0));
+    undef($lport) if (defined($lport) && (length($lport) <= 0));
+  }
+  undef($port) if (defined($port) && length($port) <= 0);
+  $port = 162 if ($type == 1 && !defined($port));
+  $nhost = "$community\@$host";
+  $nhost .= ":" . $port if (defined($port));
 
   if ((!defined($SNMP_util::Session))
     || ($SNMP_util::Host ne $nhost)
-      || ($SNMP_util::Version ne $version))
+    || ($SNMP_util::Version ne $version)
+    || ($SNMP_util::LHost ne $nlhost))
   {
     if (defined($SNMP_util::Session))
     {
@@ -368,13 +383,15 @@ sub snmpopen (@) {
       undef $SNMP_util::Session;
       undef $SNMP_util::Host;
       undef $SNMP_util::Version;
+      undef $SNMP_util::LHost;
     }
-    $SNMP_util::Session =
-	($version =~ /^2c?/)
-	    ? SNMPv2c_Session->open($host, $community, $port)
-		: SNMP_Session->open($host, $community, $port);
-    ($SNMP_util::Host = $nhost, $SNMP_util::Version = $version)
-	if defined($SNMP_util::Session);
+    $SNMP_util::Session = ($version =~ /^2c?$/i)
+      ? SNMPv2c_Session->open($host, $community, $port, undef,
+				$lport, undef, $lhost)
+      : SNMP_Session->open($host, $community, $port, undef,
+				$lport, undef, $lhost);
+    ($SNMP_util::Host = $nhost, $SNMP_util::Version = $version,
+      $SNMP_util::LHost = $nlhost) if defined($SNMP_util::Session);
   }
 
   if (defined($SNMP_util::Session))
@@ -398,7 +415,7 @@ sub snmpget (@) {
   my(@enoid, $var, $response, $bindings, $binding, $value, $oid, @retvals);
   my $session;
 
-  $session = &snmpopen($host);
+  $session = &snmpopen($host, 0);
   if (!defined($session)) {
     warn "SNMPGET Problem for $host\n"
       unless ($SNMP_Session::suppress_warnings > 1);
@@ -435,7 +452,7 @@ sub snmpgetnext (@) {
   my($noid, $ok);
   my $session;
 
-  $session = &snmpopen($host);
+  $session = &snmpopen($host, 0);
   if (!defined($session)) {
     warn "SNMPGETNEXT Problem for $host\n"
       unless ($SNMP_Session::suppress_warnings > 1);
@@ -483,7 +500,7 @@ sub snmpwalk (@) {
   my($got, @nnoid, $noid, $ok);
   my $session;
 
-  $session = &snmpopen($host);
+  $session = &snmpopen($host, 0);
   if (!defined($session)) {
     warn "SNMPWALK Problem for $host\n"
       unless ($SNMP_Session::suppress_warnings > 1);
@@ -554,7 +571,7 @@ sub snmpset(@) {
     my($oid, @retvals, $type, $value);
     my $session;
 
-    $session = &snmpopen($host);
+    $session = &snmpopen($host, 0);
     if (!defined($session))
     {
 	warn "SNMPSET Problem for $host\n"
@@ -620,8 +637,9 @@ sub snmptrap(@) {
     my(@enoid);
     my $session;
 
-    $host = $host . ':162' if !($host =~ /:/);
-    $session = &snmpopen($host);
+    undef $ent; undef $gen; undef $spec;
+
+    $session = &snmpopen($host, 1);
     if (!defined($session))
     {
 	warn "SNMPTRAP Problem for $host\n"
@@ -919,7 +937,7 @@ sub snmpMIB_to_OID ($)
 	    $buf =~ s/ +$//;
 	    ($code, $val) = split(' ', $buf, 2);
 
-	    if (length($val) <= 0)
+	    if (!defined($val) || (length($val) <= 0))
 	    {
 		$SNMP_util::OIDS{$var} = $code;
 		$ret++;
