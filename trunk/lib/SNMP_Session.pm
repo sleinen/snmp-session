@@ -38,7 +38,7 @@ sub map_table_start_end ($$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.63';
+$VERSION = '0.64';
 
 @ISA = qw(Exporter);
 
@@ -247,7 +247,8 @@ sub request_response_5 ($$$$$)
     $this->send_query ($req)
 	|| return $this->error ("send_query: $!");
     while ($retries > 0) {
-	if (($nfound, $timeleft) = $this->wait_for_response($timeleft)) {
+	($nfound, $timeleft) = $this->wait_for_response($timeleft);
+	if ($nfound > 0) {
 	    my($response_length);
 
 	    $response_length
