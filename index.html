@@ -49,6 +49,29 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> BER.pm 0.77: Added support for long integers, so that
+<tt>Counter64</tt> values can be handled without risk of losing
+precision (due to automatic coercion to floating-point representation
+by Perl).  When a BER-encoded integer is so long that it might not fit
+in a 32-bit unsigned integer, then we use <tt>Math::BigInt</tt>
+arithmetics to convert it. <b>Warning:</b> code which calls the
+decoding functions should be prepared to handle <tt>Math::BigInt</tt>
+values if <tt>Counter64</tt> values can be accessed.  In most respect,
+those long integers behave just like ordinary integers.  A notable
+exception is that they print with a leading ``<tt>+</tt>'' sign. </li>
+
+<li> SNMP_Session 0.77: The SNMPv2 implementation of
+<tt>map_table_start_end</tt> has been enhanced to cope with the case
+where a response PDU ends with a truncated table row, courtesy <a
+href="mailto:pee@gblx.net">Paul E. Erkkila</a>.  Note that
+tables with missing entries still aren't handled correctly when SNMPv2
+(and thus the <tt>get-bulk</tt> operator is used). </li>
+
+<li> SNMP_util 0.73: Added a fix from <a
+href="mailto:mcm@unx.sas.com">Mike Mitchell</a> (originally <a
+href="demel@zid.tuwien.ac.at">Johannes Demel</a>) to treat
+<tt>OBJECT-IDENTITY</tt> like <tt>OBJECT IDENTIFIER</tt>.
+
 <li> SNMP_Session 0.76: Added some debugging support for
 <tt>map_table</tt>, which still doesn't work reliably when the SNMPv2
 <tt>getBulk</tt> operator is used. </li>
@@ -657,7 +680,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20000103
+20000329
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
