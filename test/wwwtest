@@ -17,8 +17,23 @@ Content-transfer-encoding: binary
 <H1>Perl SNMP Module Test</H1>
 <HR>
 <FORM>
-Host name:<INPUT NAME=hostname VALUE=\"liasg5.epfl.ch\"><BR>
-Community name:<INPUT NAME=community VALUE=\"public\"><BR>
+Host name:
+<SELECT NAME=hostname>
+<OPTION VALUE=\"liasg1.epfl.ch\">liasg1.epfl.ch
+<OPTION VALUE=\"liasg2.epfl.ch\">liasg2.epfl.ch
+<OPTION VALUE=\"liasg3.epfl.ch\">liasg3.epfl.ch
+<OPTION VALUE=\"liasg4.epfl.ch\">liasg4.epfl.ch
+<OPTION SELECTED VALUE=\"liasg5.epfl.ch\">liasg5.epfl.ch
+<OPTION VALUE=\"liasg6.epfl.ch\">liasg6.epfl.ch
+<OPTION VALUE=\"liasg7.epfl.ch\">liasg7.epfl.ch
+<OPTION VALUE=\"liasg8.epfl.ch\">liasg8.epfl.ch
+<OPTION VALUE=\"liasg9.epfl.ch\">liasg9.epfl.ch
+</SELECT>
+Community name:
+<SELECT NAME=community>
+<OPTION VALUE=\"public\">public
+</SELECT>
+<BR>
 <INPUT TYPE=submit VALUE=\"Send request\">
 <INPUT TYPE=reset VALUE=\"Clear\">
 </FORM>
