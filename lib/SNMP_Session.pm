@@ -13,7 +13,7 @@
 ###
 ### Contributions and fixes by:
 ###
-### Matthew Trunnell <matter@dune.media.mit.edu>
+### Matthew Trunnell <matter@media.mit.edu>
 ### Tobias Oetiker <oetiker@ee.ethz.ch>
 ### Heine Peters <peters@dkrz.de>
 ######################################################################
