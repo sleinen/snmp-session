@@ -67,6 +67,7 @@ use BER;
 use SNMP_Session "0.67";	# requires map_table_4
 use POSIX;			# for exact time
 use Curses;
+use Math::BigInt;
 
 ### Forward declarations
 sub out_interface ($$$$$$@);
@@ -90,6 +91,8 @@ my $debug = 0;
 my $show_out_discards = 0;
 
 my $cisco_p = 0;
+
+my $counter64_p = 0;
 
 while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
     if ($ARGV[0] =~ /^-v/) {
@@ -146,6 +149,8 @@ while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
 	$all_p = 1;
     } elsif ($ARGV[0] eq '-c') {
 	$cisco_p = 1;
+    } elsif ($ARGV[0] eq '-l') {
+	$counter64_p = 1;
     } elsif ($ARGV[0] eq '-n') {
 	$suppress_output = 1;
     } elsif ($ARGV[0] eq '-d') {
@@ -174,6 +179,9 @@ my $ifInUcastPkts = [1,3,6,1,2,1,2,2,1,11];
 my $ifOutUcastPkts = [1,3,6,1,2,1,2,2,1,17];
 my $ifOutDiscards = [1,3,6,1,2,1,2,2,1,19];
 my $ifAlias = [1,3,6,1,2,1,31,1,1,1,18];
+## Counter64 variants
+my $ifHCInOctets = [1,3,6,1,2,1,31,1,1,1,6];
+my $ifHCOutOctets = [1,3,6,1,2,1,31,1,1,1,10];
 ## Cisco-specific variables enabled by `-c' option
 my $locIfInCRC = [1,3,6,1,4,1,9,2,2,1,1,12];
 my $locIfOutCRC = [1,3,6,1,4,1,9,2,2,1,1,12];
@@ -188,13 +196,43 @@ my $sleep_interval = $desired_interval + 0.0;
 my $interval;
 my $linecount;
 
-sub rate_32 ($$$) {
-    my ($old, $new, $interval) = @_;
+sub rate_32 ($$$@) {
+    my ($old, $new, $interval, $multiplier) = @_;
+    $multiplier = 1 unless defined $multiplier;
     my $diff = $new-$old;
     if ($diff < 0) {
 	$diff += (2**32);
     }
-    return $diff / $interval;
+    return $diff / $interval * $multiplier;
+}
+
+sub rate_64 ($$$@) {
+    my ($old, $new, $interval, $multiplier) = @_;
+    $multiplier = 1 unless defined $multiplier;
+    return 0 if $old == $new;
+    my $diff = Math::BigInt->new ($new-$old);
+    if ($diff < 0) {
+	$diff = $diff->add (2**64);
+    }
+    ## hrm.  Why is this so complicated?
+    ## I want a real programming language (such as Lisp).
+    my $result = $diff->bnorm () / $interval * $multiplier;
+    return $result;
+}
+
+sub rate ($$$$@) {
+    my ($old, $new, $interval, $counter64_p, $multiplier) = @_;
+    $multiplier = 1 unless defined $multiplier;
+    return $counter64_p
+	? rate_64 ($old, $new, $interval, $multiplier)
+	: rate_32 ($old, $new, $interval, $multiplier);
+}
+
+sub rate_or_0 ($$$$$) {
+    my ($old, $new, $interval, $counter64_p, $multiplier) = @_;
+    return defined $new
+	? rate ($old, $new, $interval, $counter64_p, $multiplier)
+	: 0;
 }
 
 sub out_interface ($$$$$$@) {
@@ -240,10 +278,10 @@ sub out_interface ($$$$$$@) {
 	my $old = $old{$index};
 
 	$interval = ($clock-$old->{'clock'}) * 1.0 / $clock_ticks;
-	my $d_in = $in ? rate_32 ($old->{'in'}, $in, $interval)*8 : 0;
-	my $d_out = $out ? rate_32 ($old->{'out'}, $out, $interval)*8 : 0;
-	my $d_drops = $drops ? rate_32 ($old->{'drops'}, $drops, $interval) : 0;
-	my $d_crc = $crc ? rate_32 ($old->{'crc'}, $crc, $interval) : 0;
+	my $d_in = rate_or_0 ($old->{'in'}, $in, $interval, $counter64_p, 8);
+	my $d_out = rate_or_0 ($old->{'out'}, $out, $interval, $counter64_p, 8);
+	my $d_drops = rate_or_0 ($old->{'drops'}, $drops, $interval, 0, 1);
+	my $d_crc = rate_or_0 ($old->{'crc'}, $crc, $interval, 0, 1);
 	$alarm = ($d_crc != 0)
 	    || 0 && ($d_out > 0 && $d_in == 0);
 	print STDERR "\007" if $alarm && !$old->{'alarm'};
@@ -352,8 +390,13 @@ while (1) {
 	$win->standend();
     }
     $linecount = 3;
-    my @oids = ($ifDescr,$ifAdminStatus,$ifOperStatus,
-		$ifInOctets,$ifOutOctets,$ifAlias);
+    my @oids = ($ifDescr,$ifAdminStatus,$ifOperStatus);
+    if ($counter64_p) {
+	@oids = (@oids,$ifHCInOctets,$ifHCOutOctets);
+    } else {
+	@oids = (@oids,$ifInOctets,$ifOutOctets);
+    }
+    @oids = (@oids,$ifAlias);
     if ($cisco_p) {
 	push @oids, $locIfInCRC;
     }
@@ -372,12 +415,14 @@ while (1) {
 
 sub usage ($) {
     warn <<EOM;
-Usage: $0 [-t secs] [-v (1|2c)] [-m max] [-p port] hostname [community]
+Usage: $0 [-t secs] [-v (1|2c)] [-c] [-l] [-m max] [-p port] host [community]
        $0 -h
 
   -h           print this usage message and exit.
 
   -c           also use Cisco-specific variables (locIfInCrc)
+
+  -l           use 64-bit counters (requires SNMPv2 or higher)
 
   -t secs      specifies the sampling interval.  Defaults to 5 seconds.
 
@@ -393,7 +438,7 @@ Usage: $0 [-t secs] [-v (1|2c)] [-m max] [-p port] hostname [community]
   -m port      can be used to specify a non-standard UDP port of the SNMP
                agent (the default is UDP port 161).
 
-  hostname     hostname or IP address of a router
+  host         hostname or IP address of a router
 
   community    SNMP community string to use.  Defaults to "public".
 EOM
