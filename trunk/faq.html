@@ -8,55 +8,70 @@
 
 <hr>
 
-<h2> <a name="snmpv3"></a>When will <tt>SNMP_Session.pm</tt> support SNMPv3? </h2>
+<h2> <a name="snmpv3"></a>When will MRTG/<tt>SNMP_Session.pm</tt>
+support SNMPv3? </h2>
 
-<pre>
-&gt; 	I came to know from Mr. Tobias Oetikar, that you are working
-&gt; on the SNMP library used in the MRTG. I would like to know, if there
-&gt; is any work going on to support the SNMP V3 in the future releases
-&gt; of MRTG. We would like to use the security features which SNMP V3
-&gt; supports.
-</pre>
+<p> <tt>SNMP_Session.pm</tt> only supports SNMPv1 and
+(community-based) SNMPv2 ("SNMPv2c").  There are no plans to add
+SNMPv3 support to <tt>SNMP_Session.pm</tt>.  I'd recommend looking at
+<a href="http://search.cpan.org/dist/Net-SNMP/">Net::SNMP</a> instead,
+which has been supporting SNMPv3 for quite a while.  <a
+href="http://search.cpan.org/dist/Net-SNMP/">Net::SNMP</a> is also
+written much cleaner than <tt>SNMP_Session.pm</tt>, and like
+<tt>SNMP_Session.pm</tt> doesn't require any external binaries.  Some
+non-standard (crypto) Perl modules might be required to use SNMP's
+security features, however. </p>
 
-<p> <tt>SNMP_Session.pm</tt> would have to be modified to understand
-SNMPv3.  Personally I think this would be stretching the current code
-too much, and that it would be better to start with a fresh code
-base. </p>
+<p> A nice project would be to write a variant of
+<tt>SNMP_util.pm</tt> that sits on top of <a
+href="http://search.cpan.org/dist/Net-SNMP/">Net::SNMP</a> rather than
+on top of <tt>SNMP_Session.pm</tt>.  Since <a
+href="http://www.mrtg.org/">MRTG</a> uses the <tt>SNMP_util.pm</tt>
+layer, that should make it work with SNMPv3. </p>
 
-<p> <a
-href="http://search.cpan.org/dist/Net-SNMP/"><tt>Net::SNMP</tt></a> is
-an alternative library that started out looking a lot like
-<tt>SNMP_Session.pm</tt>, but is written in a much cleaner way and it
-already supports SNMPv3.  Like <tt>SNMP_Session.pm</tt>, it is
-stand-alone in that it doesn't require an additional SNMP toolkit like
-UCD-SNMP/Net-SNMP. </p>
+<p> However, since SNMPv3 doesn't have communities, MRTG's target
+syntax would have to be changed to accomodate SNMPv3 targets.  The
+current syntax of <samp>community{at}host[:options]</samp> would have
+to be modified (I think it should be changed, rather than further
+extended, because it already looks too ugly because of its multiple
+extensions. </p>
 
-<p> It might be a useful exercise to modify MRTG to use
-<tt>Net::SNMP</tt> instead of my <tt>SNMP_Session.pm</tt> (and Mike
-Mitchell's <tt>SNMP_util.pm</tt> which comes with it).  However, it
-might require some work to do this in a compatible way. </p>
+<p> For the target syntax, one should probably look at the proposed
+SNMP URI syntax (<a
+href="http://www.ietf.org/internet-drafts/draft-black-snmp-uri-09.txt"><tt>draft-black-snmp-uri-09.txt</tt></a>
+- this is <a
+href="http://www.rfc-editor.org/queue.html#black-snmp-uri">in the
+RFC&nbsp;Editor Queue</a>, so it should be published as an RFC at some
+point in the future with few modifications). </p>
 
-<pre>
-&gt; Do we have any 3rd party tools which can be integrated
-&gt; with MRTG for the SNMP V3 support ?
-</pre>
+<p> Anther issue with SNMPv3 is that it uses engine IDs, which are
+usually "discovered" using a well-defined discovery mechanism.  It
+would be good to cache discovered engine IDs somewhere, to avoid
+repeating the discovery process for every round of MRTG.  If MRTG is
+run from cron every five minutes, then such an engine ID cache should
+be written to disk between runs.  I'm not sure whether Net::SNMP
+already supports this.  If MRTG is run as a long-running "daemon"
+process, making the cache persistent might not be necessary. </p>
 
-<p> I often use <a
+<h2> Can I integrate 3rd party tools with MRTG to get SNMPv3 support? </h2>
+
+<p> From the command line, I often use <a
 href="http://net-snmp.sourceforge.net/">Net-SNMP</a> (the former
-UCD-SNMP) as a command-line tool to access router information using
-SNMPv3.  I have my SNMPv3 USM credentials configured in my
-<samp>${HOME}/.snmp/snmp.conf</samp> file, so I can simply call
-<samp>snmptable ROUTERNAME TABLENAME</samp> without giving a
-community/user name. </p>
+UCD-SNMP) to access router information using SNMPv3.  I have my SNMPv3
+USM credentials configured in my <samp>${HOME}/.snmp/snmp.conf</samp>
+file, so I can simply call <samp>snmptable ROUTERNAME TABLENAME</samp>
+without giving a community/user name. </p>
 
 <p> It used to be the case that MRTG allowed the usage of external
 SNMP command-line tools, including the CMU ones, which later became
-UCD-SNMP.  Maybe this code still works? </p>
-
+UCD-SNMP.  Maybe this code still works? Otherwise you can use MRTG's
+`script' target syntax, with a small shell script that calls Net-SNMP
+and outputs the obtained values in the format in which MRTG expects
+them. </p>
 
 <hr>
 <!-- hhmts start -->
-2003/05/16 11:00:09
+2005/01/21 13:19:55
 <!-- hhmts end -->
 <address>
 
