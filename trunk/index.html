@@ -51,10 +51,11 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 <li> SNMP_Session 0.74: Put under copyright and Artistic
 License. </li>
 
-<li> SNMP_util 0.72: Changed snmpgetnext so it will return the next
-lexicographical larger OID number, even if it is not in the same OID
-tree.  Before the change snmpget would discard the return value if the
-OID wasn't in the same tree. (Change from <a
+<li> SNMP_util 0.72: Changed <tt>snmpgetnext</tt> so it will return
+the next lexicographical larger OID number, even if it is not in the
+same OID tree.  Before the change snmpget would discard the return
+value if the OID wasn't in the same tree.  In <tt>snmpMIB_to_OID</tt>,
+an "unitialized variable" warning was removed. (Changes by <a
 href="mailto:mcm@unx.sas.com">Mike Mitchell</a>, the author) </li>
 
 <li> SNMP_Session 0.73: The UDP socket associated with each SNMP
