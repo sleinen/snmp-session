@@ -16,7 +16,7 @@ use vars qw($MULTILINE_MATCHING);
 
 require 5;
 
-use SNMP_Session;
+use SNMP_Session "0.61";
 use BER;
 use Socket;
 
