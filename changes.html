@@ -24,6 +24,28 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_util.pm 0.86: Support for the awesome <tt>get-bulk</tt>
+operator, both directly through the new <samp>snmpgetbulk</samp>
+subroutine, and transparently via <samp>snmpwalk</samp> when the
+session's SNMP version is &gt;= 2 and the <samp>use_getbulk</samp>
+slot is set (as it is by default). </li>
+
+<li> SNMP_Session.pm 0.85: If a local address is specified in
+<samp>snmpopen</samp>, don't convert it using <samp>inet_aton</samp>,
+because this is handled by the Socket library.  Fix from <a
+href="mailto:mikem@open.com.au">Mike McCauley</a>. </li>
+
+<li> SNMP_Session.pm 0.85: Added
+<samp>lenient_source_port_matching</samp> slot to the session object.
+Set this to communicate with weird SNMP agents that send the response
+from a port other than 161.  Suggestion from <a
+href="mailto:hgomez@slib.fr">Henri Gomez</a>. </li>
+
+<li> SNMP_util.pm 0.84: New version from Mike Mitchell.
+<samp>snmpopen</samp> now parses an optional hash argument for
+options.  Also reintroduced defaulting of the UDP port to 161 for
+``normal'' sessions. </li>
+
 <li> SNMP_Session.pm 0.84: Clarified documentation concerning the
 <samp>%pretty_oids</samp> hash, upon a suggestion from <a
 href="mailto:alistair@alizta.com">Alistair Mills</a>. </li>
@@ -436,7 +458,7 @@ use SNMP_Session "0.52";
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20010410
+20010509
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
