@@ -18,6 +18,7 @@
 ### Heine Peters <peters@dkrz.de>
 ### Daniel L. Needles <dan_needles@INS.COM>
 ### Mike Mitchell <mcm@unx.sas.com>
+### Clinton Wong  <clintdw@netcom.com>
 ######################################################################
 
 package SNMP_Session;		
@@ -37,7 +38,7 @@ sub map_table_start_end ($$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.61';
+$VERSION = '0.62';
 
 @ISA = qw(Exporter);
 
@@ -565,8 +566,8 @@ sub receive_response_3
     ## it, as it may relate to another request.
     ##
     if ($this->{'debug'} && $remote_addr ne $this->{'remote_addr'}) {
-	warn "Response came from ".&pretty_address ($remote_addr)
-	    .", not ".&pretty_address($this->{'remote_addr'})
+	warn "Response came from ".&SNMP_Session::pretty_address($remote_addr)
+	    .", not ".&SNMP_Session::pretty_address($this->{'remote_addr'})
 		unless $SNMP_Session::suppress_warnings;
     }
     $this->{'last_sender_addr'} = $remote_addr;
@@ -605,7 +606,7 @@ sub to_string
     $class = ref($this);
     $prefix = ' ' x (length ($class) + 2);
     ($class." (remote host: \"".$this->{remote_hostname}
-     ."\" ".&pretty_address ($this->remote_addr)."\n"
+     ."\" ".&SNMP_Session::pretty_address ($this->remote_addr)."\n"
      .$prefix."  community: \"".$this->{'community'}."\"\n"
      .$prefix." request ID: ".$this->{'request_id'}."\n"
      .$prefix."PDU bufsize: ".$this->{'max_pdu_len'}." bytes\n"
@@ -613,7 +614,7 @@ sub to_string
      .$prefix."    retries: ".$this->{retries}."\n"
      .$prefix."    backoff: ".$this->{backoff}.")");
 ##    sprintf ("SNMP_Session: %s (size %d timeout %g)",
-##	       &pretty_address ($this->remote_addr),$this->max_pdu_len,
+##    &SNMP_Session::pretty_address ($this->remote_addr),$this->max_pdu_len,
 ##	       $this->timeout);
 }
 
