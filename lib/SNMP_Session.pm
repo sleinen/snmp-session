@@ -23,7 +23,7 @@ use vars qw(@ISA);
 use Socket;
 use BER;
 
-my $default_debug = 1;
+my $default_debug = 0;
 
 ### Default initial timeout (in seconds) waiting for a response PDU
 ### after a request is sent.  Note that when a request is retried, the
@@ -242,14 +242,13 @@ sub unwrap_response_4
     my($this,$response,$tag,$request_id) = @_;
     my($community,$request_id,@rest) = decode_by_template ($response, "%{%0i%s%*{%i%*i%*i%{%@", 
 							   $tag,
-							   $request_id,
 							   $this->snmp_version (),
 							   0);
     if ($this->{'debug'}) {
-	warn "$request_id != $this->{request_id}"
-	    unless $request_id eq $this->{request_id};
 	warn "$community != $this->{community}"
-	    unless $community == $this->{community};
+	    unless $community eq $this->{community};
+	warn "$request_id != $this->{request_id}"
+	    unless $request_id == $this->{request_id};
     }
     return undef unless $community eq $this->{community};
     return undef unless $request_id == $this->{request_id};
@@ -268,8 +267,8 @@ sub receive_response_1
     my $this = shift;
     my $response_tag = shift;
     my($remote_addr);
-    ($remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,0))
-	|| return 0;
+    $remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,0);
+    return 0 unless $remote_addr;
     my $response = $this->{'pdu_buffer'};
     ##
     ## Check whether the response came from the address we've sent the
