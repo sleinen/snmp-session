@@ -55,6 +55,10 @@ sub get_request  { 0 | context_flag };
 sub getnext_request  { 1 | context_flag };
 sub get_response { 2 | context_flag };
 
+### `pack' template for AF_INET socket address.
+### Should be removed in 5.002 or later.
+my $sockaddr_in = 'S n a4 x8';
+
 sub standard_udp_port { 161 };
 
 sub open
@@ -185,16 +189,31 @@ sub open
     $community = 'public' unless defined $community;
     $port = SNMP_Session::standard_udp_port unless defined $port;
     $max_pdu_len = 8000 unless defined $max_pdu_len;
-    $remote_addr = inet_aton ($remote_hostname)
-	|| die "inet_aton($remote_hostname) failed";
-    $socket = 'SNMP'.sprintf ("%s:04x",
-			      inet_ntoa ($remote_addr), $port);
+
+    ## Should be replaced by the following in 5.002 or later:
+    ## $remote_addr = inet_aton ($remote_hostname)
+    ## 	   || die "inet_aton($remote_hostname) failed";
+    ## $socket = 'SNMP'.sprintf ("%s:04x",
+    ## 				 inet_ntoa ($remote_addr), $port);
+    if ($remote_hostname =~ /^\d+\.\d+\.\d+\.\d+$/) {
+	$remote_addr = pack('C4',split(/\./,$remote_hostname));
+    } else {
+	$remote_addr = (gethostbyname($remote_hostname))[4]
+	    || die (host_not_found_error ($remote_hostname, $?));
+    }
+    $socket = 'SNMP'.sprintf ("%08x04x",
+			      unpack ("N", $remote_addr), $port);
+    ## end of pre-5.002 code
+
     (($name,$aliases,$udp_proto) = getprotobyname('udp'))
 	unless $udp_proto;
     $udp_proto=17 unless $udp_proto;
     socket ($socket, PF_INET, SOCK_DGRAM, $udp_proto)
 	|| die "socket: $!";
-    $remote_addr = pack_sockaddr_in ($port, $remote_addr);
+    ## Should be replaced by the following in 5.002 or later:
+    ## $remote_addr = pack_sockaddr_in ($port, $remote_addr);
+    $remote_addr = pack ($sockaddr_in, AF_INET, $port, $remote_addr);
+    ## end of pre-5.002 code
     bless {
 	'sock' => $socket,
 	'sockfileno' => fileno ($socket),
@@ -208,6 +227,20 @@ sub open
 	'backoff' => $default_backoff,
 	'debug' => $default_debug,
 	};
+}
+
+## Should be removed in 5.002 or later.
+sub host_not_found_error
+{
+    my ($hostname, $h_errno) = @_;
+    my ($message);
+
+    $message = "host $hostname not found";
+    return $message unless $?;
+    return $message.": ".(('no such host', 'temporary name service failure',
+			   'name service error', 'host has no address')[$?-1])
+	if $? > 0 && $? < 5;
+    return $message.", h_errno==".$?;
 }
 
 sub sock { $_[0]->{sock} }
@@ -287,8 +320,13 @@ sub receive_response_1
 sub pretty_address
 {
     my($addr) = shift;
-    my($port,$ipaddr) = unpack_sockaddr_in($addr);
-    return sprintf ("[%s].%d",inet_ntoa($ipaddr),$port);
+    ## Should be replaced by the following in 5.002 or later:
+    ## my($port,$ipaddr) = unpack_sockaddr_in($addr);
+    ## return sprintf ("[%s].%d",inet_ntoa($ipaddr),$port);
+    my($family,$port,@ipaddr) = unpack($sockaddr_in,$addr);
+    @ipaddr = unpack ('CCCC',$ipaddr[0]);
+    return sprintf ("[%d.%d.%d.%d].%d",@ipaddr,$port);
+    ## end of pre-5.002 code
 }
 
 sub describe
