@@ -262,7 +262,7 @@ sub snmpwalk (@) {
       }
       if ($ok)
       {
-	my $tmp = encode_oid_with_errmsg (split(/\./, $tempo));
+	my $tmp = encode_oid_with_errmsg ($tempo);
 	return undef unless defined $tmp;
 	push @nnoid, $tmp;
 	my $tempv = pretty_print($value);
@@ -317,7 +317,7 @@ sub snmpset(@) {
 	}
 	elsif ($type =~ /oid/i)
 	{
-	    my $tmp = encode_oid_with_errmsg(split(/\./, $value));
+	    my $tmp = encode_oid_with_errmsg($value);
 	    return undef unless defined $tmp;
 	    push @enoid, [$oid,$tmp];
 	}
@@ -390,7 +390,7 @@ sub snmptrap(@) {
 	}
 	elsif ($type =~ /oid/i)
 	{
-	    my $tmp = encode_oid_with_errmsg(split(/\./, $value));
+	    my $tmp = encode_oid_with_errmsg($value);
 	    return undef unless defined $tmp;
 	    push @enoid, [$oid,$tmp];
 	}
@@ -428,7 +428,7 @@ sub toOID(@)
 	    }
 	}
 	print "toOID: $var\n" if $SNMP_util::Debug;
-	$tmp = encode_oid_with_errmsg(split(/\./, $var));
+	$tmp = encode_oid_with_errmsg($var);
 	return undef unless defined $tmp;
 	push(@retvar, $tmp);
     }
