@@ -26,7 +26,6 @@ package BER;
 ##use vars qw(@ISA @EXPORT);
 use Exporter;
 
-### We only need integer arithmetic here.
 use integer;
 
 @ISA = qw(Exporter);
@@ -172,9 +171,10 @@ sub pretty_print
     my($type,$rest);
     my $result = ord (substr ($packet, 0, 1));
     return pretty_intlike ($packet)
-	if $result == int_tag
-	    || $result == snmp_counter32_tag
-		|| $result == snmp_gauge32_tag;
+	if $result == int_tag;
+    return pretty_unsignedlike ($packet)
+	if $result == snmp_counter32_tag
+	    || $result == snmp_gauge32_tag;
     return pretty_string ($packet) if $result == octet_string_tag;
     return pretty_oid ($packet) if $result == object_id_tag;
     return pretty_uptime($packet) if $result == uptime_tag;
@@ -200,7 +200,14 @@ sub pretty_string
 
 sub pretty_intlike
 {
-    pretty_using_decoder (\&decode_intlike, @_);
+    my $decoded = pretty_using_decoder (\&decode_intlike, @_);
+    $decoded;
+}
+
+sub pretty_unsignedlike ($ $ )
+{
+    my $decoded = pretty_using_decoder (\&decode_unsignedlike, @_);
+    sprintf ("%u", $decoded);
 }
 
 sub pretty_oid
@@ -380,13 +387,64 @@ sub decode_int
     decode_intlike ($pdu);
 }
 
-sub decode_intlike
+sub decode_intlike ($ )
 {
-    my($pdu) = shift;
+    decode_intlike_s ($_[0], 1);
+}
+
+sub decode_unsignedlike ($ )
+{
+    decode_intlike_s ($_[0], 0);
+}
+
+sub decode_intlike_s ($ $ )
+{
+    my ($pdu, $signedp) = @_;
+    my ($r1, $rest1) = decode_intlike_old ($pdu, $signedp);
+    my ($r2, $rest2) = decode_intlike_new ($pdu, $signedp);
+    $r1 = sprintf (($signedp ? "%d" : "%u"), $r1);
+    $r2 = sprintf (($signedp ? "%d" : "%u"), $r2);
+    if ($r1 ne $r2) {
+	warn "decode_intlike: old returned $r1, new returned $r2";
+    }
+    if ($rest1 ne $rest2) {
+	warn "decode_intlike: old returned $rest1, new returned $rest2 (rest)";
+    }
+    ($r2, $rest2);
+}
+
+sub decode_intlike_old ($ $ )
+{
+    my($pdu, $signedp) = @_;
+    my($result);
+    my(@result);
+    $result = ord (substr ($pdu, 1, 1));
+    if ($result == 1) {
+	@result = (ord (substr ($pdu, 2, 1)), substr ($pdu, 3));
+    } elsif ($result == 2) {
+	@result = (unpack ("n", (substr ($pdu, 2, 2))), substr ($pdu, 4));
+    } elsif ($result == 3) {
+	@result = ((ord (substr ($pdu, 2, 1)) << 16) 
+		   + unpack ("n", (substr ($pdu, 3, 2))), substr ($pdu, 5));
+    } elsif ($result == 4) {
+      @result = (unpack ("N", (substr ($pdu, 2, 4))), substr ($pdu, 6));
+      #### Our router returns 5 byte integers!
+    } elsif ($result == 5) {
+      @result = ((ord (substr ($pdu, 2, 1)) << 32)
+		 + unpack ("N", (substr ($pdu, 3, 4))), substr ($pdu, 7));
+    } else {
+	die "Unsupported integer length $result ($pdu)";
+    }
+    @result;
+}
+
+sub decode_intlike_new ($ $ )
+{
+    my($pdu, $signedp) = @_;
     my($length,$result);
     $length = ord (substr ($pdu, 1, 1));
     my $ptr = 2;
-    $result = unpack ("c", substr ($pdu, $ptr++, 1));
+    $result = unpack ($signedp ? "c" : "C", substr ($pdu, $ptr++, 1));
     while (--$length > 0) {
 	$result <<= 8;
 	$result += unpack ("C", substr ($pdu, $ptr++, 1));
