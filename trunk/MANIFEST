@@ -24,3 +24,4 @@ test/if-status.pl
 test/if-to-routes.pl
 test/if-counters.pl
 test/sun-ps
+test/SNMPAgent.pm
