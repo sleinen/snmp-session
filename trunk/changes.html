@@ -24,6 +24,12 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_util.pm 0.89: Fixed a long-standing bug where the code would
+generate PDUs with <tt>request-id</tt>s with large positive values,
+violating the SNMP spec which mandates that <tt>request-id</tt>s be
+<tt>Integer32</tt>s.  Thanks to Sergio Macedo <macedo@tmp.com.br> for
+finding this bug. </li>
+
 <li> SNMP_util.pm 0.88: Added missing <samp>use&nbsp;Carp;</samp>
 statements in packages <samp>SNMPv1_Session</samp> and
 <samp>SNMPv2_Session</samp>.  Thanks to <a
@@ -481,7 +487,7 @@ use SNMP_Session "0.52";
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20010706
+20010714
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
