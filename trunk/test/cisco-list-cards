@@ -113,15 +113,57 @@ $session->map_table ([$cardType,$cardContainedByIndex],
 			       ($type, $contained_by));
 			 my $indent = $contained_by ? ($card_index_to_indent{$contained_by} || 0) + 2 : 0;
 			 $card_index_to_indent{$index} = $indent;
-			 my $pretty_type = ($pretty_card_type{$type}
-					    || $type);
-			 printf STDOUT ("%03d%s %-20s%s\n",
-					$index,
-					(' 'x$indent),
-					$pretty_type,
-					$contained_by);
+			 note_card ($index, $type, $contained_by);
 		     });
 $session->close
     || warn "close SNMP session: $!";
+
+list_cards ();
 1;
 
+my %all_cards;
+my @top_level_cards;
+
+sub card_index ($) { defined $_[1] ? $_[0]->[0] = $_[1] : $_[0]->[0]; }
+sub card_type ($) { defined $_[1] ? $_[0]->[1] = $_[1] : $_[0]->[1]; }
+sub card_parent ($) { defined $_[1] ? $_[0]->[2] = $_[1] : $_[0]->[2]; }
+sub card_children ($) { defined $_[1] ? $_[0]->[3] = $_[1] : $_[0]->[3]; }
+
+sub make_card ($$$) {
+    my ($index, $type, $parent) = @_;
+    [ $index, $type, $parent, [] ];
+}
+
+sub note_card ($$$) {
+    my ($index, $type, $parent) = @_;
+    my $card = make_card ($index, $type, $parent);
+    $all_cards{$index} = $card;
+    if ($parent) {
+	my $parent_card = $all_cards{$parent};
+	die "Parent card $parent not found"
+	    unless defined $parent_card;
+	push @{(card_children ($parent_card))}, $card;
+    } else {
+	push @top_level_cards, $card;
+    }
+    $card;
+}
+
+sub list_cards () {
+    list_cards_with_children ('', @top_level_cards);
+}
+
+sub list_cards_with_children ($@) {
+    my ($indent, @cards) = @_;
+    foreach my $card (@cards) {
+	my $index = card_index ($card);
+	my $type = card_type ($card);
+	my $pretty_type = ($pretty_card_type{$type}
+			   || $type);
+	printf STDOUT ("%03d%s %-20s%s\n",
+		       $index,
+		       $indent,
+		       $pretty_type);
+	list_cards_with_children ($indent.'  ',@{card_children $card});
+    }
+}
