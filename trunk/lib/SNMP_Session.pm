@@ -37,7 +37,7 @@ sub map_table_start_end ($$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.57';
+$VERSION = '0.58';
 
 @ISA = qw(Exporter);
 
@@ -196,7 +196,7 @@ sub trap_request_send ($$$$$$@)
     return undef unless defined $req;
     $this->send_query($req)
 	|| return $this->error ("send_trap: $!");
-    return 0;
+    return 1;
 }
 
 sub request_response_5 ($$$$$)
