@@ -10,6 +10,8 @@
 		      Yufang HU  <yhu@casc.com>
 	       Philippe Simonet  <sip00@vg.swissptt.ch>
 
+	http://www.switch.ch/misc/leinen/snmp/perl/index.html
+
 This archive contains Perl 5 modules SNMP_Session.pm and BER.pm,
 which, when used together, provide rudimentary access to remote SNMP
 (v1) agents.
@@ -43,6 +45,7 @@ The basic usage of these routines works like this:
 	# port on which the agent listens (usually 161).
 
 	$session = SNMP_Session->open ($host, $community, $port);
+	    || die "couldn't open SNMP session to $host";
 
 	# Set $oid1, $oid2... to the BER-encoded OIDs of the MIB
 	# variables you want to get.
