@@ -1,3 +1,14 @@
+Wed Jun 28 22:46:55 1995  Simon Leinen  <simon@lia.di.epfl.ch>
+
+	* Makefile (DOCS, ALLDIST): new variables.
+
+	(shar): new target.
+
+	* SNMP_Session.pm:
+	Moved the SNMPv1-specific parts to a subclass SNMPv1_Session.
+
+	* Makefile, ChangeLog: Initial revision
+
 Wed Jun 28 21:41:51 1995  Simon Leinen  <simon@lia.di.epfl.ch>
 
 	* party-test.pl: Initial revision
