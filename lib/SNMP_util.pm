@@ -10,7 +10,7 @@ use BER "0.58";
 use SNMP_Session "0.59";
 use Socket;
 
-$VERSION = '0.71';
+$VERSION = '0.72';
 
 @ISA = qw(Exporter);
 
@@ -412,30 +412,10 @@ sub snmpgetnext (@) {
     while ($bindings) {
       ($binding, $bindings) = decode_sequence($bindings);
       ($oid, $value) = decode_by_template($binding, "%O%@");
-      $ok = 0;
       my $tempo = pretty_print($oid);
-      foreach $noid (@vars)
-      {
-	if ($tempo =~ /^$noid\./)
-	{
-	  $ok = 1;
-	  $upoid = $noid;
-	  last;
-	}
-      }
-      if ($ok)
-      {
 	my $tempv = pretty_print($value);
-##################################################################
-####
-#### Don't remove the OID prefix because there could be multiple
-#### OID's specified in the 'getnext' call!
-####
-####	$tempo=~s/^$upoid\.//;
-##################################################################
 	push @retvals, "$tempo:$tempv";
       }
-    }
     return (@retvals);
   }
   else
@@ -487,7 +467,7 @@ sub snmpwalk (@) {
       my $tempo = pretty_print($oid);
       foreach $noid (@vars)
       {
-	if ($tempo =~ /^$noid\./)
+	if ($tempo =~ /^$noid\./ || $tempo eq $noid )
 	{
 	  $ok = 1;
 	  $upoid = $noid;
@@ -848,7 +828,12 @@ sub snmpMIB_to_OID ($)
 	    $quote = 0;
 	}
 	chop;
-	$buf = "$buf $_";
+#
+#	$buf = "$buf $_";
+# Previous line removed (and following replacement)
+# suggested by Brian Reichert, reichert@numachi.com
+#
+	$buf .= ' ' . $_;
 	$buf =~ s/\s+/ /g;
 
 	if ($buf =~ / DEFINITIONS ::= BEGIN/)
