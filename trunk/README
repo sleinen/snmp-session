@@ -100,7 +100,8 @@ Set requests are generated much like get or getNext requests are, with
 the exception that you have to specify not just OIDs, but also the
 values the variables should be set to.  Every binding is passed as a
 reference to a two-element array, the first element being the encoded
-OID and the second one the encoded value.
+OID and the second one the encoded value.  See the `test/set-test.pl'
+script for an example, in particular the subroutine `snmpset'.
 
 			     Future Plans
 			     ............
