@@ -35,7 +35,8 @@ use integer;
 	     encode_sequence encode_tagged_sequence encode_string
 	     encode_int encode_null encode_oid
 	     decode_sequence decode_by_template
-	     pretty_print);
+	     pretty_print
+	     encoded_oid_prefix_p);
 
 ### Flags for different types of tags
 
@@ -446,17 +447,33 @@ sub encoded_oid_prefix_p
     for ($i1 = 0, $i2 = 0;
 	 $i1 < $l1 && $i2 < $l2;
 	 ++$i1, ++$i2) {
-	## printf STDERR ("%2d %2d <> %2d %2d\n",
-	## 		  $i1, ord (substr ($oid1, $i1, 1)),
-	## 		  $i2, ord (substr ($oid2, $i2, 1)));
-	$subid1 = ord (substr ($oid1, $i1, 1));
-	$subid2 = ord (substr ($oid2, $i2, 1));
+	($subid1,$i1) = &decode_subid ($oid1, $i1, $l1);
+	($subid2,$i2) = &decode_subid ($oid2, $i2, $l2);
 	return 0 unless $subid1 == $subid2;
-	die "Subids > 127 not supported"
-	    unless $subid1 < 128 && $subid2 < 128;
     }
-    return 1 if $i1 == $l1;
+    return $i2 if $i1 == $l1;
     return 0;
+}
+
+### decode_subid OID INDEX
+###
+### Decodes a subid field from a BER-encoded object ID.
+### Returns two values: the field, and the index of the last byte that
+### was actually decoded.
+###
+sub decode_subid
+{
+    my ($oid, $i, $l) = @_;
+    my $subid = 0;
+    my $next;
+
+    while (($next = ord (substr ($oid, $i, 1))) >= 128) {
+	$subid = ($subid << 7) + ($next & 0x7f);
+	++$i;
+	die "decoding object ID: short field"
+	    unless $i < $l;
+    }
+    return (($subid << 7) + $next, $i);
 }
 
 1;
