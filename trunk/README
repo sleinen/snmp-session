@@ -128,7 +128,7 @@ variable types specified in the MIB.
 However, parsing MIBs in their full ASN.1 syntax looks like overkill
 for such a small package.  As a compromise, we could use the output of
 an existing MIB compiler as input.  I have done this in another
-project (see http://celeste.switch.ch/~leinen/snmp/lisp/) with files
+project (see http://www.switch.ch/misc/leinen/snmp/lisp/) with files
 from ISODE SNMP's MIB compiler.  A problem with ISODE SNMP is that it
 is itself part of a rather huge package, and I would prefer to use a
 small standalone MIB parser.  Ideally this MIB parser would handle all
