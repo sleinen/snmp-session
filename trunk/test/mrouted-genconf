@@ -13,11 +13,11 @@ my $abs_max = '100000000';
 
 my $mrouters =
 [
- 'it-ws.ten-34.net:9161',
- 'de-ws-atm.ten-34.net',
- 'ch-ws.ten-34.net',
- 'at-ws.ten-34.net',
- 'uk-ws.ten-34.net',
+ 'public@it-ws.ten-34.net:9161',
+ 'public@de-ws-atm.ten-34.net',
+ 'public@ch-ws.ten-34.net',
+ 'public@at-ws.ten-34.net',
+ 'public@uk-ws.ten-34.net',
  ];
 
 my $dvmrpInterfaceType = [1,3,6,1,3,62,1,1,3,1,2];
@@ -35,22 +35,25 @@ print "WriteExpires: Yes\nWeekformat[^]: V\nWithPeak[_]: wmy\n";
 foreach my $target (@{$mrouters}) {
     my $session;
     my $abs_max_bytes = $abs_max >> 3;
-    my ($mrouter, $port);
+    my ($community, $mrouter, $port);
 
-    if ($target =~ /^(.*):([0-9]+)$/) {
-	$mrouter = $1; $port = $2;
-    } elsif ($target =~ /^(.*)$/) {
-	$mrouter = $1; $port = 161;
+    if ($target =~ /^(.*)@(.*):([0-9]+)$/) {
+	$community = $1; $mrouter = $2; $port = $3;
+    } elsif ($target =~ /^(.*)@(.*)$/) {
+	$community = $1; $mrouter = $2; $port = 161;
     } else {
 	warn "Malformed target $target\n";
 	next;
     }
-    $session = SNMP_Session->open ($mrouter, "public", $port)
+    $session = SNMP_Session->open ($mrouter, $community, $port)
 	|| (warn ("Opening SNMP session to $mrouter\n"), next);
 
+    my $snmp_target = $community.'@'.$mrouter;
+    $snmp_target .= ":".$port
+	unless $port == 161;
     print <<EOM;
 
-Target[$mrouter-mroutes]: 1.3.6.1.3.62.1.1.9.0&1.3.6.1.3.62.1.1.10.0:public\@$mrouter
+Target[$mrouter-mroutes]: 1.3.6.1.3.62.1.1.9.0&1.3.6.1.3.62.1.1.10.0:$snmp_target
 Directory[$mrouter-mroutes]: $directory
 MaxBytes[$mrouter-mroutes]: 8000
 AbsMax[$mrouter-mroutes]: 100000
@@ -66,8 +69,6 @@ Legend4[$mrouter-mroutes]: max # routing table entries
 LegendI[$mrouter-mroutes]: &nbsp;reachable
 LegendO[$mrouter-mroutes]: &nbsp;total
 EOM
-    print "SNMPPort[$mrouter-mroutes]: $port\n"
-	unless $port == 161;
     $session->map_table
 	([$dvmrpInterfaceType, $dvmrpInterfaceRemoteAddress,
 	  $dvmrpInterfaceMetric, $dvmrpInterfaceRateLimit], sub
@@ -84,17 +85,15 @@ EOM
 	     my $graph_name = $mrouter.'-'.$peer_name;
 		 print <<EOM;
 
-Target[$graph_name]: 1.3.6.1.3.62.1.1.3.1.11.$index&1.3.6.1.3.62.1.1.3.1.12.$index:public\@$mrouter
+Target[$graph_name]: 1.3.6.1.3.62.1.1.3.1.11.$index&1.3.6.1.3.62.1.1.3.1.12.$index:$snmp_target
 PageTop[$graph_name]: <hr><H3>Tunnel $mrouter -> $peer_name (metric $metric)</H3>
 Options[$graph_name]: growright,bits
 MaxBytes[$graph_name]: $rate_limit_bytes
 AbsMax[$graph_name]: $abs_max_bytes
 Title[$graph_name]: Mbone Tunnel from $mrouter to $peer_name
 EOM
-    print "SNMPPort[$graph_name]: $port\n"
-	unless $port == 161;
-	     print "Directory[$graph_name]: $directory\n"
-		 if $directory;
+    print "Directory[$graph_name]: $directory\n"
+	if $directory;
 	 });
     $session->close ();
 }
