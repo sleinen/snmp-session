@@ -1,7 +1,7 @@
 #!/usr/local/bin/perl -w
 # Minimal useful application of the SNMP package.
 # Author: Simon Leinen  <simon@lia.di.epfl.ch>
-# RCS $Header: /home/leinen/CVS/SNMP_Session/test/test.pl,v 1.17 2003-05-29 16:39:48 leinen Exp $
+# RCS $Header: /home/leinen/CVS/SNMP_Session/test/test.pl,v 1.18 2003-05-29 16:45:27 leinen Exp $
 ######################################################################
 # This application sends a get request for three fixed MIB-2 variable
 # instances (sysDescr.0, sysContact.0 and ipForwarding.0) to a given
@@ -21,9 +21,28 @@ sub snmp_get($@);
 
 $SNMP_Session::suppress_warnings = 1;
 
-my $hostname = shift @ARGV || &usage;
-my $community = shift @ARGV || 'public';
 my $ipv4_only_p = 0;
+my $snmp_version = 1;
+
+while ($#ARGV >= 0 and $ARGV[0] =~ /^-/) {
+    if ($ARGV[0] eq '-4') {
+	$ipv4_only_p = 1;
+    } elsif ($ARGV[0] eq '-v') {
+	shift @ARGV;
+	usage () if $#ARGV < 0;
+	if ($ARGV[0] =~ /^2c?/) {
+	    $snmp_version = 2;
+	} elsif ($ARGV[0] eq '1') {
+	    $snmp_version = 1;
+	} else {
+	    usage ();
+	}
+    }
+    shift @ARGV;
+}
+
+my $hostname = shift @ARGV || usage ();
+my $community = shift @ARGV || 'public';
 
 usage () if $#ARGV >= 0;
 
@@ -40,8 +59,11 @@ foreach (keys %ugly_oids) {
 }
 
 srand();
-my $session = SNMP_Session->open ($hostname, $community, 161,
-				  undef, undef, undef, undef, $ipv4_only_p)
+my $session = ($snmp_version == 1)
+    ? SNMPv1_Session->open ($hostname, $community, 161,
+			    undef, undef, undef, undef, $ipv4_only_p)
+    : SNMPv2c_Session->open ($hostname, $community, 161,
+			     undef, undef, undef, undef, $ipv4_only_p)
     or die "Couldn't open SNMP session to $hostname: $SNMP_Session::errmsg";
 snmp_get ($session, qw(sysDescr.0 sysContact.0 sysUptime.0 ipForwarding.0));
 $session->close ();
@@ -69,5 +91,5 @@ sub snmp_get ($@) {
 }
 
 sub usage () {
-    die "usage: $0 hostname [community]";
+    die "usage: $0 [-4] [-v (1|2)] hostname [community]";
 }
