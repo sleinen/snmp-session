@@ -3,7 +3,7 @@
 require 5;
 
 require 'SNMP_Session.pm';
-require 'BER.pm';
+use BER;
 
 srand();
 
@@ -29,7 +29,7 @@ srand();
 		ifOutOctets.2			1.3.6.1.2.1.2.2.1.16.2
 		);
 foreach (keys %ugly_oids) {
-    $ugly_oids{$_} = BER::encode_oid (split (/\./, $ugly_oids{$_}));
+    $ugly_oids{$_} = encode_oid (split (/\./, $ugly_oids{$_}));
     $pretty_oids{$ugly_oids{$_}} = $_;
 }
 
@@ -68,10 +68,10 @@ sub snmp_get
 
 	print "<TABLE BORDER>\n";
 	while ($bindings ne '') {
-	    ($binding,$bindings) = BER::decode_sequence ($bindings);
-	    ($oid,$value) = BER::decode_by_template ($binding, "%O%@");
+	    ($binding,$bindings) = decode_sequence ($bindings);
+	    ($oid,$value) = decode_by_template ($binding, "%O%@");
 	    print "<TR>",
-	    "<TD ALIGN=RIGHT>", &html_quote (BER::pretty_print ($value)), "</SAMP></TD>",
+	    "<TD ALIGN=RIGHT>", &html_quote (pretty_print ($value)), "</SAMP></TD>",
 	    "<TH ALIGN=LEFT>", $pretty_oids{$oid}, "</TH>",
 	    "</TR>\n";
 	}

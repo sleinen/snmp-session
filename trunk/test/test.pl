@@ -3,7 +3,7 @@
 require 5;
 
 require 'SNMP_Session.pm';
-require 'BER.pm';
+use BER;
 
 srand();
 
@@ -12,7 +12,7 @@ srand();
 	      "ipForwarding.0" => "1.3.6.1.2.1.4.1.0"
 	      );
 foreach (keys %ugly_oids) {
-    $ugly_oids{$_} = BER::encode_oid (split (/\./, $ugly_oids{$_}));
+    $ugly_oids{$_} = encode_oid (split (/\./, $ugly_oids{$_}));
     $pretty_oids{$ugly_oids{$_}} = $_;
 }
 
@@ -33,10 +33,10 @@ sub snmp_get
 	($bindings) = $session->decode_get_response ($response);
 
 	while ($bindings ne '') {
-	    ($binding,$bindings) = BER::decode_sequence ($bindings);
-	    ($oid,$value) = BER::decode_by_template ($binding, "%O%@");
+	    ($binding,$bindings) = decode_sequence ($bindings);
+	    ($oid,$value) = decode_by_template ($binding, "%O%@");
 	    print $pretty_oids{$oid}," => ",
-	    BER::pretty_print ($value), "\n";
+	    pretty_print ($value), "\n";
 	}
     } else {
 	warn "Response not received.\n";
