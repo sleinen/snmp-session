@@ -32,7 +32,7 @@ use integer;
 
 @EXPORT = qw(context_flag constructor_flag
 	     encode_sequence encode_tagged_sequence encode_string
-	     encode_int encode_null encode_oid
+	     encode_int encode_int_0 encode_null encode_oid
 	     decode_sequence decode_by_template
 	     pretty_print
 	     encoded_oid_prefix_p);
@@ -83,6 +83,11 @@ sub encode_header
     return pack ("C C C", $type, long_length | 1, $length) if $length < 256;
     return pack ("C C n", $type, long_length | 2, $length) if $length < 65536;
     die "Cannot encode length $length yet";
+}
+
+sub encode_int_0
+{
+    return pack ("C C C", 2, 1, 0);
 }
 
 sub encode_int
