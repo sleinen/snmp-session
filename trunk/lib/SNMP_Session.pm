@@ -276,9 +276,10 @@ sub receive_response_1
     ## it, as it may relate to another request.
     ##
     if ($remote_addr ne $this->{'remote_addr'}) {
-	warn "Response came from ".&pretty_address ($remote_addr)
-	    .", not ".&pretty_address($this->{'remote_addr'})."]";
-	return 0;
+	if ($this->{'debug'}) {
+	    warn "Response came from ".&pretty_address ($remote_addr)
+		.", not ".&pretty_address($this->{'remote_addr'});
+	}
     }
 
     my @unwrapped = ();
