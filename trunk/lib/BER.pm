@@ -6,7 +6,7 @@
 ### structures using the Basic Encoding Rules (BER).  Only the subset
 ### necessary for SNMP is implemented.
 ######################################################################
-### Created by:  Simon Leinen  <simon@instrumatic.ch>
+### Created by:  Simon Leinen  <simon@switch.ch>
 ###
 ### Contributions and fixes by:
 ###
