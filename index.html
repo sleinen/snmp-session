@@ -45,6 +45,16 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 <ul>
 
+<li> SNMP_util.pm 0.54: First version to be distributed with the
+ package, courtesy <a href="mailto:mcm@unx.sas.com">Mike
+ Mitchell</a>.
+
+<li> BER.pm 0.58: Added <tt>encode_timeticks()</tt> subroutine.  This
+ was used in the sample script for <a href="#trap-send">sending
+ traps</a>, but was only defined in <tt>test/trap-test.pl</tt>.
+ Thanks to <a href="mailto:bergerg@att.net">Gary Berger</a> for
+ noticing this.
+
 <li> BER.pm 0.57: Added <tt>encode_ip_address()</tt> subroutine on a
  suggestion by <a href="mailto:mdiehn@mindspring.net">Mike Diehn</a>.
 
@@ -407,14 +417,10 @@ sub link_down_trap ($) {
  SNMP operations and PDUs.  For actual management applications, there
  are probably more convenient interfaces that could be defined. </P>
 
-<P> At the very least, there should be an interface to traverse
- tables.  The implementation of the table-traversing interface should
- use <SAMP>getBulk</SAMP> on SNMPv2c/SNMPv3 sessions. </P>
-
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19980430
+19980603
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
