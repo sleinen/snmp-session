@@ -10,7 +10,7 @@ package main;
 
 use strict;
 
-use SNMP_Session "0.59";
+use SNMP_Session "0.60";
 use BER;
 use Socket;
 
@@ -19,30 +19,9 @@ my ($trap, $sender, $sender_port);
 
 while (($trap, $sender, $sender_port) = $session->receive_trap ()) {
     print STDERR "received trap from [".inet_ntoa ($sender)."].".$sender_port."\n";
-    $session->print_trap ($trap);
+    print_trap ($session, $trap);
 }
 1;
-
-package SNMPv1_Session;
-
-use BER;
-
-use strict;
-
-sub decode_trap_request ($$) {
-    my ($this, $trap) = @_;
-    my ($snmp_version, $community, $ent, $agent, $gen, $spec, $dt, @pairs);
-    ($snmp_version, $community, $ent, $agent, $gen, $spec, $dt, @pairs)
-	= decode_by_template ($trap, "%{%i%s%*{%O%A%i%i%u%{%@",
-			      SNMP_Session::trap_request
-			      );
-    return undef
-	unless $snmp_version == snmp_version ();
-    if (!defined $ent) {
-	warn "BER error decoding trap:\n  ".$BER::errmsg."\n";
-    }
-    return ($community, $ent, $agent, $gen, $spec, $dt, @pairs);
-}
 
 sub print_trap ($$) {
     my ($this, $trap) = @_;
