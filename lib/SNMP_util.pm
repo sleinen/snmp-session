@@ -22,6 +22,7 @@
 ### Daniel McDonald <dmcdonald@digicontech.com>: request for getbulk support
 ### Laurent Girod <girod.laurent@pmintl.ch>: code for snmpwalkhash
 ### Ian Duplisse <i.duplisse@cablelabs.com>: MIB parsing suggestions
+### Jakob Ilves <jakob.ilves@oracle.com>: return_array_refs for snmpwalk()
 ######################################################################
 
 package SNMP_util;
@@ -33,11 +34,11 @@ use vars qw(@ISA @EXPORT $VERSION);
 use Exporter;
 use Carp;
 
-use BER "0.82";
-use SNMP_Session "0.83";
+use BER "0.88";
+use SNMP_Session "0.93";
 use Socket;
 
-$VERSION = '0.93';
+$VERSION = '0.94';
 
 @ISA = qw(Exporter);
 
@@ -333,6 +334,7 @@ undef $SNMP_util::LHost;
 $SNMP_util::Debug = 0;
 $SNMP_util::CacheFile = "OID_cache.txt";
 $SNMP_util::CacheLoaded = 0;
+$SNMP_util::Return_array_refs = 0;
 
 srand(time + $$);
 
@@ -410,19 +412,24 @@ sub snmpopen ($$$) {
     if (ref $vars->[0] eq 'HASH') {
       my $opts = shift @$vars;
       foreach $type (keys %$opts) {
-	if (exists $SNMP_util::Session->{$type}) {
-	  if ($type eq 'timeout') {
-	    $SNMP_util::Session->set_timeout($opts->{$type});
-	  } elsif ($type eq 'retries') {
-	    $SNMP_util::Session->set_retries($opts->{$type});
-	  } elsif ($type eq 'backoff') {
-	    $SNMP_util::Session->set_backoff($opts->{$type});
+	if ($type eq 'return_array_refs') {
+	  $SNMP_util::Return_array_refs = $opts->{$type};
+	}
+	else {
+	  if (exists $SNMP_util::Session->{$type}) {
+	    if ($type eq 'timeout') {
+	      $SNMP_util::Session->set_timeout($opts->{$type});
+	    } elsif ($type eq 'retries') {
+	      $SNMP_util::Session->set_retries($opts->{$type});
+	    } elsif ($type eq 'backoff') {
+	      $SNMP_util::Session->set_backoff($opts->{$type});
+	    } else {
+	      $SNMP_util::Session->{$type} = $opts->{$type};
+	    }
 	  } else {
-	    $SNMP_util::Session->{$type} = $opts->{$type};
+	    carp "SNMPopen Unknown SNMP Option Key '$type'\n"
+	      unless ($SNMP_Session::suppress_warnings > 1);
 	  }
-	} else {
-	  carp "SNMPopen Unknown SNMP Option Key '$type'\n"
-	    unless ($SNMP_Session::suppress_warnings > 1);
 	}
       }
     }
@@ -536,11 +543,12 @@ sub snmpwalkhash($$@) {
 sub snmpwalk_flg ($$@) {
   my($host, $hash_sub, @vars) = @_;
   my(@enoid, $var, $response, $bindings, $binding);
-  my($value, $upoid, $oid, @retvals);
-  my($got, @nnoid, $noid, $ok);
+  my($value, $upoid, $oid, @retvals, @retvaltmprefs);
+  my($got, @nnoid, $noid, $ok, $ix, @avars);
   my $session;
+  my(%soid);
   my(%done, %rethash);
-	
+
   $session = &snmpopen($host, 0, \@vars);
   if (!defined($session)) {
     carp "SNMPWALK Problem for $host\n"
@@ -567,6 +575,28 @@ sub snmpwalk_flg ($$@) {
     $upoid = pretty_print($noid);
     push(@vars, $upoid);
   }
+
+  # @vars is the original set of walked variables.
+  # @avars is the current set of walked variables as the
+  # walk goes on.
+  # @vars stays static while @avars may shrink as we reach end
+  # of walk for individual variables during PDU exchange.
+   
+  @avars = @vars;
+
+  # IlvJa
+  #
+  # Create temporary array of refs to return vals.
+
+  if ($SNMP_util::Return_array_refs) {
+    for($ix = 0;$ix < scalar @vars; $ix++) {
+      my $tmparray = [];
+      $retvaltmprefs[$ix] = $tmparray;
+      $retvals[$ix] = $tmparray;
+    }
+  }
+
+
   while(($SNMP_util::Version ne '1' && $session->{'use_getbulk'})
     ? $session->getbulk_request_response(0,
 					  $session->default_max_repetitions(),
@@ -576,24 +606,36 @@ sub snmpwalk_flg ($$@) {
     $got = 1;
     $response = $session->pdu_buffer;
     ($bindings) = $session->decode_get_response($response);
-    undef @nnoid;
+    $ix = 0;
     while ($bindings) {
       ($binding, $bindings) = decode_sequence($bindings);
+      unless ($nnoid[$ix]) { # IlvJa
+	$ix = ++$ix % (scalar @avars);
+	next;
+      }
       ($oid, $value) = decode_by_template($binding, "%O%@");
       $ok = 0;
       my $tempo = pretty_print($oid);
-      foreach $noid (@vars) {
-	if ($tempo =~ /^$noid\./ || $tempo eq $noid ) {
-	  $ok = 1;
-	  $upoid = $noid;
-	  last;
-	}
+      $noid = $avars[$ix];  # IlvJa
+      if ($tempo =~ /^$noid\./ || $tempo eq $noid ) {
+	$ok = 1;
+	$upoid = $noid;
+      } else {
+	# IlvJa
+	#
+	# The walk for variable $var[$ix] has been finished as
+	# $nnoid[$ix] no longer is in the $avar[$ix] OID tree.
+	# So we exclude this variable from further requests.
+
+	$avars[$ix] = "";
+	$nnoid[$ix] = "";
+	$retvaltmprefs[$ix] = undef if $SNMP_util::Return_array_refs;
       }
       if ($ok) {
 	my $tmp = encode_oid_with_errmsg ($tempo);
 	return undef unless defined $tmp;
 	next if (exists($done{$tmp}));	# GIL
-	push @nnoid, $tmp;
+	$nnoid[$ix] = $tmp;   # Keep on walking. (IlvJa)
 	my $tempv = pretty_print($value);
 	if (defined($hash_sub)) {
 	  #
@@ -619,13 +661,31 @@ sub snmpwalk_flg ($$@) {
 	  &$hash_sub(\%rethash, $host, $revOIDS{$tempo}, $tempo, $inst,
 			$tempv, $upo);
 	} else {
-	  $tempo=~s/^$upoid\.// if ($#enoid <= 0);
-	  push @retvals, "$tempo:$tempv";
+	  if ($SNMP_util::Return_array_refs) {
+	    $tempo=~s/^$upoid\.//;
+	    push @{$retvaltmprefs[$ix]}, "$tempo:$tempv";
+	  } else {
+	    $tempo=~s/^$upoid\.// if ($#enoid <= 0);
+	    push @retvals, "$tempo:$tempv";
+	  }
 	}
 	$done{$tmp} = 1;	# GIL
       }
+      $ix = ++$ix % (scalar @avars);
     }
-    last if ($#nnoid < 0);
+
+    # Ok, @nnoid should contain the remaining variables for the
+    # next request.  Some or all entries in @nnoid might be the empty
+    # string.  If the nth element in @nnoid is "" that means that
+    # the walk related to the nth variable in the last request has been
+    # completed and we should not include that var in subsequent reqs.
+
+    # Clean up both @nnoid and @avars so "" elements are removed.
+    @nnoid = grep (($_), @nnoid);
+    @avars = grep (($_), @avars);
+    @retvaltmprefs = grep (($_), @retvaltmprefs);
+
+    last if ($#nnoid < 0);   # @nnoid empty means we are done walking.
   }
   if ($got) {
     if (defined($hash_sub)) {
