@@ -3,7 +3,7 @@
 ### Name:	  ber-test.pl
 ### Date Created: Sat Feb  1 16:09:46 1997
 ### Author:	  Simon Leinen  <simon@switch.ch>
-### RCS $Id: ber-test.pl,v 1.3 1997-02-01 16:32:25 simon Exp $
+### RCS $Id: ber-test.pl,v 1.4 1998-03-25 19:00:16 leinen Exp $
 ######################################################################
 ### Regression Tests for BER encoding/decoding
 ######################################################################
@@ -21,7 +21,10 @@ exit ($exitcode);
 sub regression_test
 {
     &eq_test ('encode_string ("public")', "\x04\x06\x70\x75\x62\x6C\x69\x63");
-    &eq_test ('encode_int (0x4aec3116)', "\x02\x04\x4A\xEC\x31\x16");
+    &encode_int_test (0x4aec3116, "\x02\x04\x4A\xEC\x31\x16");
+    &encode_int_test (0xec3116, "\x02\x04\x00\xEC\x31\x16");
+    &encode_int_test (0x3c3116, "\x02\x03\x3C\x31\x16");
+    &encode_int_test (-1234, "\x02\x02\xfb\x2e");
     &decode_intlike_test ('"\x02\x01\x01"', 1);
     &decode_intlike_test ('"\x02\x01\xff"', -1);
     &decode_intlike_test ('"\x02\x02\x01\x02"', 258);
@@ -35,6 +38,12 @@ sub regression_test
     &eq_test ('(&BER::decode_oid ("\x06\x04\x01\x03\x06\x01"))[0]', 
 	      "\x06\x04\x01\x03\x06\x01");
 }
+
+sub encode_int_test {
+  my ($int, $encoded) = @_;
+  &eq_test ("encode_int ($int)", $encoded);
+}
+
 
 sub decode_intlike_test
 {
