@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/logiciels/public/divers/bin/perl5
 
 require 5;
 require 'BER.pm';
@@ -15,20 +15,29 @@ foreach (keys %ugly_oids) {
     $pretty_oids{$ugly_oids{$_}} = $_;
 }
 
-$session = SNMP_Session->open ('liasg5', 'public', 161);
-if ($session->get_request_response ($ugly_oids{"sysDescr.0"},
-				    $ugly_oids{"sysContact.0"},
-				    $ugly_oids{"ipForwarding.0"})) {
-    $response = $session->{pdu_buffer};
-    ($bindings) = $session->decode_get_response ($response);
-
-    while ($bindings ne '') {
-	($binding,$bindings) = &BER::decode_sequence ($bindings);
-	($oid,$value) = &BER::decode_by_template ($binding, "%O%@");
-	print $pretty_oids{$oid}," => ",
-	      &BER::pretty_print ($value), "\n";
-    }
-} else {
-    warn "Response not received.\n";
+$session = SNMP_Session->open ('liasg7', 'public', 161);
+for ($i = 0; $i < 10; ++$i) {
+    snmp_get ($session, qw(sysDescr sysContact ipForwarding));
 }
 $session->close ();
+1;
+
+sub snmp_get
+{
+    my($session, @oids) = @_;
+    my($response, $bindings, $binding, $value, $oid);
+    grep ($_ = $ugly_oids{$_.".0"}, @oids);
+    if ($session->get_request_response (@oids)) {
+	$response = $session->{pdu_buffer};
+	($bindings) = $session->decode_get_response ($response);
+
+	while ($bindings ne '') {
+	    ($binding,$bindings) = &BER::decode_sequence ($bindings);
+	    ($oid,$value) = &BER::decode_by_template ($binding, "%O%@");
+	    print $pretty_oids{$oid}," => ",
+	    &BER::pretty_print ($value), "\n";
+	}
+    } else {
+	warn "Response not received.\n";
+    }
+}
