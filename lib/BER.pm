@@ -166,7 +166,7 @@ sub pretty_intlike
 sub pretty_oid
 {
     my($oid) = shift;
-    my($result,$subid);
+    my($result,$subid,$next);
     my(@result,@oid);
     $result = ord (substr ($oid, 0, 1));
     die "Object ID expected" unless $result == object_id_tag;
@@ -179,17 +179,20 @@ sub pretty_oid
     $oid = substr ($oid, 1);
     while ($oid ne '') {
 	$subid = ord (substr ($oid, 0, 1));
-	$oid = substr ($oid, 1);
 	if ($subid < 128) {
+	    $oid = substr ($oid, 1);
 	    push @oid, $subid;
 	} else {
-	    $subid = $subid & 0x7f;
-	    while (($next = ord (substr ($oid, 0, 1))) >= 128) {
+	    $next = $subid;
+	    $subid = 0;
+	    while ($next >= 128) {
 		$subid = ($subid << 7) + ($next & 0x7f);
-		$oid = substr ($ord, 1);
+		$oid = substr ($oid, 1);
+		$next = ord (substr ($oid, 0, 1));
 	    }
 	    $subid = ($subid << 7) + $next;
-	    $oid = substr ($ord, 1);
+	    $oid = substr ($oid, 1);
+	    push @oid, $subid;
 	}
     }
     join ('.', @oid);
