@@ -766,6 +766,9 @@ sub snmpset($@) {
     } elsif ($type =~ /ipaddr/i) {
       $value = encode_ip_address($value);
       push @enoid, [$oid,$value];
+    } elsif ($type =~ /gauge/i) {
+      $value = encode_gauge32($value);
+      push @enoid, [$oid,$value];
     } elsif ($type =~ /int/i) {
       $value = encode_int($value);
       push @enoid, [$oid,$value];
