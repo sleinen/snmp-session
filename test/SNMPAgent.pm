@@ -4,8 +4,9 @@
 #
 # Author: Mike McCauley (mikem@open.com.au)
 # Copyright (C) 1997 Open System Consultants
-# $Id: SNMPAgent.pm,v 1.1 1999-02-21 22:19:27 leinen Exp $
+# $Id: SNMPAgent.pm,v 1.2 1999-02-21 22:26:49 leinen Exp $
 
+use SNMP_Session "0.68";
 use SNMP_util;
 use Socket;
 
@@ -121,60 +122,6 @@ sub handle_socket_read
     {
 	warn "SNMPAgent: receive_request failed: $!";
     }
-}
-
-#####################################################################
-# Here we override and add to SNMPv1_Session
-# Hopefully this stuff will one day be included in the basic SNMP
-# Package
-package SNMPv1_Session;
-no strict;
-
-sub receive_request
-{
-    my ($this) = @_;
-    my ($remote_addr, $iaddr, $port, $request);
-
-    $remote_addr = recv($this->sock, $this->{'pdu_buffer'}, 
-			$this->{'max_pdu_len'}, 0);
-    return undef unless $remote_addr;
-    ($port, $iaddr) = sockaddr_in($remote_addr);
-    $request = $this->{'pdu_buffer'};
-    return ($request, $iaddr, $port);
-}
-
-sub decode_request
-{
-    my ($this, $request) = @_;
-    my ($snmp_version, $community, $requestid, $errorstatus, $errorindex, $bindings);
-
-    ($snmp_version, $community, $requestid, $errorstatus, $errorindex, $bindings)
-	= decode_by_template ($request, "%{%i%s%*{%i%i%i%@", SNMP_Session::get_request);
-    if (defined $snmp_version)
-    {
-	# Its a valid get_request
-	return(SNMP_Session::get_request, $requestid, $bindings, $community);
-    }
-
-    ($snmp_version, $community, $requestid, $errorstatus, $errorindex, $bindings)
-	= decode_by_template ($request, "%{%i%s%*{%i%i%i%@", SNMP_Session::getnext_request);
-    if (defined $snmp_version)
-    {
-	# Its a valid getnext_request
-	return(SNMP_Session::getnext_request, $requestid, $bindings, $community);
-    }
-
-    ($snmp_version, $community, $requestid, $errorstatus, $errorindex, $bindings)
-	= decode_by_template ($request, "%{%i%s%*{%i%i%i%@", SNMP_Session::set_request);
-    if (defined $snmp_version)
-    {
-	# Its a valid set_request
-	return(SNMP_Session::set_request, $requestid, $bindings, $community);
-    }
-
-    # Something wrong with this packet
-    # Decode failed
-    return undef;
 }
 
 1;
