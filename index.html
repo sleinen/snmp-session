@@ -28,9 +28,9 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
  portable, even to non-Unix systems. </P>
 
 <p> The SNMP operations currently supported are "get", "get-next", and
- "set".  That means that you cannot receive or generate SNMP traps
- using these routines.  Hopefully I will get around to implementing
- these other operations one day. </p>
+ "set", as well as trap generation.  That means that you cannot
+ receive SNMP traps using these routines.  Hopefully I will get around
+ to implementing this one day. </p>
 
 <p> For an excellent example of the type of application this is useful
  for, see Tobias Oetiker's <a
@@ -44,6 +44,20 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 <h2> Recent Changes: </h2>
 
 <ul>
+
+<li> BER.pm 0.57: Added <tt>encode_ip_address()</tt> subroutine on a
+ suggestion by <a href="mailto:mdiehn@mindspring.net">Mike Diehn</a>.
+
+<li> SNMP_Session 0.58: Added support for generating traps, courtesy
+ <a href="mailto:mcm@unx.sas.com">Mike Mitchell</a>, see <a
+	    href="#trap-send">Sending Traps</a>.
+
+<li> <tt>test/ber-test.pl</tt>: Added more test cases contributed by <a
+ href="mailto:mcm@unx.sas.com">Mike Mitchell</a>.
+
+<li> SNMP_Session 0.57: table walking support See
+ ``<a href="#map-table-use">Walking Tables</a>'' below for how this is
+ used.
 
 <li> BER 0.56: New <tt>encode_int()</tt> subroutine contributed by <a
 	    href="mailto:mcm@unx.sas.com">Mike Mitchell</a>.  Fixes
@@ -249,6 +263,104 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
  <tt>test/set-test.pl</tt> script for an example, in particular the
  subroutine <tt>snmpset</tt>. </p>
 
+<H2><a name="map-table-use">Walking Tables</a></H2>
+
+<p> Beginning with version 0.57 of <tt>SNMP_Session.pm</tt>, there is API
+ support for walking tables.  The <tt>map_table</tt> method can be
+ used for this as follows: </p>
+
+<pre>
+sub walk_function ($$$) {
+  my ($index, $val1, $val3) = @_;
+  ...
+}
+
+...
+$columns = [$base_oid1, $base_oid3];
+$n_rows = $session->map_table ($columns, \&walk_function);
+</pre>
+
+<p> The <em>columns</em> argument must be a reference to a list of
+ OIDs for table columns sharing the same index.  The method will
+ traverse the table and call the <em>walk_function</em> for each row.
+ The arguments for these calls will be:
+
+<ol>
+
+<li> the <em>row index</em> as a partial OID in dotted notation,
+ e.g. "1.3", or "10.0.1.34".
+
+<li> the values of the requested table columns in that row, in
+ BER-encoded form.  If you want to use the standard
+ <tt>pretty_print</tt> subroutine to decode the values, you can use
+ the following idiom:
+
+<pre>
+  grep (defined $_ && ($_=pretty_print $_), ($val1, $val3));
+</pre>
+
+</ol>
+
+<H2><a name="trap-send">Sending Traps</a></H2>
+
+<p> To send a trap, you have to open an SNMP session to the trap
+ receiver.  Usually this is a process listening to UDP port 162 on a
+ network management station.  Then you can use the
+ <tt>trap_request_send</tt> method to encode and send the trap.  There 
+ is no way to find out whether the trap was actually received at the
+ management station - SNMP traps are fundamentally unreliable.
+</p>
+
+<p> When constructing a trap, you must provide
+
+<ul>
+
+<li> the "enterprise" Object Identifier for the entity that generates
+ the trap
+
+<li> your IP address
+
+<li> the generic trap type
+
+<li> the specific trap type
+
+<li> the sysUpTime at the time of trap generation
+
+<li> a sequence (may be empty) of variable bindings further describing 
+ the trap.
+
+</ul>
+
+<p> Here is a short example: </p>
+
+<pre>
+my $trap_receiver = "netman.noc";
+my $trap_community = "SNMP_Traps";
+my $trap_session = SNMP_Session::open ($trap_receiver, $trap_community, 162);
+my $myIpAddress = ...;
+my $start_time = time;
+
+...
+
+sub link_down_trap ($) {
+  my ($if_index) = @_;
+  my $genericTrap = 2;		# linkDown
+  my $specificTrap = 0;
+  my @ifIndexOID = ( 1,3,6,1,2,1,2,2,1,1 );
+  my $upTime = int ((time - $start_time) * 100.0);
+  my @myOID = ( 1,3,6,1,4,1,2946,0,8,15 );
+
+  warn "Sending trap failed"
+    unless $trap_session->trap_request_send (encode_oid (@myOID),
+					     encode_ip_address ($myIpAddress),
+					     encode_int ($genericTrap),
+					     encode_int ($specificTrap),
+					     encode_timeticks ($upTime),
+					     [encode_oid (@ifIndexOID,$if_index),
+					      encode_int ($if_index)]);
+}
+</pre>
+
 <H2>Future Plans</H2>
 
 <H3>SNMPv3 Support</H3>
@@ -269,10 +381,6 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
  kinds of notifications.  A larger management application could react
  on traps by sending out SNMP requests to localize problems more
  exactly. </p>
-
-<p> An interface to sending traps would help those people who have
- network management systems that react on SNMP traps and want to
- integrate Perl tools that can send alarms. </p>
 
 <H3>MIB parsing</H3>
 
@@ -306,7 +414,7 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19980325
+19980430
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
