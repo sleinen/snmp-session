@@ -66,24 +66,21 @@ sub get_request_response
 {
     my($this) = shift;
     my(@oids) = @_;
-    $this->send_query ($this->encode_get_request (@oids))
-	|| die "send_query: $!";
-    if ($this->wait_for_response($this->timeout)) {
-	my($response_length);
-
-	($response_length = $this->receive_response())
-	    || die "receive_response: $!";
-	## print STDERR "$response_length bytes of response received.\n";
-    } else {
-	0;
-    }
+    return $this->request_response ($this->encode_get_request (@oids));
 }
 
 sub getnext_request_response
 {
     my($this) = shift;
     my(@oids) = @_;
-    $this->send_query ($this->encode_getnext_request (@oids))
+    return $this->request_response ($this->encode_getnext_request (@oids));
+}
+
+sub request_response
+{
+    my($this) = shift;
+    my($req) = shift;
+    $this->send_query ($req)
 	|| die "send_query: $!";
     if ($this->wait_for_response($this->timeout)) {
 	my($response_length);
