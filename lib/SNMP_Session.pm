@@ -267,8 +267,9 @@ sub wrap_request
 
 sub unwrap_response_4
 {
-    my($this,$response,$tag,$request_id) = @_;
-    my($community,$request_id,@rest) = decode_by_template ($response, "%{%0i%s%*{%i%*i%*i%{%@", 
+    my($this,$response,$tag,$request_id,$community,@rest);
+    ($this,$response,$tag,$request_id) = @_;
+    ($community,$request_id,@rest) = decode_by_template ($response, "%{%0i%s%*{%i%*i%*i%{%@", 
 							   $tag,
 							   $this->snmp_version (),
 							   0);
