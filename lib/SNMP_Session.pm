@@ -493,6 +493,7 @@ use SNMP_Session;
 use Socket;
 use BER;
 use IO::Socket;
+use Carp;
 
 @ISA = qw(SNMP_Session);
 
@@ -795,6 +796,7 @@ use strict qw(vars subs);	# see above
 use vars qw(@ISA);
 use SNMP_Session;
 use BER;
+use Carp;
 
 @ISA = qw(SNMPv1_Session);
 
