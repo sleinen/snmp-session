@@ -238,14 +238,16 @@ sub request_response_5 ($$$$$)
     my ($this, $req, $response_tag, $oids, $errorp) = @_;
     my $retries = $this->retries;
     my $timeout = $this->timeout;
+    my ($nfound, $timeleft);
 
     ## Encoding may have returned an error.
     return undef unless defined $req;
 
+    $timeleft = $timeout;
     $this->send_query ($req)
 	|| return $this->error ("send_query: $!");
     while ($retries > 0) {
-	if ($this->wait_for_response($timeout)) {
+	if (($nfound, $timeleft) = $this->wait_for_response($timeleft)) {
 	    my($response_length);
 
 	    $response_length
@@ -262,6 +264,7 @@ sub request_response_5 ($$$$$)
 	    ## No response received - retry
 	    --$retries;
 	    $timeout *= $this->backoff;
+	    $timeleft = $timeout;
 	    $this->send_query ($req)
 		|| return $this->error ("send_query: $!");
 	}
