@@ -238,6 +238,7 @@ sub request_response_5 ($$$$$)
     my ($this, $req, $response_tag, $oids, $errorp) = @_;
     my $retries = $this->retries;
     my $timeout = $this->timeout;
+    my $request_id = $this->{request_id};
 
     ## Encoding may have returned an error.
     return undef unless defined $req;
@@ -252,6 +253,9 @@ sub request_response_5 ($$$$$)
 		= $this->receive_response_3 ($response_tag, $oids, $errorp);
 	    if ($response_length) {
 		return $response_length;
+	    } elsif (defined ($response_length)) {
+		# A response has been received, but for a different
+		# request ID.
 	    } else {
 		return undef;
 	    }
@@ -494,7 +498,7 @@ my @error_status_code = qw(noError tooBig noSuchName badValue readOnly
 			   commitFailed undoFailed authorizationError
 			   notWritable inconsistentName);
 
-sub unwrap_response_6
+sub unwrap_response_6a
 {
     my ($this,$response,$tag,$request_id,$oids,$errorp) = @_;
     my ($community,@rest,$snmpver);
@@ -537,9 +541,7 @@ sub unwrap_response_6
 	    unless $SNMP_Session::suppress_warnings
 	      || $request_id == $this->{request_id};
     }
-    return undef unless $community eq $this->{community};
-    return undef unless $request_id == $this->{request_id};
-    @rest;
+    ($community, $request_id, @rest);
 }
 
 sub send_query ($$)
@@ -570,8 +572,14 @@ sub receive_response_3
 		unless $SNMP_Session::suppress_warnings;
     }
     $this->{'last_sender_addr'} = $remote_addr;
-    my @unwrapped = ();
-    @unwrapped = $this->unwrap_response_6 ($response, $response_tag, $this->{"request_id"}, $oids, $errorp);
+    my ($response_community, $response_id, @unwrapped)
+	= $this->unwrap_response_6a ($response, $response_tag,
+				     $this->{"request_id"}, $oids,
+				     $errorp);
+    if ($response_community ne $this->{community}
+        || $response_id ne $this->{request_id}) {
+	return 0;
+    }
     if (!defined $unwrapped[0]) {
 	$this->{'unwrapped'} = undef;
 	return undef;
