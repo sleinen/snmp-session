@@ -104,11 +104,11 @@ sub snmpopen (@) {
   if (defined($SNMP_util::Session))
   {
     $SNMP_util::Session->set_timeout($timeout)
-	if defined $timeout && length ($1) > 0;
+      if (defined($timeout) && (length($timeout) > 0));
     $SNMP_util::Session->set_retries($retries)
-	if defined $retries && length ($1) > 0;
+      if (defined($retries) && (length($retries) > 0));
     $SNMP_util::Session->set_backoff($backoff)
-	if defined $backoff && length ($1) > 0;
+      if (defined($backoff) && (length($backoff) > 0));
   }
   return $SNMP_util::Session;
 }
