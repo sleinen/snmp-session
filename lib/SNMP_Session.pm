@@ -180,10 +180,9 @@ sub encode_request_3 ($$$@) {
     local($_);
 
     $this->{request_id} = ($this->{request_id} == 0x7fffffff)
-	? ($this->{avoid_negative_request_ids}
-	   ? 0x00000000
-	   : -0x80000000)
-	: $this->{request_id}+1;
+	? -0x80000000 : $this->{request_id}+1;
+    $this->{request_id} += 0x80000000
+	if ($this->{avoid_negative_request_ids} && $this->{request_id} < 0);
     foreach $_ (@{$encoded_oids_or_pairs}) {
       if (ref ($_) eq 'ARRAY') {
 	$_ = &encode_sequence ($_->[0], $_->[1])
