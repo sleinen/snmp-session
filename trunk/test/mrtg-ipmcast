@@ -4,14 +4,14 @@
 ### Description:  Generate MRTG configuration for multicast statistics
 ### Author:	  Simon Leinen  <simon@switch.ch>
 ### Date Created: 20-Jun-2000
-### RCS $Header: /home/leinen/CVS/SNMP_Session/test/mrtg-ipmcast,v 1.4 2001-03-07 15:34:42 leinen Exp $
+### RCS $Header: /home/leinen/CVS/SNMP_Session/test/mrtg-ipmcast,v 1.5 2001-03-07 15:36:48 leinen Exp $
 ##############################################################################
 ### This script can be used to generate a piece of MRTG[1]
 ### configuration file for plotting per-interface multicast traffic
 ### statistics using IPMROUTE-MIB[2].
 ###
 ### Usage: mrtg-cisco-ipmcast [-d DIR] [-w WORKDIR] [-i ICONDIR]
-###          [-c COMMUNITY] [-v ( 1 | 2c )] ROUTER1 ROUTER2 ...
+###          [-c COMMUNITY] [-v ( 1 | 2c )] [-p port] ROUTER1 ROUTER2 ...
 ###
 ### This will contact all ROUTERs under the specified COMMUNITY and
 ### look at some columns of the ipMRouteInterfaceTable.  For each rows
@@ -255,10 +255,16 @@ sub cleanup ($ ) {
 
 sub usage ($) {
     warn <<EOM;
-Usage: $0 [-v (1|2c)] [-m max] [-p port] [-c community] hostname...
+Usage: $0 [-w workdir] [-i icondir] [-v (1|2c)] [-p port] [-c community] hostname...
        $0 -h
 
   -h           print this usage message and exit.
+
+  -w workdir   specifies the WorkDir parameter for the generated MRTG
+               configuration file.
+
+  -i icondir   specifies the IconDir parameter for the generated MRTG
+               configuration file.
 
   -v version   can be used to select the SNMP version.  The default
    	       is SNMPv1, which is what most devices support.  If your box
