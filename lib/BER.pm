@@ -365,7 +365,7 @@ sub decode_intlike
       @result = (unpack ("N", (substr ($pdu, 2, 4))), substr ($pdu, 6));
       #### Our router returns 5 byte integers!
     } elsif ($result == 5) {
-      @result = ((ord (substr ($pdu, 2, 1)) << 16) 
+      @result = ((ord (substr ($pdu, 2, 1)) << 32)
 		 + unpack ("N", (substr ($pdu, 3, 4))), substr ($pdu, 7));
     } else {
 	die "Unsupported integer length $result ($pdu)";
