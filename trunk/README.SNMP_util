@@ -32,12 +32,13 @@ The SNMP_utils.pm module contains the functions
   snmpLoad_OID_Cache(filename)
   snmpQueue_MIB_File(filename, [filename])
 
-  snmpget(community@host:port:timeout:retries:backoff, OID, [OID...])
-  snmpgetnext(community@host:port:timeout:retries:backoff, OID, [OID...])
-  snmpwalk(community@host:port:timeout:retries:backoff, OID)
-  snmpset(community@host:port:timeout:retries:backoff, OID, type, value,
+  snmpget(community@host:port:timeout:retries:backoff:version, OID, [OID...])
+  snmpgetnext(community@host:port:timeout:retries:backoff:version, OID,
+	    [OID...])
+  snmpwalk(community@host:port:timeout:retries:backoff:version, OID)
+  snmpset(community@host:port:timeout:retries:backoff:version, OID, type, value,
 	    [OID, type, value ...])
-  snmptrap(community@host:port:timeout:retries:backoff, enterpriseOID,
+  snmptrap(community@host:port:timeout:retries:backoff:version, enterpriseOID,
 	    agent, generalID, specificID, OID, type, value,
 	    [OID, type, value ...])
 
@@ -93,16 +94,38 @@ doesn't have to be parsed.
 
 
 The rest of the functions require a hostname/IP address as the first
-argument.  The community string, port number, timeout, retries, and backoff
-values are all optional.  If the community string isn't specified,
-"public" is used.  If the port number isn't specified, 161 is used
-for everything but snmptrap().  snmptrap() uses port 162 as its default.
+argument.  The community string, port number, timeout, retries, backoff,
+and version parameters are all optional.  If the community string isn't
+specified, "public" is used.  If the port number isn't specified, the
+default value from SNMP_Sesssion.pm (port 161) is used for everything but
+snmptrap().  snmptrap() uses port 162 as its default.
 
-The timeout, retries, and backoff values default to whatever SNMP_Session.pm
-uses.  For SNMP_Session.pm version 0.63 they are 2 seconds, 5 retries, and a
-1.0 backoff factor.  The backoff factor is used as a multiplier to increase
-the timeout after every retry.  With a backoff factor of 1.0 the timeout
-stays the same for every retry.
+The port parameter was recently augmented to allow the specification of
+the IP address (or hostname) and port of the machine doing the query in
+addition to the IP address (or hostname) and port of the machine being
+queried.  Some machines have additional security features that only allow
+SNMP queries to come from certain IP addresses.  If the host doing the
+query has multiple interface, it may be necessary to specify the interface
+the query should come from.  The port parameter is further broken down
+into "remote_port!local_address!local_port".  Here are some examples:
+
+    somehost
+    somehost:161
+    somehost:161!192.168.2.4!4000  use 192.168.2.4 and port 4000 as source
+    somehost:!192.168.2.4          use 192.168.2.4 as source
+    somehost:!!4000                use port 4000 as source
+
+Most people will only need to use the first form ("somehost").
+
+The timeout, retries, and backoff parameters default to whatever
+SNMP_Session.pm uses.  For SNMP_Session.pm version 0.83 they are 2 seconds,
+5 retries, and a 1.0 backoff factor.  The backoff factor is used as a
+multiplier to increase the timeout after every retry.  With a backoff factor
+of 1.0 the timeout stays the same for every retry.
+
+The version parameter defaults to SNMP version 1.  Some SNMP values such as
+64-bit counters have to be queried using SNMP version 2.  Specifying "2" or
+"2c" as the version parameter will accomplish this.
 
 The snmpget function returns an array with the results of the 'get'
 operation.  The value associated with each OID is returned as a
