@@ -2,7 +2,7 @@
 ######################################################################
 ### SNMP_util -- SNMP utilities using SNMP_Session.pm and BER.pm
 ######################################################################
-### Copyright (c) 1998-2000, Mike Mitchell.
+### Copyright (c) 1998-2001, Mike Mitchell.
 ###
 ### This program is free software; you can redistribute it under the
 ### "Artistic License" included in this distribution (file "Artistic").
@@ -22,7 +22,7 @@
 
 package SNMP_util;
 
-require 5.002;
+require 5.004;
 
 use strict;
 use vars qw(@ISA @EXPORT $VERSION);
@@ -33,11 +33,11 @@ use BER "0.82";
 use SNMP_Session "0.83";
 use Socket;
 
-$VERSION = '0.85';
+$VERSION = '0.86';
 
 @ISA = qw(Exporter);
 
-@EXPORT = qw(snmpget snmpgetnext snmpwalk snmpset snmptrap snmpmapOID snmpMIB_to_OID snmpLoad_OID_Cache snmpQueue_MIB_File);
+@EXPORT = qw(snmpget snmpgetnext snmpwalk snmpset snmptrap snmpgetbulk snmpmapOID snmpMIB_to_OID snmpLoad_OID_Cache snmpQueue_MIB_File);
 
 # The OID numbers from RFC1213 (MIB-II) and RFC1315 (Frame Relay)
 # are pre-loaded below.
@@ -329,12 +329,13 @@ $SNMP_util::CacheLoaded = 0;
 srand(time|$$);
 
 ### Prototypes
-sub snmpget (@);
-sub snmpgetnext (@);
-sub snmpopen (@);
-sub snmpwalk (@);
-sub snmpset (@);
-sub snmptrap (@);
+sub snmpget ($@);
+sub snmpgetnext ($@);
+sub snmpopen ($$$);
+sub snmpwalk ($@);
+sub snmpset ($@);
+sub snmptrap ($$$$$@);
+sub snmpgetbulk ($$$@);
 sub toOID (@);
 sub snmpmapOID (@);
 sub snmpMIB_to_OID ($);
@@ -348,7 +349,7 @@ sub version () { $VERSION; }
 #
 # Start an snmp session
 #
-sub snmpopen (@) {
+sub snmpopen ($$$) {
   my($host, $type, $vars) = @_;
   my($nhost, $port, $community, $lhost, $lport, $nlhost);
   my($timeout, $retries, $backoff, $version);
@@ -370,7 +371,7 @@ sub snmpopen (@) {
     undef($lport) if (defined($lport) && (length($lport) <= 0));
   }
   undef($port) if (defined($port) && length($port) <= 0);
-  $port = ($type == 1 ? 162 : 161) if !defined($port);
+  $port = 162 if ($type == 1 && !defined($port));
   $nhost = "$community\@$host";
   $nhost .= ":" . $port if (defined($port));
 
@@ -443,7 +444,7 @@ sub snmpopen (@) {
 #
 # A restricted snmpget.
 #
-sub snmpget (@) {
+sub snmpget ($@) {
   my($host, @vars) = @_;
   my(@enoid, $var, $response, $bindings, $binding, $value, $oid, @retvals);
   my $session;
@@ -478,7 +479,7 @@ sub snmpget (@) {
 #
 # A restricted snmpgetnext.
 #
-sub snmpgetnext (@) {
+sub snmpgetnext ($@) {
   my($host, @vars) = @_;
   my(@enoid, $var, $response, $bindings, $binding);
   my($value, $upoid, $oid, @retvals);
@@ -526,12 +527,13 @@ sub snmpgetnext (@) {
 #
 # A restricted snmpwalk.
 #
-sub snmpwalk (@) {
+sub snmpwalk ($@) {
   my($host, @vars) = @_;
   my(@enoid, $var, $response, $bindings, $binding);
   my($value, $upoid, $oid, @retvals);
   my($got, @nnoid, $noid, $ok);
   my $session;
+  my(%soid);
 
   $session = &snmpopen($host, 0, \@vars);
   if (!defined($session)) {
@@ -550,7 +552,9 @@ sub snmpwalk (@) {
     $upoid = pretty_print($noid);
     push(@vars, $upoid);
   }
-  while($session->getnext_request_response(@nnoid))
+  while(($SNMP_util::Version ne '1' && $session->{'use_getbulk'})
+	? $session->getbulk_request_response(0, $session->default_max_repetitions(), @nnoid)
+	: $session->getnext_request_response(@nnoid))
   {
     $got = 1;
     $response = $session->pdu_buffer;
@@ -574,12 +578,14 @@ sub snmpwalk (@) {
       {
 	my $tmp = encode_oid_with_errmsg ($tempo);
 	return undef unless defined $tmp;
-	push @nnoid, $tmp;
+	$soid{$upoid} = $tmp;
 	my $tempv = pretty_print($value);
 	$tempo=~s/^$upoid\.//;
 	push @retvals, "$tempo:$tempv";
       }
     }
+    @nnoid = values(%soid);
+    undef %soid;
     last if ($#nnoid < 0);
   }
   if ($got)
@@ -598,7 +604,7 @@ sub snmpwalk (@) {
 #
 # A restricted snmpset.
 #
-sub snmpset(@) {
+sub snmpset($@) {
     my($host, @vars) = @_;
     my(@enoid, $response, $bindings, $binding);
     my($oid, @retvals, $type, $value);
@@ -664,7 +670,7 @@ sub snmpset(@) {
 #
 # Send an SNMP trap
 #
-sub snmptrap(@) {
+sub snmptrap($$$$$@) {
     my($host, $ent, $agent, $gen, $spec, @vars) = @_;
     my($oid, @retvals, $type, $value);
     my(@enoid);
@@ -701,6 +707,11 @@ sub snmptrap(@) {
 	    $value = encode_string($value);
 	    push @enoid, [$oid,$value];
 	}
+	elsif ($type =~ /ipaddr/i)
+	{
+	    $value = encode_ip_address($value);
+	    push @enoid, [$oid,$value];
+	}
 	elsif ($type =~ /int/i)
 	{
 	    $value = encode_int($value);
@@ -720,6 +731,54 @@ sub snmptrap(@) {
 	}
     }
     return($session->trap_request_send(@enoid));
+}
+
+#
+# A restricted snmpgetbulk.
+#
+sub snmpgetbulk ($$$@) {
+  my($host, $nr, $mr, @vars) = @_;
+  my(@enoid, $var, $response, $bindings, $binding);
+  my($value, $upoid, $oid, @retvals);
+  my($noid, $ok);
+  my $session;
+
+  $session = &snmpopen($host, 0, \@vars);
+  if (!defined($session)) {
+    carp "SNMPGETBULK Problem for $host\n"
+      unless ($SNMP_Session::suppress_warnings > 1);
+    return undef;
+  }
+
+  @enoid = &toOID(@vars);
+
+  undef @vars;
+  undef @retvals;
+  foreach $noid (@enoid)
+  {
+    $upoid = pretty_print($noid);
+    push(@vars, $upoid);
+  }
+  if ($session->getbulk_request_response($nr, $mr, @enoid))
+  {
+    $response = $session->pdu_buffer;
+    ($bindings) = $session->decode_get_response($response);
+    while ($bindings) {
+      ($binding, $bindings) = decode_sequence($bindings);
+      ($oid, $value) = decode_by_template($binding, "%O%@");
+      my $tempo = pretty_print($oid);
+	my $tempv = pretty_print($value);
+	push @retvals, "$tempo:$tempv";
+      }
+    return (@retvals);
+  }
+  else
+  {
+    $var = join(' ', @vars);
+    carp "SNMPGETBULK Problem for $var on $host\n"
+      unless ($SNMP_Session::suppress_warnings > 1);
+    return undef;
+  }
 }
 
 #
