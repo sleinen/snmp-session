@@ -375,19 +375,12 @@ sub decode_string
 {
     my($pdu) = shift;
     my($result);
-#   my($length);
     my(@result);
     $result = ord (substr ($pdu, 0, 1));
     die "Expected octet string" unless $result == octet_string_tag;
-#    $length = ord (substr ($pdu, 1, 1));
-#    die "Unsupported length" unless $length < 128;
-#    @result = (substr ($pdu, 2, $length), substr ($pdu, 2+$length));
-###########
-# fix for long strings by Andrzej Tobola <san@iem.pw.edu.pl>
     ($result, $pdu) = decode_length (substr ($pdu, 1));
     @result = (substr ($pdu, 0, $result), substr ($pdu, $result));
-###########
-   @result;
+    @result;
 }
 
 sub decode_length
