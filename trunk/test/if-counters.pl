@@ -188,6 +188,15 @@ my $sleep_interval = $desired_interval + 0.0;
 my $interval;
 my $linecount;
 
+sub rate_32 ($$$) {
+    my ($old, $new, $interval) = @_;
+    my $diff = $new-$old;
+    if ($diff < 0) {
+	$diff += (2**32);
+    }
+    return $diff / $interval;
+}
+
 sub out_interface ($$$$$$@) {
     my ($index, $descr, $admin, $oper, $in, $out);
     my ($crc, $comment);
@@ -231,10 +240,10 @@ sub out_interface ($$$$$$@) {
 	my $old = $old{$index};
 
 	$interval = ($clock-$old->{'clock'}) * 1.0 / $clock_ticks;
-	my $d_in = $in ? ($in-$old->{'in'})*8/$interval : 0;
-	my $d_out = $out ? ($out-$old->{'out'})*8/$interval : 0;
-	my $d_drops = $drops ? ($drops-$old->{'drops'})/$interval : 0;
-	my $d_crc = $crc ? ($crc-$old->{'crc'})/$interval : 0;
+	my $d_in = $in ? rate_32 ($old->{'in'}, $in, $interval)*8 : 0;
+	my $d_out = $out ? rate_32 ($old->{'out'}, $out, $interval)*8 : 0;
+	my $d_drops = $drops ? rate_32 ($old->{'drops'}, $drops, $interval) : 0;
+	my $d_crc = $crc ? rate_32 ($old->{'crc'}, $crc, $interval) : 0;
 	$alarm = ($d_crc != 0)
 	    || 0 && ($d_out > 0 && $d_in == 0);
 	print STDERR "\007" if $alarm && !$old->{'alarm'};
