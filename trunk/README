@@ -155,7 +155,7 @@ encode and send the trap.  There is no way to find out whether the
 trap was actually received at the management station - SNMP traps are
 fundamentally unreliable.
 
-When constructing a trap, you must provide
+When constructing an SNMPv1 trap, you must provide
 
 * the "enterprise" Object Identifier for the entity that generates the
   trap
@@ -171,18 +171,32 @@ When constructing a trap, you must provide
 * a sequence (may be empty) of variable bindings further describing
  the trap.
 
+For SNMPv2 traps, you need:
+
+* the trap's OID
+
+* the sysUpTime at the time of trap generation
+
+* the bindings list as above
+
+For SNMPv2 traps, the uptime and trap OID are encoded as bindings
+which are added to the front of the other bindings you provide.
+
 Here is a short example:
 
 	my $trap_receiver = "netman.noc";
 	my $trap_community = "SNMP_Traps";
-	my $trap_session = SNMP_Session::open ($trap_receiver, $trap_community, 162);
+	my $trap_session = $version eq '1'
+	    ? SNMP_Session->open ($trap_receiver, $trap_community, 162)
+	    : SNMPv2c_Session->open ($trap_receiver, $trap_community, 162);
+	my $trap_session = SNMP_Session->open ($trap_receiver, $trap_community, 162);
 	my $myIpAddress = ...;
 	my $start_time = time;
 	
 	...
 	
-	sub link_down_trap ($) {
-	  my ($if_index) = @_;
+	sub link_down_trap ($$) {
+	  my ($if_index, $version) = @_;
 	  my $genericTrap = 2;		# linkDown
 	  my $specificTrap = 0;
 	  my @ifIndexOID = ( 1,3,6,1,2,1,2,2,1,1 );
@@ -190,23 +204,37 @@ Here is a short example:
 	  my @myOID = ( 1,3,6,1,4,1,2946,0,8,15 );
 	
 	  warn "Sending trap failed"
-	    unless $trap_session->trap_request_send (encode_oid (@myOID),
-						     encode_ip_address ($myIpAddress),
-						     encode_int ($genericTrap),
-						     encode_int ($specificTrap),
-						     encode_timeticks ($upTime),
-						     [encode_oid (@ifIndexOID,$if_index),
-						      encode_int ($if_index)]);
+	    unless ($version eq '1')
+		? $trap_session->trap_request_send (encode_oid (@myOID),
+						    encode_ip_address ($myIpAddress),
+						    encode_int ($genericTrap),
+						    encode_int ($specificTrap),
+						    encode_timeticks ($upTime),
+						    [encode_oid (@ifIndex_OID,$if_index),
+						     encode_int ($if_index)],
+						    [encode_oid (@ifDescr_OID,$if_index),
+						     encode_string ("foo")])
+		    : $trap_session->v2_trap_request_send (\@linkDown_OID, $upTime,
+							   [encode_oid (@ifIndex_OID,$if_index),
+							    encode_int ($if_index)],
+							   [encode_oid (@ifDescr_OID,$if_index),
+							    encode_string ("foo")]);
 	}
 
 			   Receiving Traps
 			   ...............
 
 Since version 0.60, SNMP_Session.pm supports the receipt and decoding
-of SNMPv1 trap requests.  To receive traps, you have to create a
-special SNMP session that passively listens on the SNMP trap transport
-address (usually UDP port 162).  Then you can receive traps using the
-receive_trap method and decode them using decode_trap_request:
+of SNMPv1 trap requests.  Since version 0.75, SNMPv2 Trap PDUs are
+also recognized.
+
+To receive traps, you have to create a special SNMP session that
+passively listens on the SNMP trap transport address (usually UDP port
+162).  Then you can receive traps using the receive_trap method and
+decode them using decode_trap_request.  The enterprise, agent,
+generic, specific and sysUptime return values are only defined
+for SNMPv1 traps.  In SNMPv2 traps, the equivalent information is
+contained in the bindings.
 
 	my $trap_session = SNMP_Session->open_trap_session ()
 	  || die "cannot open trap session";
@@ -219,7 +247,7 @@ receive_trap method and decode them using decode_trap_request:
 	...
 	my ($binding, $oid, $value);
 	while ($bindings ne '') {
-	    ($binding,$bindings) = &amp;decode_sequence ($bindings);
+	    ($binding,$bindings) = &decode_sequence ($bindings);
 	    ($oid, $value) = decode_by_template ("%O%@");
 	    print BER::pretty_oid ($oid)," => ",pretty_print ($value),"\n";
 	}
