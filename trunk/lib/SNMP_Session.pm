@@ -313,9 +313,9 @@ sub request_response_5 ($$$$$) {
     return undef unless defined $req;
 
     $timeleft = $timeout;
-    $this->send_query ($req)
-	|| return $this->error ("send_query: $!");
     while ($retries > 0) {
+	$this->send_query ($req)
+	    || return $this->error ("send_query: $!");
 	($nfound, $timeleft) = $this->wait_for_response($timeleft);
 	if ($nfound > 0) {
 	    my($response_length);
@@ -335,8 +335,6 @@ sub request_response_5 ($$$$$) {
 	    --$retries;
 	    $timeout *= $this->backoff;
 	    $timeleft = $timeout;
-	    $this->send_query ($req)
-		|| return $this->error ("send_query: $!");
 	}
     }
     $this->error ("no response received");
