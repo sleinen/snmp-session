@@ -23,9 +23,27 @@
 
 package SNMP_Session;		
 
-
 use Socket;
 use BER;
+
+### Default initial timeout (in seconds) waiting for a response PDU
+### after a request is sent.  Note that when a request is retried, the
+### timeout is increased by BACKOFF (see below).
+###
+my $default_timeout = 2.0;
+
+### Default number of retries for each SNMP request.  If no response
+### is received after TIMEOUT seconds, the request is resent and a new
+### response awaited with a longer timeout (see the documentation on
+### BACKOFF below).
+###
+my $default_retries = 3;
+
+### Default backoff factor for SNMP_Session objects.  This factor is
+### used to increase the TIMEOUT every time an SNMP request is
+### retried.
+###
+my $default_backoff = 1.5;
 
 sub get_request  { 0 | context_flag };
 sub getnext_request  { 1 | context_flag };
@@ -39,6 +57,8 @@ sub open
 }
 
 sub timeout { $_[0]->{timeout} }
+sub retries { $_[0]->{retries} }
+sub backoff { $_[0]->{backoff} }
 
 sub encode_request
 {
@@ -102,22 +122,30 @@ sub getnext_request_response
 
 sub request_response
 {
-    my($this) = shift;
-    my($req) = shift;
-    $this->send_query ($req)
-	|| die "send_query: $!";
-    if ($this->wait_for_response($this->timeout)) {
-	my($response_length);
+    my $this = shift;
+    my $req = shift;
+    my $retries = $this->retries;
+    my $timeout = $this->timeout;
 
-	($response_length = $this->receive_response())
-	    || die "receive_response: $!";
-	## print STDERR "$response_length bytes of response received.\n";
-    } else {
-	0;
+    while ($retries > 0) {
+	$this->send_query ($req)
+	    || die "send_query: $!";
+	if ($this->wait_for_response($timeout)) {
+	    my($response_length);
+	    
+	    ($response_length = $this->receive_response())
+		|| die "receive_response: $!";
+	    return $response_length;
+	    ## print STDERR "$response_length bytes of response received.\n";
+	}
+	--$retries;
+	$timeout *= $this->backoff;
     }
+    0;
 }
 
 package SNMPv1_Session;
+
 use SNMP_Session;
 use Socket;
 use BER;
@@ -131,8 +159,8 @@ sub open
     my($this,$remote_hostname,$community,$port,$max_pdu_len) = @_;
     my($name,$aliases,$remote_addr,$socket);
 
-    $udp_proto = 0;
-    $sockaddr = 'S n a4 x8';
+    my $udp_proto = 0;
+    my $sockaddr = 'S n a4 x8';
 
     $community = 'public' unless defined $community;
     $port = SNMP_Session::standard_udp_port unless defined $port;
@@ -160,7 +188,9 @@ sub open
 	'max_pdu_len' => $max_pdu_len,
 	'pdu_buffer' => '\0' x $max_pdu_len,
 	'request_id' => rand 0x80000000 + rand 0xffff,
-	'timeout' => 10.0
+	'timeout' => $default_timeout,
+	'retries' => $default_retries,
+	'backoff' => $default_backoff,
 	};
 }
 
