@@ -503,7 +503,7 @@ sub open {
        $remote_hostname,$community,$port,
        $max_pdu_len,$local_port,$max_repetitions,
        $local_hostname) = @_;
-    my($remote_addr,$local_addr,$socket);
+    my($remote_addr,$socket);
 
     $community = 'public' unless defined $community;
     $port = SNMP_Session::standard_udp_port unless defined $port;
@@ -514,16 +514,12 @@ sub open {
 	$remote_addr = inet_aton ($remote_hostname)
 	    or return $this->error_return ("can't resolve \"$remote_hostname\" to IP address");
     }
-    if (defined $local_hostname) {
-	$local_addr = inet_aton ($local_hostname)
-	    or return $this->error_return ("can't resolve \"$local_hostname\" to IP address");
-    }
     if ($SNMP_Session::recycle_socket && defined $the_socket) {
 	$socket = $the_socket;
     } else {
 	$socket = IO::Socket::INET->new(Proto => 17,
 					Type => SOCK_DGRAM,
-					LocalAddr => $local_addr,
+					LocalAddr => $local_hostname,
 					LocalPort => $local_port)
 	    || return $this->error_return ("creating socket: $!");
 	$the_socket = $socket
