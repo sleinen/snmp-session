@@ -122,17 +122,26 @@ my $session =
 ###
 my $max_repetitions = $session->default_max_repetitions;
 while (1) {
-    $win->standout();
     $win->addstr (0, 0, sprintf ("%-20s interval %4.1fs %d reps",
 				 $host,
 				 $interval || $desired_interval,
 				 $max_repetitions));
+    $win->standout();
     $win->addstr (1, 0,
 		  sprintf ("%2s  %-24s %10s %10s %10s %10s %s\n",
-			   "ix", "desc", "inOctets", "outOctets", "inPkts", "outPkts", "alias"));
+			   "ix", "name",
+			   "bits/s", "bits/s",
+			   "pkts/s", "pkts/s",
+			   "description"));
+    $win->addstr (2, 0,
+		  sprintf ("%2s  %-24s %10s %10s %10s %10s %s\n",
+			   "", "",
+			   "in", "out",
+			   "in", "out",
+			   ""));
     $win->clrtoeol ();
     $win->standend();
-    $linecount = 2;
+    $linecount = 3;
     my $calls = $session->map_table_4
 	([$ifDescr,$ifAdminStatus,$ifOperStatus,
 	  $ifInOctets,$ifOutOctets,$ifInUcastPkts,$ifOutUcastPkts,$locIfDescr],
