@@ -37,6 +37,7 @@
 ### Philippe Simonet <Philippe.Simonet@swisscom.com>: Export avoid...
 ### Luc Pauwels <Luc.Pauwels@xalasys.com>: use_16bit_request_ids
 ### Andrew Cornford-Matheson <andrew.matheson@corenetworks.com>: inform
+### Gerry Dalton <gerry.dalton@consolidated.com>: strict subs bug
 ######################################################################
 
 package SNMP_Session;		
@@ -147,14 +148,14 @@ my $the_socket;
 $SNMP_Session::errmsg = '';
 $SNMP_Session::suppress_warnings = 0;
 
-sub get_request      { 0 | context_flag };
-sub getnext_request  { 1 | context_flag };
-sub get_response     { 2 | context_flag };
-sub set_request      { 3 | context_flag };
-sub trap_request     { 4 | context_flag };
-sub getbulk_request  { 5 | context_flag };
-sub inform_request   { 6 | context_flag };
-sub trap2_request    { 7 | context_flag };
+sub get_request      { 0 | context_flag () };
+sub getnext_request  { 1 | context_flag () };
+sub get_response     { 2 | context_flag () };
+sub set_request      { 3 | context_flag () };
+sub trap_request     { 4 | context_flag () };
+sub getbulk_request  { 5 | context_flag () };
+sub inform_request   { 6 | context_flag () };
+sub trap2_request    { 7 | context_flag () };
 
 sub standard_udp_port { 161 };
 
