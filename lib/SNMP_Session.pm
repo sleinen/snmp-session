@@ -645,6 +645,12 @@ sub open {
 
 	if ($SNMP_Session::recycle_socket && defined $the_socket) {
 	    $socket = $the_socket;
+	} elsif ($sockfamily == AF_INET) {
+	    $socket = IO::Socket::INET->new(Proto => 17,
+					    Type => SOCK_DGRAM,
+					    LocalAddr => $local_hostname,
+					    LocalPort => $local_port)
+	         || return $this->error_return ("creating socket: $!");
 	} else {
 	    $socket = IO::Socket::INET6->new(Proto => 17,
 					     Type => SOCK_DGRAM,
@@ -980,6 +986,7 @@ sub snmp_version { 1 }
 
 sub open {
     my $session = SNMPv1_Session::open (@_);
+    return undef unless defined $session;
     return bless $session;
 }
 
