@@ -31,6 +31,7 @@
 ### Brett T Warden <wardenb@eluminant.com>: pretty UInteger32
 ### Michael Deegan <michael@cnspc18.murdoch.edu.au>
 ### Sergio Macedo <macedo@tmp.com.br>
+### Jakob Ilves (/IlvJa) <jakob.ilves@oracle.com>: PDU capture
 ######################################################################
 
 package SNMP_Session;		
@@ -50,7 +51,7 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.93';
+$VERSION = '0.94';
 
 @ISA = qw(Exporter);
 
@@ -247,7 +248,7 @@ sub decode_trap_request ($$) {
 	    = decode_by_template ($trap, "%{%i%s%*{%i%i%i%{%@",
 				  trap2_request);
 	return $this->error_return ("v2 trap request contained errorStatus/errorIndex "
-				    .$error_status."/".$error_index)
+		      .$error_status."/".$error_index)
 	    if defined $error_status && defined $error_index
 	    && ($error_status != 0 || $error_index != 0);
     }
@@ -334,6 +335,13 @@ sub request_response_5 ($$$$$) {
     while ($retries > 0) {
 	$this->send_query ($req)
 	    || return $this->error ("send_query: $!");
+	# IlvJa
+	# Add request pdu to capture_buffer
+	push @{$this->{'capture_buffer'}}, $req
+	    if (defined $this->{'capture_buffer'}
+		and ref $this->{'capture_buffer'} eq 'ARRAY');
+	#
+	
       wait_for_response:
 	($nfound, $timeleft) = $this->wait_for_response($timeleft);
 	if ($nfound > 0) {
@@ -342,6 +350,16 @@ sub request_response_5 ($$$$$) {
 	    $response_length
 		= $this->receive_response_3 ($response_tag, $oids, $errorp);
 	    if ($response_length) {
+		# IlvJa
+		# Add response pdu to capture_buffer
+		push (@{$this->{'capture_buffer'}},
+		      substr($this->{'pdu_buffer'}, 0, $response_length)
+		      )
+		      if (defined $this->{'capture_buffer'}
+			  and ref $this->{'capture_buffer'} eq 'ARRAY');
+		#
+		
+
 		return $response_length;
 	    } elsif (defined ($response_length)) {
 		goto wait_for_response;
@@ -357,6 +375,13 @@ sub request_response_5 ($$$$$) {
 	    $timeleft = $timeout;
 	}
     }
+    # IlvJa
+    # Add empty packet to capture_buffer
+    push @{$this->{'capture_buffer'}}, "" 
+	if (defined $this->{'capture_buffer'}
+	    and ref $this->{'capture_buffer'} eq 'ARRAY');
+    #
+
     $this->error ("no response received");
 }
 
@@ -557,7 +582,7 @@ sub open {
 	       $default_avoid_negative_request_ids
 	       ? (int (rand 0x8000) << 16) + int (rand 0x10000)
 	       : (int (rand 0x10000) << 16) + int (rand 0x10000)
-	        - 0x80000000,
+	       - 0x80000000,
 	   'timeout' => $default_timeout,
 	   'retries' => $default_retries,
 	   'backoff' => $default_backoff,
@@ -569,6 +594,7 @@ sub open {
 	   'lenient_source_address_matching' => 1,
 	   'lenient_source_port_matching' => 1,
 	   'avoid_negative_request_ids' => $default_avoid_negative_request_ids,
+	   'capture_buffer' => undef,
 	  };
 }
 
