@@ -174,8 +174,9 @@ sub decode_get_response
 
 sub decode_trap_request ($$) {
     my ($this, $trap) = @_;
-    my ($snmp_version, $community, $ent, $agent, $gen, $spec, $dt, @pairs);
-    ($snmp_version, $community, $ent, $agent, $gen, $spec, $dt, @pairs)
+    my ($snmp_version, $community, $ent, $agent, $gen, $spec, $dt,
+	$bindings);
+    ($snmp_version, $community, $ent, $agent, $gen, $spec, $dt, $bindings)
 	= decode_by_template ($trap, "%{%i%s%*{%O%A%i%i%u%{%@",
 			      SNMP_Session::trap_request
 			      );
@@ -184,7 +185,7 @@ sub decode_trap_request ($$) {
     if (!defined $ent) {
 	warn "BER error decoding trap:\n  ".$BER::errmsg."\n";
     }
-    return ($community, $ent, $agent, $gen, $spec, $dt, @pairs);
+    return ($community, $ent, $agent, $gen, $spec, $dt, $bindings);
 }
 
 sub wait_for_response
@@ -418,18 +419,8 @@ sub open
     $port = SNMP_Session::standard_udp_port unless defined $port;
     $max_pdu_len = 8000 unless defined $max_pdu_len;
 
-    ## Changed upon a suggestion by "Daniel L. Needles"
-    ## <dan_needles@INS.COM>: on Windows'95, passing numeric IP
-    ## addresses to inet_aton() seems to work, but is apparently very
-    ## slow.  So if we detect that case, we use a simple conversion.
-    ##
-    if ($remote_hostname =~ /^\d+\.\d+\.\d+\.\d+(.*)/ )
-    {
-      $remote_addr = pack("C*",split /\./, $remote_hostname);
-    } else {
-      $remote_addr = inet_aton ($remote_hostname)
+    $remote_addr = inet_aton ($remote_hostname)
 	|| return $this->error_return ("can't resolve \"$remote_hostname\" to IP address");
-    }
     $socket = 'SNMP'.sprintf ("%s:%d", inet_ntoa ($remote_addr), $port);
     (($name,$aliases,$udp_proto) = getprotobyname('udp'))
 	unless $udp_proto;
