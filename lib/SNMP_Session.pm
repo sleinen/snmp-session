@@ -143,7 +143,7 @@ sub open
 	## addition by peters@dkrz.de 25-Apr-1996
 	$remote_addr = pack('C4',split(/\./,$remote_hostname));
     } else {
-	$remote_hostname = gethostbyname($remote_hostname)[4]
+	$remote_addr = (gethostbyname($remote_hostname))[4]
 	    || die (host_not_found_error ($remote_hostname, $?));
     }
     $socket = 'SNMP'.sprintf ("%08x04x",
