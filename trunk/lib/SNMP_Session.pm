@@ -36,6 +36,7 @@
 ### Lorenzo Colitti <lorenzo@colitti.com>: IPv6 support
 ### Philippe Simonet <Philippe.Simonet@swisscom.com>: Export avoid...
 ### Luc Pauwels <Luc.Pauwels@xalasys.com>: use_16bit_request_ids
+### Andrew Cornford-Matheson <andrew.matheson@corenetworks.com>: inform
 ######################################################################
 
 package SNMP_Session;		
