@@ -337,13 +337,13 @@ sub link_down_trap ($$) {
 
 <p> To receive traps, you have to create a special SNMP session that
  passively listens on the SNMP trap transport address (usually UDP
- port 162).  Then you can receive traps using the
- <tt>receive_trap</tt> method and decode them using
- <tt>decode_trap_request</tt>.  The <em>enterprise</em>,
- <em>agent</em>, <em>generic</em>, <em>specific</em> and
- <em>sysUptime</em> return values are only defined for SNMPv1 traps.
- In SNMPv2 traps, the equivalent information is contained in the
- bindings.
+ port 162).  Then you can receive traps (actually, SNMPv1 traps,
+ SNMPv2 traps, and SNMPv2 informs) using the <tt>receive_trap</tt>
+ method and decode them using <tt>decode_trap_request</tt>.  The
+ <em>enterprise</em>, <em>agent</em>, <em>generic</em>,
+ <em>specific</em> and <em>sysUptime</em> return values are only
+ defined for SNMPv1 traps.  In SNMPv2 traps and informs, the
+ equivalent information is contained in the bindings.
 </p>
 
 <pre>
@@ -385,7 +385,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20040823
+20040902
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
