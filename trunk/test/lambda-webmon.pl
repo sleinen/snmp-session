@@ -23,24 +23,22 @@ snmpmapOID (qw(amplifierOperStatus 1.3.6.1.4.1.2522.1.5.1.1.0
 	       outputPowerStatus 1.3.6.1.4.1.2522.1.5.1.6.0
 	       outputPowerLevel 1.3.6.1.4.1.2522.1.5.1.7.0));
 
-my @eastbound_amps = qw(public@muxCE1-A8  
-	      public@muxLS1-A1  
-	      public@muxLS1-A8  
-	      public@muxBE1-A1
-	      public@muxBE1-A8
-	      public@muxBA1-A1  
-	      public@muxBA1-A8
-	      public@muxEZ1-A1);
+my @eastbound_amps = qw(public@mCE11-A8  
+	      public@mLS11-A1  
+	      public@mLS11-A8  
+	      public@mBE11-A1
+	      public@mBE11-A8
+	      public@mBA11-A1  
+	      public@mBA11-A8
+	      public@mEZ11-A1);
 
-my @westbound_amps = qw(
-	      public@muxEZ1-A2
-	      public@muxBA1-A7  
-	      public@muxBA1-A2  
-	      public@muxBE1-A7
-	      public@muxBE1-A2
-	      public@muxLS1-A7  
-	      public@muxLS1-A2  
-			);
+my @westbound_amps = qw(public@mEZ11-A2
+	      public@mBA11-A7  
+	      public@mBA11-A2  
+	      public@mBE11-A7
+	      public@mBE11-A2
+	      public@mLS11-A7  
+	      public@mLS11-A2);
 
 my @amps = (@eastbound_amps, @westbound_amps);
 
