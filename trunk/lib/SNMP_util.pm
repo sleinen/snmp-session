@@ -84,7 +84,7 @@ sub snmpopen (@) {
   $community = "public";
   $port = 161;
 
-  ($community, $host) = split('@', $host, 2) if ($host =~ /\@/);
+  ($community, $host) = ($1, $2) if ($host =~ /^(.*)\@([^@])$/);
   ($host, $port, $timeout, $retries, $backoff) = split(':', $host, 5)
     if ($host =~ /:/);
   $nhost = "$community\@$host:$port";
