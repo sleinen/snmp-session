@@ -72,19 +72,31 @@ $session->default_max_repetitions ($max_repetitions);
 my $if_descr = get_if_descrs ($session);
 
 printf "%-18s %s\n", "IP address", "if#";
-$session->map_table ([$ipAdEntAddr, $ipAdEntIfIndex,
+$session->map_table ([$ipAdEntIfIndex,
 		      $ipAdEntNetmask, $ipAdEntBcastAddr,
 		      $ipAdEntReasmMaxSize],
 		     sub {
-			 my ($index, $addr, $if_index, $netmask,
+			 my ($index, $if_index, $netmask,
 			     $bcast, $reasm) = @_;
-			 grep (defined $_ && ($_=pretty_print $_),
-			       ($addr, $if_index, $netmask,
-				$bcast, $reasm));
-			 printf "%-18s %-20s %d %6d\n",
+			 map { defined $_ && ($_=pretty_print $_) }
+			     ($if_index, $netmask,
+			      $bcast, $reasm);
+			 my $addr = $index;
+			 printf "%-18s %-20s ",
 				 pretty_net_and_mask ($addr, $netmask),
-				 $if_descr->{$if_index},
-				 $bcast, $reasm;
+				 $if_descr->{$if_index} || '?';
+			 if (defined $bcast) {
+			     printf "%d", $bcast;
+			 } else {
+			     print "?";
+			 }
+			 print " ";
+			 if (defined $reasm) {
+			     printf "%6d", $reasm;
+			 } else {
+			     print "     ?";
+			 }
+			 print "\n";
 		     });
 $session->close ();
 
