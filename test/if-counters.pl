@@ -173,10 +173,10 @@ my $ifOutOctets = [1,3,6,1,2,1,2,2,1,16];
 my $ifInUcastPkts = [1,3,6,1,2,1,2,2,1,11];
 my $ifOutUcastPkts = [1,3,6,1,2,1,2,2,1,17];
 my $ifOutDiscards = [1,3,6,1,2,1,2,2,1,19];
+my $ifAlias = [1,3,6,1,2,1,31,1,1,1,18];
 ## Cisco-specific variables enabled by `-c' option
 my $locIfInCRC = [1,3,6,1,4,1,9,2,2,1,1,12];
 my $locIfOutCRC = [1,3,6,1,4,1,9,2,2,1,1,12];
-my $locIfDescr = [1,3,6,1,4,1,9,2,2,1,1,28];
 
 my $clock_ticks = POSIX::sysconf( &POSIX::_SC_CLK_TCK );
 
@@ -195,8 +195,8 @@ sub out_interface ($$$$$$@) {
     my ($clock) = POSIX::times();
     my $alarm = 0;
 
-    ($index, $descr, $admin, $oper, $in, $out, @_) = @_;
-    ($crc, $comment, @_) = @_ if $cisco_p;
+    ($index, $descr, $admin, $oper, $in, $out, $comment, @_) = @_;
+    ($crc, @_) = @_ if $cisco_p;
     ($drops, @_) = @_ if $show_out_discards;
 
     grep (defined $_ && ($_=pretty_print $_),
@@ -341,10 +341,9 @@ while (1) {
     }
     $linecount = 3;
     my @oids = ($ifDescr,$ifAdminStatus,$ifOperStatus,
-		$ifInOctets,$ifOutOctets);
+		$ifInOctets,$ifOutOctets,$ifAlias);
     if ($cisco_p) {
 	push @oids, $locIfInCRC;
-	push @oids, $locIfDescr;
     }
     if ($show_out_discards) {
 	push @oids, $ifOutDiscards;
@@ -366,7 +365,7 @@ Usage: $0 [-t secs] [-v (1|2c)] [-m max] [-p port] hostname [community]
 
   -h           print this usage message and exit.
 
-  -c           also use Cisco-specific variables (locIfInCrc and locIfDescr)
+  -c           also use Cisco-specific variables (locIfInCrc)
 
   -t secs      specifies the sampling interval.  Defaults to 5 seconds.
 
