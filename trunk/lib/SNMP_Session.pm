@@ -501,7 +501,7 @@ my @error_status_code = qw(noError tooBig noSuchName badValue readOnly
 			   commitFailed undoFailed authorizationError
 			   notWritable inconsistentName);
 
-sub unwrap_response_5a
+sub unwrap_response_5b
 {
     my ($this,$response,$tag,$oids,$errorp) = @_;
     my ($community,$request_id,@rest,$snmpver);
@@ -524,12 +524,13 @@ sub unwrap_response_5a
 	  if $this->{error_index} > 0 && $this->{error_index}-1 <= $#{$oids};
 	$oid = $oid->[0]
 	  if ref($oid) eq 'ARRAY';
-	return $this->error ("Received SNMP response with error code\n"
-			     ."  error status: $errmsg\n"
-			     ."  index ".$this->{error_index}
-			     .(defined $oid
-			       ? " (OID: ".&BER::pretty_oid($oid).")"
-			       : ""));
+	return ($community, $request_id,
+		$this->error ("Received SNMP response with error code\n"
+			      ."  error status: $errmsg\n"
+			      ."  index ".$this->{error_index}
+			      .(defined $oid
+				? " (OID: ".&BER::pretty_oid($oid).")"
+				: "")));
       } else {
 	if ($this->{error_index} == 1) {
 	  @rest[$this->{error_index}-1..$this->{error_index}] = ();
@@ -568,7 +569,7 @@ sub receive_response_3
     }
     $this->{'last_sender_addr'} = $remote_addr;
     my ($response_community, $response_id, @unwrapped)
-	= $this->unwrap_response_5a ($response, $response_tag,
+	= $this->unwrap_response_5b ($response, $response_tag,
 				     $oids, $errorp);
     if ($response_community ne $this->{community}
         || $response_id ne $this->{request_id}) {
