@@ -518,11 +518,6 @@ sub oid_diff ($$) {
 sub pretty_address {
     my($addr) = shift;
     my($port, $addrunpack, $addrstr);
-
-    # Disable strict subs to stop old versions of perl from
-    # complaining about AF_INET6 when Socket6 is not available
-    no strict "subs";
-
     if( (defined $ipv6_addr_len) && (length $addr == $ipv6_addr_len)) {
 	($port,$addrunpack) = unpack_sockaddr_in6 ($addr);
 	$addrstr = inet_ntop (AF_INET6, $addrunpack);
@@ -530,8 +525,6 @@ sub pretty_address {
 	($port,$addrunpack) = unpack_sockaddr_in ($addr);
 	$addrstr = inet_ntoa ($addrunpack);
     }
-
-    use strict "subs";
 
     return sprintf ("[%s].%d", $addrstr, $port);
 }
@@ -581,8 +574,8 @@ use Carp;
 
 BEGIN {
     if($SNMP_Session::ipv6available) {
-	import Socket6;
 	import IO::Socket::INET6;
+	import Socket6;
     }
 }
 
@@ -795,9 +788,6 @@ sub sa_equal_p ($$$) {
     my ($this, $sa1, $sa2) = @_;
     my ($p1,$a1,$p2,$a2);
 
-    # Disable strict subs to stop old versions of perl from
-    # complaining about AF_INET6 when Socket6 is not available
-    no strict "subs";
     if($this->{'sockfamily'} == AF_INET) {
 	# IPv4 addresses
 	($p1,$a1) = unpack_sockaddr_in ($sa1);
@@ -807,10 +797,8 @@ sub sa_equal_p ($$$) {
 	($p1,$a1) = unpack_sockaddr_in6 ($sa1);
 	($p2,$a2) = unpack_sockaddr_in6 ($sa2);
     } else {
-	use strict "subs";
 	return 0;
     }
-    use strict "subs";
 
     if (! $this->{'lenient_source_address_matching'}) {
 	return 0 if $a1 ne $a2;
