@@ -1,23 +1,41 @@
 package BER;
 
+sub universal_flag	{ 0x00 }
+sub application_flag	{ 0x40 }
+sub context_flag	{ 0x80 }
+sub private_flag	{ 0xc0 }
+
+sub primitive_flag	{ 0x00 }
+sub constructor_flag	{ 0x20 }
+
+sub boolean_tag		{ 0x01 }
+sub int_tag		{ 0x02 }
+sub bit_string_tag	{ 0x03 }
+sub octet_string_tag	{ 0x04 }
+sub null_tag		{ 0x05 }
+sub object_id_tag	{ 0x06 }
+sub sequence_tag	{ 0x10 }
+sub set_tag		{ 0x11 }
+
+sub long_length		{ 0x80 }
+
 sub encode_header
 {
     my($type,$length) = @_;
     return pack ("C C", $type, $length) if $length < 128;
-    return pack ("C C C", $type, 0x80 | 1, $length) if $length < 256;
-    return pack ("C C n", $type, 0x80 | 2, $length) if $length < 65536;
+    return pack ("C C C", $type, long_length | 1, $length) if $length < 256;
+    return pack ("C C n", $type, long_length | 2, $length) if $length < 65536;
     die "Cannot encode length $length yet";
 }
 
 sub encode_int
 {
     my($int)=@_;
-    return &encode_header (2, 1).pack ("C", $int)
-	if $int >= -128 && $int < 128;
-    return &encode_header (2, 2).pack ("n", $int)
-	if $int >= -32768 && $int < 32768;
-    return &encode_header (2, 4).pack ("N", $int);
-    die "Cannot encode integer $int yet";
+    return ($int >= -128 && $int < 128)
+	? encode_header (2, 1).pack ("C", $int)
+	    : ($int >= -32768 && $int < 32768)
+		? encode_header (2, 2).pack ("n", $int)
+		    : encode_header (2, 4).pack ("N", $int);
 }
 
 sub encode_oid
@@ -27,9 +45,10 @@ sub encode_oid
 
     $result = '';
     if ($#oid > 1) {
-	$result = pack ("C", $oid[0]*40+$oid[1]);
-	shift @oid;
-	shift @oid;
+	$result = shift @oid;
+	$result *= 40;
+	$result += shift @oid;
+	$result = pack ("C", $result);
     }
     foreach $subid (@oid) {
 	if ($subid < 128) {
@@ -38,20 +57,17 @@ sub encode_oid
 	    die "Cannot encode subid $subid";
 	}
     }
-    return pack ("C C", 6, length $result).$result;
+    encode_header (object_id_tag, length $result).$result;
 }
 
 sub encode_null
 {
-    return &encode_header (5, 0);
+    encode_header (null_tag, 0);
 }
 
 sub encode_sequence
 {
-    my($result);
-
-    $result = join '',@_;
-    return encode_header (0x30, length $result).$result;
+    encode_tagged_sequence (sequence_tag, @_);
 }
 
 sub encode_tagged_sequence
@@ -60,13 +76,13 @@ sub encode_tagged_sequence
 
     $tag = shift @_;
     $result = join '',@_;
-    return encode_header (0x20 | $tag, length $result).$result;
+    return encode_header ($tag | constructor_flag, length $result).$result;
 }
 
 sub encode_string
 {
     my($string)=@_;
-    return encode_header (4, length $string).$string;
+    return encode_header (octet_string_tag, length $string).$string;
 }
 
 sub pretty_print
@@ -74,9 +90,9 @@ sub pretty_print
     my($packet) = shift;
     my($type,$rest);
     $result = ord (substr ($packet, 0, 1));
-    return &pretty_int ($packet) if $result == 2;
-    return &pretty_string ($packet) if $result == 4;
-    return &pretty_oid ($packet) if $result == 6;
+    return pretty_int ($packet) if $result == int_tag;
+    return pretty_string ($packet) if $result == octet_string_tag;
+    return pretty_oid ($packet) if $result == object_id_tag;
     die "Cannot pretty print objects of type $type";
 }
 
@@ -92,12 +108,12 @@ sub pretty_using_decoder
 
 sub pretty_string
 {
-    &pretty_using_decoder (\&decode_string, @_);
+    pretty_using_decoder (\&decode_string, @_);
 }
 
 sub pretty_int
 {
-    &pretty_using_decoder (\&decode_int, @_);
+    pretty_using_decoder (\&decode_int, @_);
 }
 
 sub pretty_oid
@@ -106,8 +122,8 @@ sub pretty_oid
     my($result,$subid);
     my(@result,@oid);
     $result = ord (substr ($oid, 0, 1));
-    die "Object ID expected" unless $result == 6;
-    ($result, $oid) = &decode_length (substr ($oid, 1));
+    die "Object ID expected" unless $result == object_id_tag;
+    ($result, $oid) = decode_length (substr ($oid, 1));
     die unless $result == length $oid;
     @oid = ();
     $subid = ord (substr ($oid, 0, 1));
@@ -130,8 +146,8 @@ sub decode_oid
     my($result,$pdu_rest);
     my(@result);
     $result = ord (substr ($pdu, 0, 1));
-    die "Object ID expected" unless $result == 6;
-    ($result, $pdu_rest) = &decode_length (substr ($pdu, 1));
+    die "Object ID expected" unless $result == object_id_tag;
+    ($result, $pdu_rest) = decode_length (substr ($pdu, 1));
     @result = (substr ($pdu, 0, $result + (length ($pdu) - length ($pdu_rest))),
 	       substr ($pdu_rest, $result));
     @result;
@@ -150,7 +166,8 @@ sub decode_by_template
 	    if (($expected) = /^(\d*|\*)\{(.*)/) {
 		$_ = $2;
 		$expected = shift if ($expected eq '*');
-		$expected = 0x30 if $expected eq '';
+		$expected = sequence_tag | constructor_flag
+		    if $expected eq '';
 		die "Expected sequence tag $expected, got ", ord (substr ($pdu, 0, 1))
 		    unless (ord (substr ($pdu, 0, 1)) == $expected);
 		$pdu = substr ($pdu,1);
@@ -162,16 +179,16 @@ sub decode_by_template
 	    } elsif (/^\*s(.*)/) {
 		$_ = $1;
 		$expected = shift @_;
-		(($read,$pdu) = &decode_string ($pdu)) || die "cannot read string";
+		(($read,$pdu) = decode_string ($pdu)) || die "cannot read string";
 		die "Expected $expected, read $read" unless $expected eq $read;
 	    } elsif (/^O(.*)/) {
 		$_ = $1;
-		(($read,$pdu) = &decode_oid ($pdu)) || die "cannot read OID";
+		(($read,$pdu) = decode_oid ($pdu)) || die "cannot read OID";
 		push @results, $read;
 	    } elsif (($expected) = /^(\d*|\*)i(.*)/) {
 		$_ = $2;
 		$expected = int (shift) if $expected eq '*';
-		(($read,$pdu) = &decode_int ($pdu)) || die "cannot read int";
+		(($read,$pdu) = decode_int ($pdu)) || die "cannot read int";
 		warn (sprintf ("Expected %d (0x%x), got %d (0x%x)",
 			       $expected, $expected, $read, $read))
 		    unless $expected == $read;
@@ -201,8 +218,8 @@ sub decode_sequence
     my($result);
     my(@result);
     $result = ord (substr ($pdu, 0, 1));
-    die "Sequence expected" unless $result == 0x30;
-    ($result, $pdu) = &decode_length (substr ($pdu, 1));
+    die "Sequence expected" unless $result == sequence_tag | constructor_flag;
+    ($result, $pdu) = decode_length (substr ($pdu, 1));
     @result = (substr ($pdu, 0, $result), substr ($pdu, $result));
     @result;
 }
@@ -213,7 +230,7 @@ sub decode_int
     my($result);
     my(@result);
     $result = ord (substr ($pdu, 0, 1));
-    die "Integer expected" unless $result == 2;
+    die "Integer expected" unless $result == int_tag;
     $result = ord (substr ($pdu, 1, 1));
     if ($result == 1) {
 	@result = (ord (substr ($pdu, 2, 1)), substr ($pdu, 3));
@@ -233,7 +250,7 @@ sub decode_string
     my($result,$length);
     my(@result);
     $result = ord (substr ($pdu, 0, 1));
-    die "Expected type 4" unless $result == 4;
+    die "Expected type 4" unless $result == octet_string_tag;
     $length = ord (substr ($pdu, 1, 1));
     die "Unsupported length" unless $length < 128;
     @result = (substr ($pdu, 2, $length), substr ($pdu, 2+$length));
@@ -246,8 +263,8 @@ sub decode_length
     my($result);
     my(@result);
     $result = ord (substr ($pdu, 0, 1));
-    if ($result & 0x80) {
-	if ($result == 0x81) {
+    if ($result & long_length) {
+	if ($result == long_length | 1) {
 	    @result = (ord (substr ($pdu, 1, 1)), substr ($pdu, 2));
 	} else {
 	    die "Unsupported length";
