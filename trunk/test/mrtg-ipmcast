@@ -1,22 +1,100 @@
 #!/usr/local/bin/perl -w
+##############################################################################
+### File Name:	  mrtg-cisco-ipmcast
+### Description:  Generate MRTG configuration for multicast statistics
+### Author:	  Simon Leinen  <simon@switch.ch>
+### Date Created: 20-Jun-2000
+### RCS $Header: /home/leinen/CVS/SNMP_Session/test/mrtg-ipmcast,v 1.2 2001-03-07 15:22:53 leinen Exp $
+##############################################################################
+### This script can be used to generate a piece of MRTG[1]
+### configuration file for plotting per-interface multicast traffic
+### statistics using IPMROUTE-MIB[2].
+###
+### Usage: mrtg-cisco-ipmcast [-d DIR] [-w WORKDIR] [-i ICONDIR]
+###          [-c COMMUNITY] ROUTER1 ROUTER2 ...
+###
+### This will contact all ROUTERs under the specified COMMUNITY and
+### look at some columns of the ipMRouteInterfaceTable.  For each rows
+### for which those columns have defined values, an MRTG target
+### definition will be written.  Such a target definition might look
+### like this:
+###
+###     Target[swice1-multicast-atm4-0-0.6]: 1.3.6.1.3.60.1.1.4.1.5.66&1.3.6.1.3.60.1.1.4.1.6.66:secret@swiCE1.switch.ch
+###     MaxBytes[swice1-multicast-atm4-0-0.6]: 19375000
+###     AbsMax[swice1-multicast-atm4-0-0.6]: 19375000
+###     Options[swice1-multicast-atm4-0-0.6]: growright,bits
+###     Title[swice1-multicast-atm4-0-0.6]: Multicast Traffic on swiCE1.switch.ch:ATM4/0/0.6-aal5 layer (ATM PVC to swiZHX)
+###     PageTop[swice1-multicast-atm4-0-0.6]: <hr><H3>Multicast Traffic on swiCE1.switch.ch:ATM4/0/0.6-aal5 layer (ATM PVC to swiZHX)</H3>
+###     Directory[swice1-multicast-atm4-0-0.6]: multicast
+###
+### The OIDs are ipMRouteInterfaceInMcastOctets and
+### ipMRouteInterfaceOutMcastOctets indexed for the interface.  In the
+### example, the interface has index 66, and the ifName is
+### "ATM4/0/0.6".
+###
+### "AbsMax" is taken from the ifSpeed value for the interface.
+###
+### "MaxBytes" is set to the multicast rate limit as per
+### ipMRouteInterfaceRateLimit.  If no rate-limit is specified, the
+### same value as for AbsMax will be used.
+###
+### "Directory" is only defined if the "-d DIR" option has been passed
+### to the script.  In the example, the script has been called with
+### "-d multicast".
+###
+### The "-w" and "-i" options can be used to cause WorkDir and IconDir
+### definitions to be generated, respectively.
+##############################################################################
 
 use strict;
 use SNMP_Session "0.58";
 use BER;
 use Socket;
 
-my $mrouters =
-[
- 'hctiws@swiCE1.switch.ch',
- 'hctiws@swiZHX.switch.ch',
- 'hctiws@swiGEX.switch.ch',
- 'hctiws@swiEL1.switch.ch',
- 'hctiws@swiBE1.switch.ch',
- 'hctiws@swiCS1.switch.ch',
- 'hctiws@swiCS2.switch.ch',
- 'hctiws@swiGE1.switch.ch',
- 'hctiws@swiEZ1.switch.ch',
- ];
+### If set, a Directory[] attribute pointing to this directory will be
+### included for every target in the generated configuration.
+my $directory;
+
+## Define this if you want WorkDir set in the generated configuration
+## file.
+##
+my $work_dir;
+
+## Define this if you want IconDir set in the generated configuration
+## file.
+##
+my $icon_dir;
+
+## An absolute maximum for traffic rates over tunnels, in Bytes per
+## second.  You probably don't need to change this.
+##
+my $abs_max = '100000000';
+
+my $mrouters = [];
+
+my $community = 'public';
+while (@ARGV) {
+    if ($ARGV[0] eq '-c') {
+	shift @ARGV;
+	usage (1) unless @ARGV;
+	$community = $ARGV[0];
+    } elsif ($ARGV[0] eq '-d') {
+	shift @ARGV;
+	usage (1) unless @ARGV;
+	$directory = $ARGV[0];
+    } elsif ($ARGV[0] eq '-w') {
+	shift @ARGV;
+	usage (1) unless @ARGV;
+	$work_dir = $ARGV[0];
+    } elsif ($ARGV[0] eq '-i') {
+	shift @ARGV;
+	usage (1) unless @ARGV;
+	$icon_dir = $ARGV[0];
+    } else {
+	push @{$mrouters}, "$community\@$ARGV[0]";
+    }
+    shift @ARGV;
+}
 
 my %pretty_protocol_name =
 (
@@ -33,25 +111,6 @@ my %pretty_protocol_name =
   11 => "bgmp",
   12 => "msdp",
 );
-
-## Define this if you want WorkDir set in the generated configuration
-## file.
-##
-my $work_dir = '/home/noc/stat';
-
-## Define this if you want IconDir set in the generated configuration
-## file.
-##
-my $icon_dir = '/lan/stat/images';
-
-## Define this if you want Directory[] set in each target.
-##
-my $directory = 'multicast';
-
-## An absolute maximum for traffic rates over tunnels, in Bytes per
-## second.  You probably don't need to change this.
-##
-my $abs_max = '100000000';
 
 my $ipMRouteInterfaceTtl = [1,3,6,1,3,60,1,1,4,1,2];
 my $ipMRouteInterfaceProtocol = [1,3,6,1,3,60,1,1,4,1,3];
