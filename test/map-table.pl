@@ -15,13 +15,24 @@ my $community = shift @ARGV || die;
 my $ifDescr = [1,3,6,1,2,1,2,2,1,2];
 my $ifInOctets = [1,3,6,1,2,1,2,2,1,10];
 my $ifOutOctets = [1,3,6,1,2,1,2,2,1,16];
+my $locIfInBitsSec = [1,3,6,1,4,1,9,2,2,1,1,6];
+my $locIfOutBitsSec = [1,3,6,1,4,1,9,2,2,1,1,8];
+my $locIfDescr = [1,3,6,1,4,1,9,2,2,1,1,28];
+
+sub out_interface {
+  my ($index, $descr, $in, $out, $comment) = @_;
+  printf "%2d  %-20s %10s %10s %s\n",
+  $index,
+  defined $descr ? $descr : '',
+  defined $in ? $in/1000.0 : '-',
+  defined $out ? $out/1000.0 : '-',
+  defined $comment ? $comment : '';
+}
 
 my $session = SNMP_Session->open ($host, $community, 161)
   || die "Opening SNMP_Session";
-$session->map_table ([$ifDescr,$ifInOctets,$ifOutOctets],
-		     sub { my ($descr, $in, $out) = @_;
-			   printf "%-20s %10d %10d\n", $descr, $in, $out;
-			 });
+$session->map_table ([$ifDescr,$locIfInBitsSec,$locIfOutBitsSec,$locIfDescr],
+		     \&out_interface);
 1;
 
 package SNMP_Session;
@@ -63,7 +74,7 @@ sub map_table ($$$) {
 	  push @collected_values, pretty_print ($value);
 	}
       }
-      &$mapfn (@collected_values)
+      &$mapfn ($smallest_index, @collected_values)
 	if $smallest_index;
       $index = $smallest_index;
     } else {
