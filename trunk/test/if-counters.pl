@@ -52,6 +52,7 @@ my $ifInOctets = [1,3,6,1,2,1,2,2,1,10];
 my $ifOutOctets = [1,3,6,1,2,1,2,2,1,16];
 my $ifInUcastPkts = [1,3,6,1,2,1,2,2,1,11];
 my $ifOutUcastPkts = [1,3,6,1,2,1,2,2,1,17];
+my $locIfInCRC = [1,3,6,1,4,1,9,2,2,1,1,12];
 my $locIfInBitsSec = [1,3,6,1,4,1,9,2,2,1,1,6];
 my $locIfOutBitsSec = [1,3,6,1,4,1,9,2,2,1,1,8];
 my $locIfDescr = [1,3,6,1,4,1,9,2,2,1,1,28];
@@ -66,39 +67,43 @@ my $interval;
 my $linecount;
 
 sub out_interface {
-    my ($index, $descr, $admin, $oper, $in, $out, $inpkts, $outpkts, $comment) = @_;
+    my ($index, $descr, $admin, $oper, $in, $out, $crc, $comment) = @_;
     my ($clock) = POSIX::times();
     grep (defined $_ && ($_=pretty_print $_),
-	  ($descr, $admin, $oper, $in, $out, $inpkts, $outpkts, $comment));
+	  ($descr, $admin, $oper, $in, $out, $crc, $comment));
     $win->clrtoeol ();
     return unless $oper == 1;	# up
-    return unless defined $in && defined $out && defined $inpkts && defined $outpkts;
+    return unless defined $in && defined $out && defined $crc;
     if (!defined $old{$index}) {
 	$win->addstr ($linecount, 0,
-		      sprintf ("%2d  %-24s %10s %10s %10s %10s %s\n",
+		      sprintf ("%2d  %-24s %10s %10s %10s %s\n",
 			       $index,
 			       defined $descr ? $descr : '',
 			       defined $in ? $in : '-',
 			       defined $out ? $out : '-',
-			       defined $inpkts ? $inpkts : '-',
-			       defined $outpkts ? $outpkts : '-',
+			       defined $crc ? $crc : '-',
 			       defined $comment ? $comment : ''));
     } else {
 	$interval = ($clock-$old{$index}->{'clock'}) * 1.0 / $clock_ticks;
+	my $d_in = $in ? ($in-$old{$index}->{'in'})*8/$interval : 0;
+	my $d_out = $out ? ($out-$old{$index}->{'out'})*8/$interval : 0;
+	my $d_crc = $crc ? ($crc-$old{$index}->{'crc'})/$interval : 0;
+	my $alarm = $d_crc != 0;
+	print STDERR "\007" if $alarm;
+	$win->standout() if $alarm;
 	$win->addstr ($linecount, 0,
-		      sprintf ("%2d  %-24s %10.1f %10.1f %10.1f %10.1f %s\n",
+		      sprintf ("%2d  %-24s %10.1f %10.1f %10.1f %s\n",
 			       $index,
 			       defined $descr ? $descr : '',
-			       defined $in ? ($in-$old{$index}->{'in'})*8/$interval : 0,
-			       defined $out ? ($out-$old{$index}->{'out'})*8/$interval : 0,
-			       defined $inpkts ? ($inpkts-$old{$index}->{'inpkts'})/$interval : 0,
-			       defined $outpkts ? ($outpkts-$old{$index}->{'outpkts'})/$interval : 0,
+			       defined $in ? $d_in : 0,
+			       defined $out ? $d_out : 0,
+			       defined $crc ? $d_crc : 0,
 			       defined $comment ? $comment : ''));
+	$win->standend() if $alarm;
     }
     $old{$index} = {'in' => $in,
 		    'out' => $out,
-		    'inpkts' => $inpkts,
-		    'outpkts' => $outpkts,
+		    'crc' => $crc,
 		    'clock' => $clock};
     ++$linecount;
     $win->refresh ();
@@ -128,23 +133,23 @@ while (1) {
 				 $max_repetitions));
     $win->standout();
     $win->addstr (1, 0,
-		  sprintf ("%2s  %-24s %10s %10s %10s %10s %s\n",
+		  sprintf ("%2s  %-24s %10s %10s %10s %s\n",
 			   "ix", "name",
 			   "bits/s", "bits/s",
-			   "pkts/s", "pkts/s",
+			   "pkts/s",
 			   "description"));
     $win->addstr (2, 0,
-		  sprintf ("%2s  %-24s %10s %10s %10s %10s %s\n",
+		  sprintf ("%2s  %-24s %10s %10s %10s %s\n",
 			   "", "",
 			   "in", "out",
-			   "in", "out",
+			   "CRC",
 			   ""));
     $win->clrtoeol ();
     $win->standend();
     $linecount = 3;
     my $calls = $session->map_table_4
 	([$ifDescr,$ifAdminStatus,$ifOperStatus,
-	  $ifInOctets,$ifOutOctets,$ifInUcastPkts,$ifOutUcastPkts,$locIfDescr],
+	  $ifInOctets,$ifOutOctets,$locIfInCRC,$locIfDescr],
 	 \&out_interface,
 	 $max_repetitions);
     $max_repetitions = $calls + 1
