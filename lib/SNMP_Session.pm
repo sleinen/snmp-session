@@ -47,7 +47,7 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.76';
+$VERSION = '0.77';
 
 @ISA = qw(Exporter);
 
@@ -785,6 +785,7 @@ sub map_table_start_end ($$$$$$) {
     my @encoded_oids;
     my $call_counter = 0;
     my $base_index = $start;
+    my $expected_oid_count = @{$columns};
     $max_repetitions = $session->default_max_repetitions
 	unless defined $max_repetitions;
 
@@ -817,16 +818,13 @@ sub map_table_start_end ($$$$$$) {
 
 		($binding, $bindings) = decode_sequence ($bindings);
 		($oid, $value) = decode_by_template ($binding, "%O%@");
-		warn "oid: ".BER::pretty_oid ($oid)."\t".BER::pretty_print ($value)."\n"
-		    if $session->{debug};
+
 		my $out_index;
 
 		++$n_bindings;
 		$out_index = SNMP_Session::oid_diff ($base, $oid);
 		my $cmp;
-		if (!defined $smallest_index
-		    || ($cmp = SNMP_Session::index_compare
-			($out_index,$smallest_index)) == -1) {
+		if (!defined $smallest_index || ($cmp = SNMP_Session::index_compare ($out_index,$smallest_index)) == -1) {
 		    $smallest_index = $out_index;
 		    grep ($_=undef, @collected_values);
 		    push @collected_values, $value;
@@ -835,22 +833,21 @@ sub map_table_start_end ($$$$$$) {
 		} else {
 		    push @collected_values, $value;
 		}
-	    }
+	    } # while bindings
 	    @bases = @{$columns};
-	    (++$call_counter,
-	     &$mapfn ($smallest_index, @collected_values))
-		if defined $smallest_index;
-	    $base_index = $smallest_index;
-	    $smallest_index = undef;
-	    @collected_values = ();
-	    warn "END OF BULK"
-		if $session->{debug};
+	    if ($expected_oid_count eq @collected_values) {
+		(++$call_counter, &$mapfn ($smallest_index, @collected_values))
+		    if defined $smallest_index;
+		$base_index = $smallest_index;
+		$smallest_index = undef;
+		@collected_values = ();
+	    } else {
+	    }
 	} else {
 	    return undef;
 	}
     }
-    while (defined $base_index
-	   && (!defined $end || index_compare ($base_index, $end) < 0));
+    while (defined $base_index && (!defined $end || index_compare ($base_index, $end) < 0));
     $call_counter;
 }
 
