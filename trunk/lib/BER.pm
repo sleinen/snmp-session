@@ -19,6 +19,8 @@
 
 package BER;
 
+use strict;
+use vars qw(@ISA @EXPORT);
 use Exporter;
 
 @ISA = qw(Exporter);
@@ -168,7 +170,7 @@ sub pretty_print
 {
     my($packet) = shift;
     my($type,$rest);
-    $result = ord (substr ($packet, 0, 1));
+    my $result = ord (substr ($packet, 0, 1));
     return pretty_intlike ($packet)
 	if $result == int_tag
 	    || $result == snmp_counter32_tag
@@ -295,7 +297,7 @@ sub decode_by_template
     my($pdu) = shift;
     local($_) = shift;
     my(@results);
-    my($length,$expected,$read);
+    my($length,$expected,$read,$rest);
     while (length > 0) {
 	if (substr ($_, 0, 1) eq '%') {
 	    ## print STDERR "template $_ ", length $pdu," bytes remaining\n";
@@ -313,30 +315,38 @@ sub decode_by_template
 		    || die "cannot read length";
 		die "Expected length $length, got ".length $pdu 
 		  unless length $pdu == $length;
-	    } elsif (/^\*s(.*)/) {
-		$_ = $1;
-		$expected = shift @_;
+	    } elsif (($expected,$rest) = /^(\*|)s(.*)/) {
+		($expected = shift) if $expected eq '*';
 		(($read,$pdu) = decode_string ($pdu))
 		    || die "cannot read string";
-		die "Expected $expected, read $read"
-		    unless $expected eq $read;
+		if ($expected eq '') {
+		    push @results, $read;
+		} else {
+		    die "Expected $expected, read $read"
+			unless $expected eq $read;
+		}
+		$_ = $rest;
 	    } elsif (/^O(.*)/) {
 		$_ = $1;
 		(($read,$pdu) = decode_oid ($pdu)) || die "cannot read OID";
 		push @results, $read;
-	    } elsif (($expected) = /^(\d*|\*)i(.*)/) {
-		$_ = $2;
-		$expected = int (shift) if $expected eq '*';
+	    } elsif (($expected,$rest) = /^(\d*|\*|)i(.*)/) {
+		$_ = $rest;
 		(($read,$pdu) = decode_int ($pdu)) || die "cannot read int";
-       #
-       # This returns "Expected -1 (0xffffffff), got 255 (0xff)"
-       # for Cisco routers [model AGS+, IOS Software GS3-K-M Version 10.3(6)]
-       # while the actual readings are correct ...
-       # so we drop this test for the moment ...
-       #
-       #       warn (sprintf ("Expected %d (0x%x), got %d (0x%x)",
-       #                      $expected, $expected, $read, $read))
-       #           unless ($expected == $read) 
+		if ($expected eq '') {
+		    push @results, $read;
+		} else {
+		    $expected = int (shift) if $expected eq '*';
+		    #
+		    # This returns "Expected -1 (0xffffffff), got 255 (0xff)"
+		    # for Cisco routers [model AGS+, IOS Software GS3-K-M Version 10.3(6)]
+		    # while the actual readings are correct ...
+		    # so we drop this test for the moment ...
+		    #
+		    #       warn (sprintf ("Expected %d (0x%x), got %d (0x%x)",
+		    #                      $expected, $expected, $read, $read))
+		    #           unless ($expected == $read)
+		}
 	    } elsif (/^\@(.*)/) {
 		$_ = $1;
 		push @results, $pdu;
@@ -448,6 +458,7 @@ sub encoded_oid_prefix_p
     my ($oid1, $oid2) = @_;
     my ($i1, $i2);
     my ($l1, $l2);
+    my ($subid1, $subid2);
     die unless ord (substr ($oid1, 0, 1)) == object_id_tag;
     die unless ord (substr ($oid2, 0, 1)) == object_id_tag;
     ($l1,$oid1) = decode_length (substr ($oid1, 1));
