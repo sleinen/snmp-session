@@ -29,9 +29,7 @@ don't have to compile any C modules.  It uses the Perl 5 Socket.pm
 module and should therefore be very portable, even to non-Unix systems.
 
 The SNMP operations currently supported are "get", "get-next", and
-"set".  That means that you cannot receive or generate SNMP traps
-using these routines.  Hopefully I will get around to implementing
-these other operations one day.
+"set", as well as trap generation and reception.
 
 For an excellent example of the type of application this is useful
 for, see Tobias Oetiker's ``mrtg'' (Multi Router Traffic Grapher)
@@ -191,6 +189,30 @@ Here is a short example:
 						     [encode_oid (@ifIndexOID,$if_index),
 						      encode_int ($if_index)]);
 	}
+
+			   Receiving Traps
+			   ...............
+
+Since version 0.60, SNMP_Session.pm supports the receipt and decoding
+of SNMPv1 trap requests.  To receive traps, you have to create a
+special SNMP session that passively listens on the SNMP trap transport
+address (usually UDP port 162).  Then you can receive traps using the
+receive_trap method and decode them using decode_trap_request:
+
+	my $trap_session = SNMP_Session->open_trap_session ()
+	  || die "cannot open trap session";
+	my ($trap, $sender_addr, $sender_port) = $trap_session->receive_trap ()
+	  || die "cannot receive trap";
+	my ($community, $enterprise, $agent,
+	    $generic, $specific, $sysUptime, @bindings)
+	  = $session->decode_trap_request ($trap)
+	    || die "cannot decode trap received"
+	...
+	foreach $binding (@bindings) {
+	    my ($key, $value) = decode_by_template ("%O%@");
+	    print BER::pretty_oid ($key)," => ",pretty_print ($value),"\n";
+	}
+
 			     Future Plans
 			     ............
 
@@ -201,14 +223,6 @@ proposed in RFC 2271 (An Architecture for Describing SNMP Management
 Frameworks).  Later, one could add support for SNMPv2c and SNMPv3
 encodings, and support for user-based security.  An interface to
 getBulk requests should be provided.
-
-			   More Operations
-
-Support for receiving traps would be useful for some management
-applications.  The elementary application would be a program that just
-sits there and waits for traps, logging them or sending some kinds of
-notifications.  A larger management application could react on traps
-by sending out SNMP requests to localize problems more exactly.
 
 			     MIB parsing
 

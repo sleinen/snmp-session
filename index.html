@@ -28,9 +28,7 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
  portable, even to non-Unix systems. </P>
 
 <p> The SNMP operations currently supported are "get", "get-next", and
- "set", as well as trap generation.  That means that you cannot
- receive SNMP traps using these routines.  Hopefully I will get around
- to implementing this one day. </p>
+ "set", as well as trap generation and reception. </p>
 
 <p> For an excellent example of the type of application this is useful
  for, see Tobias Oetiker's <a
@@ -45,10 +43,13 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 <ul>
 
+<li> SNMP_Session.pm 0.60: Added support for <a
+ href="#trap-recv">receiving SNMPv1 traps</a>.
+
 <li> SNMP_session.pm 0.59: Added methods <tt>set_timeout</tt>,
  <tt>set_retries</tt>, and <tt>set_backoff</tt> that can be used to
  tune the retransmission algorithm.  Fixed a bug in <tt>map_table</tt>
- that would cause an index of "0" to terminate the table walk. </p>
+ that would cause an index of "0" to terminate the table walk.
 
 <li> SNMP_util.pm 0.54: First version to be distributed with the
  package, courtesy <a href="mailto:mcm@unx.sas.com">Mike
@@ -351,7 +352,7 @@ $n_rows = $session->map_table ($columns, \&walk_function);
 <pre>
 my $trap_receiver = "netman.noc";
 my $trap_community = "SNMP_Traps";
-my $trap_session = SNMP_Session::open ($trap_receiver, $trap_community, 162);
+my $trap_session = SNMP_Session->open ($trap_receiver, $trap_community, 162);
 my $myIpAddress = ...;
 my $start_time = time;
 
@@ -376,6 +377,32 @@ sub link_down_trap ($) {
 }
 </pre>
 
+<H2><a name="trap-recv">Receiving Traps</a></H2>
+
+<p> Since version 0.60, SNMP_Session.pm supports the receipt and
+ decoding of SNMPv1 trap requests.  To receive traps, you have to
+ create a special SNMP session that passively listens on the SNMP trap
+ transport address (usually UDP port 162).  Then you can receive traps
+ using the <tt>receive_trap</tt> method and decode them using
+ <tt>decode_trap_request</tt>:
+</p>
+
+<pre>
+my $trap_session = SNMP_Session->open_trap_session ()
+  || die "cannot open trap session";
+my ($trap, $sender_addr, $sender_port) = $trap_session->receive_trap ()
+  || die "cannot receive trap";
+my ($community, $enterprise, $agent,
+    $generic, $specific, $sysUptime, @bindings)
+  = $session->decode_trap_request ($trap)
+    || die "cannot decode trap received"
+...
+foreach $binding (@bindings) {
+    my ($key, $value) = decode_by_template ("%O%@");
+    print BER::pretty_oid ($key)," => ",pretty_print ($value),"\n";
+}
+</pre>
+
 <H2>Future Plans</H2>
 
 <H3>SNMPv3 Support</H3>
@@ -387,15 +414,6 @@ sub link_down_trap ($) {
  Frameworks).  Later, one could add support for SNMPv2c and SNMPv3
  encodings, and support for user-based security.  An interface to
  <samp>getBulk</samp> requests should be provided. </p>
-
-<H3>More Operations</H3>
-
-<p> Support for receiving traps would be useful for some management
- applications.  The elementary application would be a program that
- just sits there and waits for traps, logging them or sending some
- kinds of notifications.  A larger management application could react
- on traps by sending out SNMP requests to localize problems more
- exactly. </p>
 
 <H3>MIB parsing</H3>
 
@@ -425,7 +443,7 @@ sub link_down_trap ($) {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19980624
+19980701
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
