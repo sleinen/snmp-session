@@ -29,6 +29,11 @@ ber-test.pl
 	a few regression tests for BER encoding.  If you get errors
 	running these, I'd be very interested to hear about it!
 
+if-counters.pl (requires Curses.pm)
+	displays a router's byte and packet counter development in
+	real-time.  Demonstrates map_table_4 and a heuristic for
+	maxRepetitions.
+
 sun-ps
 	list the process table of a remote system using the "sun" MIB
 	implemented in Sun's Solstice Enterprise Agents.
