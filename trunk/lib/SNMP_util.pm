@@ -288,9 +288,6 @@ $VERSION = '0.77';
     'snmpInASNParseErrs' => '1.3.6.1.2.1.11.6',
     'snmpInTooBigs' => '1.3.6.1.2.1.11.8',
     'snmpInNoSuchNames' => '1.3.6.1.2.1.11.9',
-    'experimental' => '1.3.6.1.3',
-    'private' => '1.3.6.1.4',
-    'enterprises' => '1.3.6.1.4.1',
     'ifName' => '1.3.6.1.2.1.31.1.1.1.1',
     'ifInMulticastPkts' => '1.3.6.1.2.1.31.1.1.1.2',
     'ifInBroadcastPkts' => '1.3.6.1.2.1.31.1.1.1.3',
@@ -310,6 +307,9 @@ $VERSION = '0.77';
     'ifConnectorPresent' => '1.3.6.1.2.1.31.1.1.1.17',
     'ifAlias' => '1.3.6.1.2.1.31.1.1.1.18',
     'ifCounterDiscontinuityTime' => '1.3.6.1.2.1.31.1.1.1.19',
+    'experimental' => '1.3.6.1.3',
+    'private' => '1.3.6.1.4',
+    'enterprises' => '1.3.6.1.4.1',
   );
 
 my $agent_start_time = time;
