@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl
+#!/usr/bin/perl
 ######################################################################
 ### Sample CGI script using the Perl 5 SNMP Module
 ###
@@ -18,25 +18,32 @@
 
 require 5;
 
-require 'SNMP_Session.pm';
+use lib qw(/home/leinen/perl/SNMP_Session-0.96/lib);
+
+use SNMP_Session;
 use BER;
+use strict;
 
-sub parse_query;
-sub init_oids;
-sub query_to_html_response;
-sub snmp_get;
-sub write_query_form;
-sub html_error_message;
-sub html_quote;
+sub parse_query ();
+sub init_oids ();
+sub query_to_html_response ($$);
+sub snmp_get ($@);
+sub write_query_form ();
+sub html_error_message ($$);
+sub html_quote ($ );
 
-my @allowed_hosts=qw(swiEG1.switch.ch swiCS1.switch.ch swiZHX.switch.ch swiCE1.switch.ch swiNY1.switch.ch);
+my @allowed_hosts=qw(localhost babar.switch.ch);
 my %allowed_hosts;
+
+my $community_file_name = "/home/leinen/snmp/.zxc";
 
 my $intro = <<EOM;
 <P> This is a sample application of an
-<A HREF="http://www.switch.ch/misc/leinen/snmp/perl/">SNMP Module</A>
+<A HREF="http://www.switch.ch/misc/leinen/snmp/perl/">SNMP Module</A> (version ${SNMP_Session::VERSION})
 I have written for Perl 5. </P>
 EOM
+
+my (%ugly_oids, %pretty_oids);
 
 foreach (@allowed_hosts) { $allowed_hosts{$_} = 1; }
 
@@ -47,26 +54,26 @@ if (!defined ($query_string) || !$query_string) {
 } else {
     my (%query) = parse_query ();
     init_oids ();
-    if (! defined ($allowed_hosts{$query{'hostname'}})) {
+    if (! exists ($allowed_hosts{$query{'hostname'}})) {
 	print "Content-type: text/html\n\n";
-	html_error_message ("parsing the query", "Illegal hostname");
+	html_error_message ("parsing the query", "Illegal hostname $query{'hostname'}");
     } else {
 	query_to_html_response ($query{'hostname'}, $query{'community'});
     }
 }
 1;
 
-sub parse_query
+sub parse_query ()
 {
     my (%query) = (());
     foreach (split('&',$query_string)) {
-	($lhs,$rhs) = split('=',$_,2);
+	my ($lhs,$rhs) = split('=',$_,2);
 	$query{$lhs} = $rhs if $rhs;
     }
     return %query;
 }
 
-sub init_oids
+sub init_oids ()
 {
     %ugly_oids = qw(sysDescr.0		1.3.6.1.2.1.1.1.0
 		    sysLocation.0	1.3.6.1.2.1.1.6.0
@@ -77,13 +84,14 @@ sub init_oids
     }
 }
 
-sub query_to_html_response
+sub query_to_html_response ($$)
 {
-    local($hostname, $community) = @_;
+    my ($hostname, $community) = @_;
+    my $session;
 
     if ($community eq 'public'
-	&& -r "/home/leinen/snmp/.zxc") {
-	open (COMM, "/home/leinen/snmp/.zxc");
+	&& -r $community_file_name) {
+	open (COMM, $community_file_name);
 	$community = <COMM>;
 	chomp $community;
 	close COMM;
@@ -95,7 +103,7 @@ sub query_to_html_response
     html_quote ($community), "@", html_quote ($hostname), "</H1>\n<HR>\n";
 
     srand();
-    eval '$session = SNMP_Session->open ($hostname, $community, 161)';
+    eval { $session = SNMP_Session->open ($hostname, $community, 161) };
     html_error_message ("opening SNMP session", $@), return 0 if $@;
     eval { snmp_get ($session, qw(sysDescr.0 sysLocation.0)) };
     html_error_message ("executing SNMP query", $@), return 0 if $@;
@@ -105,7 +113,7 @@ sub query_to_html_response
     1;
 }
 
-sub snmp_get
+sub snmp_get ($@)
 {
     my($session, @oids) = @_;
     my($response, $bindings, $binding, $value, $oid);
@@ -130,8 +138,14 @@ sub snmp_get
     }
 }
 
-sub write_query_form
+sub write_query_form ()
 {
+    my $first_p = 1;
+    my $options = join
+	("\n",
+	 map ({if ($first_p) {
+	     $first_p = 0; "<option selected value=\"$_\">$_</option>"; }
+	      else { "<option value=\"$_\">$_</option>"; }; } @allowed_hosts));
     print <<EOM;
 Content-type: text/html
 Content-transfer-encoding: binary
@@ -145,11 +159,7 @@ $intro
 <FORM>
 Host name:
 <SELECT NAME=hostname>
-<OPTION SELECTED VALUE="swiEG1.switch.ch">swiEG1.switch.ch
-<OPTION VALUE="swiCS1.switch.ch">swiCS1.switch.ch
-<OPTION VALUE="swiZHX.switch.ch">swiZHX.switch.ch
-<OPTION VALUE="swiCE1.switch.ch">swiCE1.switch.ch
-<OPTION VALUE="swiNY1.switch.ch">swiNY1.switch.ch
+$options
 </SELECT>
 Community name:
 <SELECT NAME=community>
@@ -169,7 +179,7 @@ Community name:
 EOM
 }
 
-sub html_error_message
+sub html_error_message ($$)
 {
     my($context, $errmsg) = @_;
 
@@ -178,8 +188,7 @@ sub html_error_message
     print "<PRE>",&html_quote($errmsg),"</PRE></BODY></HTML>";
 }
 
-sub html_quote
-{
+sub html_quote ($ ) {
     local ($_) = @_;
 
     return $_ unless /[<>&]/;
