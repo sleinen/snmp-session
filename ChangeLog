@@ -1,3 +1,24 @@
+Mon Feb 17 13:26:16 1997  switch  <switch@celeste.switch.ch>
+
+	* BER.pm (@EXPORT): Export `encoded_oid_prefix_p'.
+
+	(encoded_oid_prefix_p): Handle subids > 127.
+
+	Return length of prefix in second encoded OID as a result.
+
+	(decode_subid): New subroutine that decodes a single subid from an
+ 	encoded OID.
+
+Sun Feb  2 16:47:30 1997  simon  <simon@celeste.switch.ch>
+
+	* asn1-test.pl: Added test for sequence decoding.
+
+	* ASN_1.pm (ASN_1::Sequence): Fixed `new' method.
+
+	(decode): Added Sequence decoding.
+
+	* asn1-test.pl, ASN_1.pm: Initial revision
+
 Sat Feb  1 17:42:01 1997  Simon Leinen  <simon@switch.ch>
 
 	* Makefile (PROGSRCS): Added ber-test.pl.
