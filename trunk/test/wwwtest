@@ -90,7 +90,7 @@ sub snmp_get
     my($response, $bindings, $binding, $value, $oid);
     grep ($_ = $ugly_oids{$_}, @oids);
     if ($session->get_request_response (@oids)) {
-	$response = $session->{pdu_buffer};
+	$response = $session->pdu_buffer;
 	($bindings) = $session->decode_get_response ($response);
 
 	print "<TABLE BORDER>\n";

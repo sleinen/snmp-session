@@ -13,6 +13,8 @@ sub open
     return SNMPv1_Session::open (@_);
 }
 
+sub timeout { @_[0]->{timeout} }
+
 sub encode_get_request
 {
     my($this, @encoded_oids) = @_;
@@ -53,7 +55,7 @@ sub get_request_response
     my(@oids) = @_;
     $this->send_query ($this->encode_get_request (@oids))
 	|| die "send_query: $!";
-    if ($this->wait_for_response($this->{timeout})) {
+    if ($this->wait_for_response($this->timeout)) {
 	my($response_length);
 
 	($response_length = $this->receive_response())
@@ -131,7 +133,6 @@ sub sockfileno { @_[0]->{sockfileno} }
 sub remote_addr { @_[0]->{remote_addr} }
 sub pdu_buffer { @_[0]->{pdu_buffer} }
 sub max_pdu_len { @_[0]->{max_pdu_len} }
-sub timeout { @_[0]->{timeout} }
 
 sub close
 {
@@ -168,7 +169,7 @@ sub receive_response
 {
     my($this) = shift;
     my($remote_addr);
-    ($remote_addr = recv ($this->sock,$this->{pdu_buffer},$this->max_pdu_len,0))
+    ($remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,0))
 	|| return 0;
     if ($remote_addr ne $this->remote_addr) {
 	warn "Response came from $remote_addr, not ".$this->remote_addr;
@@ -184,7 +185,7 @@ sub describe
 
     printf "SNMP_Session: %d.%d.%d.%d:%d (size %d timeout %g)\n",
     $ipaddr[0],$ipaddr[1],$ipaddr[2],$ipaddr[3],$port,$this->max_pdu_len,
-    $this->{timeout};
+    $this->timeout;
 }
 
 1;
