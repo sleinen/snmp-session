@@ -1,12 +1,14 @@
 		       SNMP support for Perl 5
 		       -----------------------
 
-	     Author: Simon Leinen  <simon@instrumatic.ch>
+	       Author: Simon Leinen  <simon@switch.ch>
 			    Contributors:
 		 Tobias Oetiker  <oetiker@ee.ethz.ch>
 		 Andrzej Tobola  <san@iem.pw.edu.pl>
 		      Dave Rand  <dlr@Bungi.com>
 		    Heine Peters  <peters@dkrz.de>
+		      Yufang HU  <yhu@casc.com>
+	       Philippe Simonet  <sip00@vg.swissptt.ch>
 
 This archive contains Perl 5 modules SNMP_Session.pm and BER.pm,
 which, when used together, provide rudimentary access to remote SNMP
