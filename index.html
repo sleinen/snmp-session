@@ -495,7 +495,7 @@ anyway. </p>
  the management station - SNMP traps are fundamentally unreliable.
 </p>
 
-<p> When constructing a trap, you must provide
+<p> When constructing an SNMPv1 trap, you must provide
 
 <ul>
 
@@ -514,6 +514,21 @@ anyway. </p>
  the trap.
 
 </ul>
+
+<p> For SNMPv2 traps, you need:
+
+<ul>
+
+<li> the trap's OID
+
+<li> the sysUpTime at the time of trap generation
+
+<li> the bindings list as above
+
+</ul>
+
+<p> For SNMPv2 traps, the uptime and trap OID are encoded as bindings
+which are added to the front of the other bindings you provide. </p>
 
 <p> Here is a short example: </p>
 
