@@ -19,8 +19,11 @@
 
 package SNMP_Session;		
 
+use vars qw(@ISA);
 use Socket;
 use BER;
+
+my $default_debug = 1;
 
 ### Default initial timeout (in seconds) waiting for a response PDU
 ### after a request is sent.  Note that when a request is retried, the
@@ -149,6 +152,7 @@ sub request_response_3
 
 package SNMPv1_Session;
 
+use vars qw(@ISA);
 use SNMP_Session;
 use Socket;
 use BER;
@@ -194,6 +198,7 @@ sub open
 	'timeout' => $default_timeout,
 	'retries' => $default_retries,
 	'backoff' => $default_backoff,
+	'debug' => $default_debug,
 	};
 }
 
@@ -240,7 +245,13 @@ sub unwrap_response_4
 							   $request_id,
 							   $this->snmp_version (),
 							   0);
-    return undef unless $community eq $this->{'community'};
+    if ($this->{'debug'}) {
+	warn "$request_id != $this->{request_id}"
+	    unless $request_id eq $this->{request_id};
+	warn "$community != $this->{community}"
+	    unless $community == $this->{community};
+    }
+    return undef unless $community eq $this->{community};
     return undef unless $request_id == $this->{request_id};
     @rest;
 }
