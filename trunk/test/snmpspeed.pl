@@ -10,7 +10,7 @@
 #
 # Distributed under the GNU copyleft
 #
-# $Id: snmpspeed.pl,v 1.2 1998-12-13 20:41:55 leinen Exp $
+# $Id: snmpspeed.pl,v 1.3 2001-11-14 13:24:32 leinen Exp $
 #
 use SNMP_Session "0.54";
 $SNMP_Session::default_timeout = 0.2;
@@ -65,18 +65,23 @@ use BER "0.51";
 
 
 sub main {
-$|=1;
+
+    my $session = SNMP_Session->open ('ezci1.ethz.ch', 'public', 161)
+	|| die "open SNMP session: $SNMP_Session::errmsg";
+    $|=1;
 for (my $i=0;$ i < 100; $i++){
     print "$i, ";# if $i % 10 ==0; 
-    my($ifinoct) = snmpget('ezci1.ethz.ch','public','ifInOctets.1');
-    $ifinoct = snmpget('ezci1.ethz.ch','public','ifInOctets.2');
+    my($ifinoct) = snmpget($session,'ifInOctets.1');
+    $ifinoct = snmpget($session,'ifInOctets.2');
 }
+    $session->close ()
+	|| die "close SNMP session: $SNMP_Session::errmsg";
 }  
 main;
 exit(0);
 
 sub snmpget {
-  my($host,$community,@vars) = @_;
+  my($session,@vars) = @_;
   my(@enoid, $var,$response, $bindings, $binding, $value, $inoid,$outoid,
      $upoid,$oid,@retvals);
   foreach $var (@vars) {
@@ -92,17 +97,9 @@ sub snmpget {
     push @enoid,  encode_oid((split /\./, $var));
   }
   srand();
-  my $session;
-  $session = SNMP_Session->open($host,$community,161);
-  if (! defined($session)) {
-    warn "SNMPGET Problem for $community\@$host\n";
-    return (-1,-1);
-  }
-
   if ($session->get_request_response(@enoid)) {
     $response = $session->pdu_buffer;
     ($bindings) = $session->decode_get_response ($response);
-    $session->close ();
     while ($bindings) {
       ($binding,$bindings) = decode_sequence ($bindings);
       ($oid,$value) = decode_by_template ($binding, "%O%@");
