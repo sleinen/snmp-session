@@ -114,7 +114,7 @@ sub encode_tagged_sequence
 {
     my($tag,$result);
 
-    $tag = shift @_;
+    $tag = shift;
     $result = join '',@_;
     return encode_header ($tag | constructor_flag, length $result).$result;
 }
@@ -180,10 +180,18 @@ sub pretty_oid
     while ($oid ne '') {
 	$subid = ord (substr ($oid, 0, 1));
 	$oid = substr ($oid, 1);
-	die unless $subid < 128;
-	push @oid, $subid;
+	if ($subid < 128) {
+	    push @oid, $subid;
+	} else {
+	    $subid = $subid & 0x7f;
+	    while (($next = ord (substr ($oid, 0, 1))) >= 128) {
+		$subid = ($subid << 7) + ($next & 0x7f);
+		$oid = substr ($ord, 1);
+	    }
+	    $subid = ($subid << 7) + $next;
+	    $oid = substr ($ord, 1);
+	}
     }
-    $pdu = substr ($pdu, $result);
     join ('.', @oid);
 }
 
