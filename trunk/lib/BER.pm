@@ -115,7 +115,8 @@ sub pretty_print
 		|| $result == snmp_gauge32_tag;
     return pretty_string ($packet) if $result == octet_string_tag;
     return pretty_oid ($packet) if $result == object_id_tag;
-    die "Cannot pretty print objects of type $type";
+    return "(null)" if $result == null_tag;
+    die "Cannot pretty print objects of type $result";
 }
 
 sub pretty_using_decoder
