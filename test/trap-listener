@@ -26,7 +26,7 @@ while (($trap, $sender, $sender_port) = $session->receive_trap ()) {
 sub print_trap ($$) {
     my ($this, $trap) = @_;
     my ($encoded_pair, $oid, $value);
-    my ($community, $ent, $agent, $gen, $spec, $dt, @pairs)
+    my ($community, $ent, $agent, $gen, $spec, $dt, @bindings)
 	  = $this->decode_trap_request ($trap);
     print "    community: ".$community."\n";
     print "   enterprise: ".BER::pretty_oid ($ent)."\n";
@@ -35,7 +35,7 @@ sub print_trap ($$) {
     print "  specific ID: $spec\n";
     print "       uptime: ".BER::pretty_uptime_value ($dt)."\n";
     my $prefix = "     bindings: ";
-    foreach $encoded_pair (@pairs) {
+    foreach $encoded_pair (@bindings) {
 	($oid, $value) = decode_by_template ($encoded_pair, "%{%O%@");
 	#next unless defined $oid;
 	print $prefix.BER::pretty_oid ($oid)." => ".pretty_print ($value)."\n";
