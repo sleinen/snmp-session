@@ -1,11 +1,13 @@
 #!/usr/local/bin/perl -w
 
 use strict;
+use vars qw($MULTILINE_MATCHING);
 
 require 5;
 
 use SNMP_Session;
 use BER;
+use Socket;
 
 my $host = shift @ARGV || die;
 my $community = shift @ARGV || die;
@@ -26,18 +28,19 @@ while ($session->wait_for_response ($session->timeout)) {
 	my ($binding, $bindings, $oid, $value);
 	eval {
 	    ($bindings) = $session->decode_get_response ($response);
-
-	    while ($bindings ne '') {
-		($binding,$bindings) = decode_sequence ($bindings);
-		($oid,$value) = decode_by_template ($binding, "%O%@");
-		##print $pretty_oids{$oid}," => ",
-		{
-		    my $string = pretty_print ($value);
-		    local $* = 1;
-		    $string =~ s/\n/\\n/g;
-		    $string =~ s/\r/\\r/g;
-		    print "sysDescr.0: ", $string, "\n";
-		}
+	};
+	while ($bindings ne '') {
+	    ($binding,$bindings) = decode_sequence ($bindings);
+	    ($oid,$value) = decode_by_template ($binding, "%O%@");
+	    ##print $pretty_oids{$oid}," => ",
+	    {
+		my $string = pretty_print ($value);
+		my $sender = $session->{'last_sender_addr'};
+		local $MULTILINE_MATCHING = 1;
+		$string =~ s/\n/\\n/g;
+		$string =~ s/\r/\\r/g;
+		print STDOUT pretty_address ($sender), "\n  ";
+		print STDOUT $string, "\n";
 	    }
 	}
     }
@@ -45,3 +48,11 @@ while ($session->wait_for_response ($session->timeout)) {
 
 $session->close ();
 1;
+
+sub pretty_address
+{
+    my($addr) = shift;
+    my($port,$ipaddr) = unpack_sockaddr_in($addr);
+    my $hostname = gethostbyaddr ($ipaddr, AF_INET);
+    return $hostname ? $hostname : ('['.inet_ntoa($ipaddr).']');
+}
