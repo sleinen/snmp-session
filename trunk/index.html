@@ -40,6 +40,15 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 <ul>
 
+<li> BER.pm 0.72: A new variable,
+<tt>$BER::pretty_print_timeticks</tt>, has been introduced to give
+users control over the degree of pretty-printing of <tt>TimeTicks</tt>
+values.  If left at the defaults, <tt>TimeTicks</tt> values will be
+converted to strings such as <samp>14&nbsp;days,&nbsp;6:56:07</samp>.  If you
+set it to zero, the same value will simply pretty-print as
+<samp>123456789</samp>, which should be interpreted in units (ticks)
+of 10ms. </li>
+
 <li> SNMP_util.pm 0.71: New subroutines <tt>snmpLoad_OID_Cache</tt> and
 <tt>snmpQueue_MIB_File</tt> for loading MIBs in compact format.
 
@@ -561,7 +570,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19990630
+19990729
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
