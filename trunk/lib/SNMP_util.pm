@@ -25,6 +25,7 @@
 ### Jakob Ilves <jakob.ilves@oracle.com>: return_array_refs for snmpwalk()
 ### Valerio Bontempi <v.bontempi@inwind.it>: IPv6 support
 ### Lorenzo Colitti <lorenzo@colitti.com>: IPv6 support
+### Joerg Kummer <JOERG.KUMMER@Roche.COM>: TimeTicks support in snmpset()
 ######################################################################
 
 package SNMP_util;
@@ -40,7 +41,7 @@ use BER "0.88";
 use SNMP_Session "0.93";
 use Socket;
 
-$VERSION = '0.96';
+$VERSION = '0.97';
 
 @ISA = qw(Exporter);
 
@@ -754,6 +755,9 @@ sub snmpset($@) {
       my $tmp = encode_oid_with_errmsg($value);
       return undef unless defined $tmp;
       push @enoid, [$oid,$tmp];
+    } elsif ($type =~ /timeticks/i) {
+      $value = encode_timeticks($value);
+      push @enoid, [$oid,$value];
     } else {
       carp "unknown SNMP type: $type\n"
 	unless ($SNMP_Session::suppress_warnings > 1);
