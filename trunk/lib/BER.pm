@@ -27,6 +27,17 @@ sub set_tag		{ 0x11 }
 
 sub long_length		{ 0x80 }
 
+## SNMP specific tags
+
+sub snmp_ip_address_tag		{ 0x00 | application_flag }
+sub snmp_counter32_tag		{ 0x01 | application_flag }
+sub snmp_gauge32_tag		{ 0x02 | application_flag }
+sub snmp_timeticks_tag		{ 0x03 | application_flag }
+sub snmp_opaque_tag		{ 0x04 | application_flag }
+sub snmp_nsap_address_tag	{ 0x05 | application_flag }
+sub snmp_counter64_tag		{ 0x06 | application_flag }
+sub snmp_uinteger32_tag		{ 0x07 | application_flag }
+				
 sub encode_header
 {
     my($type,$length) = @_;
@@ -98,7 +109,10 @@ sub pretty_print
     my($packet) = shift;
     my($type,$rest);
     $result = ord (substr ($packet, 0, 1));
-    return pretty_int ($packet) if $result == int_tag;
+    return pretty_intlike ($packet)
+	if $result == int_tag
+	    || $result == snmp_counter32_tag
+		|| $result == snmp_gauge32_tag;
     return pretty_string ($packet) if $result == octet_string_tag;
     return pretty_oid ($packet) if $result == object_id_tag;
     die "Cannot pretty print objects of type $type";
@@ -119,9 +133,9 @@ sub pretty_string
     pretty_using_decoder (\&decode_string, @_);
 }
 
-sub pretty_int
+sub pretty_intlike
 {
-    pretty_using_decoder (\&decode_int, @_);
+    pretty_using_decoder (\&decode_intlike, @_);
 }
 
 sub pretty_oid
@@ -236,10 +250,15 @@ sub decode_sequence
 sub decode_int
 {
     my($pdu) = shift;
+    die "Integer expected" unless ord (substr ($pdu, 0, 1)) == int_tag;
+    decode_intlike ($pdu);
+}
+
+sub decode_intlike
+{
+    my($pdu) = shift;
     my($result);
     my(@result);
-    $result = ord (substr ($pdu, 0, 1));
-    die "Integer expected" unless $result == int_tag;
     $result = ord (substr ($pdu, 1, 1));
     if ($result == 1) {
 	@result = (ord (substr ($pdu, 2, 1)), substr ($pdu, 3));
