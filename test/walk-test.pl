@@ -12,7 +12,7 @@ my $community = $ARGV[1] || 'public';
 
 my $session;
 
-die "Couldn't open SNMP sessino to $hostname"
+die "Couldn't open SNMP session to $hostname"
     unless ($session = SNMP_Session->open ($hostname, $community, 161));
 
 my @ipAdEntAddr = split ('\.', '1.3.6.1.2.1.4.20.1.1');
