@@ -24,6 +24,15 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_util.pm 0.87: No change from 0.86, but increased version
+number to reflect change in BER.pm (SNMPv2 error codes). </li>
+
+<li> BER.pm 0.87: <samp>pretty_print</samp> now silently returns undef
+when decoding SNMPv2 error codes (<tt>noSuchObject</tt>,
+<tt>noSuchInstance</tt>, or <tt>endOfMibView</tt>, see RFC 1905).
+Original patch by <a href="mailto:driehuis@playbeing.org">Bert
+Driehuis</a>. </li>
+
 <li> BER.pm 0.86: <samp>pretty_print</samp> now silently returns undef
 when given an undefined value, rather than issuing incomprehensible
 warnings. </li>
@@ -467,7 +476,7 @@ use SNMP_Session "0.52";
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20010523
+20010614
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
