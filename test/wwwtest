@@ -1,4 +1,4 @@
-#!/logiciels/public/divers/bin/perl5
+#!/usr/local/bin/perl
 ######################################################################
 ### Sample CGI script using the Perl 5 SNMP Module
 ###
