@@ -82,6 +82,8 @@ my $suppress_output = 0;
 
 my $debug = 0;
 
+my $show_out_discards = 0;
+
 my $cisco_p = 0;
 
 while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
@@ -144,6 +146,8 @@ while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
     } elsif ($ARGV[0] eq '-d') {
 	$suppress_output = 1;
 	$debug = 1;
+    } elsif ($ARGV[0] eq '-D') {
+	$show_out_discards = 1;
     } elsif ($ARGV[0] eq '-h') {
 	usage (0);
 	exit 0;
@@ -163,8 +167,10 @@ my $ifInOctets = [1,3,6,1,2,1,2,2,1,10];
 my $ifOutOctets = [1,3,6,1,2,1,2,2,1,16];
 my $ifInUcastPkts = [1,3,6,1,2,1,2,2,1,11];
 my $ifOutUcastPkts = [1,3,6,1,2,1,2,2,1,17];
+my $ifOutDiscards = [1,3,6,1,2,1,2,2,1,19];
 ## Cisco-specific variables enabled by `-c' option
 my $locIfInCRC = [1,3,6,1,4,1,9,2,2,1,1,12];
+my $locIfOutCRC = [1,3,6,1,4,1,9,2,2,1,1,12];
 my $locIfDescr = [1,3,6,1,4,1,9,2,2,1,1,28];
 
 my $clock_ticks = POSIX::sysconf( &POSIX::_SC_CLK_TCK );
@@ -178,35 +184,40 @@ my $interval;
 my $linecount;
 
 sub out_interface {
-    my ($index, $descr, $admin, $oper, $in, $out, $crc, $comment) = @_;
+    my ($index, $descr, $admin, $oper, $in, $out);
+    my ($crc, $comment);
+    my ($drops);
     my ($clock) = POSIX::times();
     my $alarm = 0;
 
+    ($index, $descr, $admin, $oper, $in, $out, @_) = @_;
+    ($crc, $comment, @_) = @_ if $cisco_p;
+    ($drops, @_) = @_ if $show_out_discards;
+
     grep (defined $_ && ($_=pretty_print $_),
-	  ($descr, $admin, $oper, $in, $out, $crc, $comment));
+	  ($descr, $admin, $oper, $in, $out, $crc, $comment, $drops));
     $win->clrtoeol ()
 	unless $suppress_output;
     return unless $all_p || defined $oper && $oper == 1;	# up
     return unless defined $in && defined $out;
 
     if (!defined $old{$index}) {
+	$win->addstr ($linecount, 0,
+		      sprintf ("%2d  %-24s %10s %10s",
+			       $index,
+			       defined $descr ? $descr : '',
+			       defined $in ? $in : '-',
+			       defined $out ? $out : '-'))
+	    unless $suppress_output;
+	if ($show_out_discards) {
+	    $win->addstr (sprintf (" %8s",
+				   defined $drops ? $drops : '-'))
+		unless $suppress_output;
+	}
 	if ($cisco_p) {
-	    $win->addstr ($linecount, 0,
-			  sprintf ("%2d  %-24s %10s %10s %10s %s\n",
-				   $index,
-				   defined $descr ? $descr : '',
-				   defined $in ? $in : '-',
-				   defined $out ? $out : '-',
+	    $win->addstr (sprintf (" %10s %s",
 				   defined $crc ? $crc : '-',
 				   defined $comment ? $comment : ''))
-		unless $suppress_output;
-	} else {
-	    $win->addstr ($linecount, 0,
-			  sprintf ("%2d  %-24s %10s %10s\n",
-				   $index,
-				   defined $descr ? $descr : '',
-				   defined $in ? $in : '-',
-				   defined $out ? $out : '-'))
 		unless $suppress_output;
 	}
     } else {
@@ -215,29 +226,29 @@ sub out_interface {
 	$interval = ($clock-$old->{'clock'}) * 1.0 / $clock_ticks;
 	my $d_in = $in ? ($in-$old->{'in'})*8/$interval : 0;
 	my $d_out = $out ? ($out-$old->{'out'})*8/$interval : 0;
+	my $d_drops = $drops ? ($drops-$old->{'drops'})/$interval : 0;
 	my $d_crc = $crc ? ($crc-$old->{'crc'})/$interval : 0;
 	$alarm = ($d_crc != 0)
 	    || 0 && ($d_out > 0 && $d_in == 0);
 	print STDERR "\007" if $alarm && !$old->{'alarm'};
 	print STDERR "\007" if !$alarm && $old->{'alarm'};
 	$win->standout() if $alarm && !$suppress_output;
+	$win->addstr ($linecount, 0,
+		      sprintf ("%2d  %-24s %s %s",
+			       $index,
+			       defined $descr ? $descr : '',
+			       pretty_bps ($in, $d_in),
+			       pretty_bps ($out, $d_out)))
+	    unless $suppress_output;
+	if ($show_out_discards) {
+	    $win->addstr (sprintf (" %8.1f %s",
+				   defined $drops ? $d_drops : 0))
+		unless $suppress_output;
+	}
 	if ($cisco_p) {
-	    $win->addstr ($linecount, 0,
-			  sprintf ("%2d  %-24s %s %s %10.1f %s\n",
-				   $index,
-				   defined $descr ? $descr : '',
-				   pretty_bps ($in, $d_in),
-				   pretty_bps ($out, $d_out),
+	    $win->addstr (sprintf (" %10.1f %s",
 				   defined $crc ? $d_crc : 0,
 				   defined $comment ? $comment : ''))
-		unless $suppress_output;
-	} else {
-	    $win->addstr ($linecount, 0,
-			  sprintf ("%2d  %-24s %s %s\n",
-				   $index,
-				   defined $descr ? $descr : '',
-				   pretty_bps ($in, $d_in),
-				   pretty_bps ($out, $d_out)))
 		unless $suppress_output;
 	}
 	$win->standend() if $alarm && !$suppress_output;
@@ -245,6 +256,7 @@ sub out_interface {
     $old{$index} = {'in' => $in,
 		    'out' => $out,
 		    'crc' => $crc,
+		    'drops' => $drops,
 		    'clock' => $clock,
 		    'alarm' => $alarm};
     ++$linecount;
@@ -292,41 +304,48 @@ while (1) {
 				     $interval || $desired_interval,
 				     $max_repetitions));
 	$win->standout();
+	$win->addstr (1, 0,
+		      sprintf (("%2s  %-24s %10s %10s"),
+			       "ix", "name",
+			       "bits/s", "bits/s"));
+	if ($show_out_discards) {
+	    $win->addstr (sprintf ((" %8s"),
+				   "drops/s"));
+	}
 	if ($cisco_p) {
-	    $win->addstr (1, 0,
-			  sprintf (("%2s  %-24s %10s %10s %10s %s\n"),
-				   "ix", "name",
-				   "bits/s", "bits/s",
+	    $win->addstr (sprintf ((" %10s %s"),
 				   "pkts/s",
 				   "description"));
+	}
+	$win->addstr (2, 0,
+		      sprintf (("%2s  %-24s %10s %10s"),
+			       "", "",
+			       "in", "out"));
+	if ($show_out_discards) {
+	    $win->addstr (sprintf ((" %8s"),
+				   ""));
+	}
+	if ($cisco_p) {
 	    $win->addstr (2, 0,
-			  sprintf (("%2s  %-24s %10s %10s %10s %s\n"),
-				   "", "",
-				   "in", "out",
+			  sprintf ((" %10s %s"),
 				   "CRC",
 				   ""));
-	} else {
-	    $win->addstr (1, 0,
-			  sprintf (("%2s  %-24s %10s %10s\n"),
-				   "ix", "name",
-				   "bits/s", "bits/s"));
-	    $win->addstr (2, 0,
-			  sprintf (("%2s  %-24s %10s %10s\n"),
-				   "", "",
-				   "in", "out"));
 	}
 	$win->clrtoeol ();
 	$win->standend();
     }
     $linecount = 3;
+    my @oids = ($ifDescr,$ifAdminStatus,$ifOperStatus,
+		$ifInOctets,$ifOutOctets);
+    if ($cisco_p) {
+	push @oids, $locIfInCRC;
+	push @oids, $locIfDescr;
+    }
+    if ($show_out_discards) {
+	push @oids, $ifOutDiscards;
+    }
     my $calls = $session->map_table_4
-	(($cisco_p 
-	  ? [$ifDescr,$ifAdminStatus,$ifOperStatus,
-	     $ifInOctets,$ifOutOctets,$locIfInCRC,$locIfDescr]
-	  : [$ifDescr,$ifAdminStatus,$ifOperStatus,
-	     $ifInOctets,$ifOutOctets]),
-	 \&out_interface,
-	 $max_repetitions);
+	(\@oids, \&out_interface, $max_repetitions);
     $max_repetitions = $calls + 1
 	if $calls > 0;
     $sleep_interval -= ($interval - $desired_interval)
