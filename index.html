@@ -2,7 +2,7 @@
  <HEAD>
   <TITLE>SNMP support for Perl 5</TITLE>
  </HEAD>
- <BODY>
+ <BODY bgcolor="#ffffff">
 <CENTER>
   <H1>SNMP support for Perl 5</H1>
 
@@ -45,8 +45,8 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 <ul>
 
 <li> SNMP_Session 0.52: setRequest support based on code contributed
- by <a href="mailto:matter@media.mit.edu">Matthew Trunnell.  See ``<a
- href="#set-req-use">Set Requests</a>'' below for how this is used.
+ by <a href="mailto:matter@media.mit.edu">Matthew Trunnell</a>.  See
+ ``<a href="#set-req-use">Set Requests</a>'' below for how this is used.
 
 <li> SNMP_Session 0.51: Improved error messages by printing the
  session in error messages if possible, and the OID and error message
@@ -204,7 +204,9 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
  with the exception that you have to specify not just OIDs, but also
  the values the variables should be set to.  Every binding is passed
  as a reference to a two-element array, the first element being the
- encoded OID and the second one the encoded value. </p>
+ encoded OID and the second one the encoded value.  See the
+ <tt>test/set-test.pl</tt> script for an example, in particular the
+ subroutine <tt>snmpset</tt>. </p>
 
 <H2>Future Plans</H2>
 
@@ -268,7 +270,7 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-Last modified: Thu Aug 21 10:16:08 MET DST 1997
+Last modified: Thu Aug 21 10:22:01 MET DST 1997
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
