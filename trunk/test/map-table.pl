@@ -32,7 +32,7 @@ while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
 	}
 	if ($ARGV[0] eq '1') {
 	    $version = '1';
-	} elsif ($ARGV[0] eq '2c') {
+	} elsif ($ARGV[0] eq '2c' or $ARGV[0] eq '2c') {
 	    $version = '2c';
 	} else {
 	    usage ();
