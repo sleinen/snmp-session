@@ -44,6 +44,10 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 <ul>
 
+<li> SNMP_Session 0.53: Avoid passing numeric IP addresses to
+  <tt>inet_ntoa()</tt>, by <a href="mailto:dan_needles@INS.COM">Daniel
+  L. Needles</a>
+
 <li> SNMP_Session 0.52: setRequest support based on code contributed
  by <a href="mailto:matter@media.mit.edu">Matthew Trunnell</a>.  See
  ``<a href="#set-req-use">Set Requests</a>'' below for how this is used.
@@ -128,9 +132,6 @@ use SNMP_Session "0.52";
 
   <li> More reasonable socket initialization, by <a
  href="mailto:peters@dkrz.de">Heine Peters</a> </li>
-
-  <li> Avoid passing numeric IP addresses to <tt>inet_ntoa()</tt>, by
-  <a href="mailto:dan_needles@INS.COM">Daniel L. Needles</a> </li>
 
  </ul>
 
