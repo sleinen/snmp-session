@@ -9,7 +9,6 @@ use Socket;
 my $version = '1';
 my $port = 161;
 my $debug = 0;
-my $css_stylesheet = 'http://www.switch.ch/lan/css/tf-ten.css';
 my $group;
 
 ### Prototypes
@@ -22,6 +21,7 @@ sub msdp_duplicate_report_trailer ($ );
 sub msdp_map_group ($$$$);
 sub msdp_map_sg ($$$$$ );
 sub msdp_list_group ($$);
+sub pretty_ip_html ($ );
 sub pretty_ip ($ );
 
 while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
@@ -170,17 +170,15 @@ sub msdp_report_duplicate_sas ($$$$) {
 	my ($source, $group) = split ($;,$key);
 	my $announcements = $announcements->{$key};
 	if ($#{$announcements} > 0) {
-	    printf STDOUT "<h4> (%s,%s) </h4>\n<p>\n", pretty_ip ($source), pretty_ip ($group);
+	    printf STDOUT ("<tr><th colspan=\"3\">(%s,%s)</th></tr>\n",
+			   pretty_ip_html ($source),
+			   pretty_ip_html ($group));
 	    foreach my $announcement (@{$announcements}) {
-		printf STDOUT ("  RP: <tt>%s</tt> (%d SAs",
-			       pretty_ip ($announcement->{rp}),
-			       $announcement->{in_sas});
-		printf STDOUT (", %d data pkts",
-			       $announcement->{in_data_packets})
-if $announcement->{in_data_packets} > 0;
-		printf STDOUT (")<br>\n");
+		printf STDOUT ("<tr><td>%s</td><td align=\"right\">%d</td><td align=\"right\">%d</td></tr>\n",
+			       pretty_ip_html ($announcement->{rp}),
+			       $announcement->{in_sas},
+			       $announcement->{in_data_packets});
 	    }
-	    printf STDOUT "</p>\n";
 	}
     }
     msdp_duplicate_report_trailer ($announcements);
@@ -189,19 +187,27 @@ if $announcement->{in_data_packets} > 0;
 sub msdp_duplicate_report_header ($$$$) {
     my ($announcements, $nsas, $nsgs, $ndups) = @_;
     print STDOUT ("<html><head><title>MSDP Duplicate SA Report</title></head>\n");
-    printf STDOUT ("<LINK REL=STYLESHEET HREF=\"%s\" TYPE=\"text/css\">\n",
-		   $css_stylesheet)
-	if defined $css_stylesheet;
+    print STDOUT <<EOM;
+<style type="text/css">    <!--
+ body{background-color:#ffffff; color:black; font-family:helvetica }
+ tt{font-family:courier,lucidatypewriter }
+ th{font-family:helvetica,arial }
+ td{font-family:helvetica,arial }
+ pre{font-family:courier,lucidatypewriter,monaco,monospaced }
+    -->
+</style>
+EOM
     print STDOUT ("<body><h1>MSDP Duplicate SA Report</h1>\n");
     printf STDOUT ("<p> %d (S,G) pairs found in %d SAs in <tt>%s</tt>'s cache. \n",
 		   $nsgs, $nsas, $host);
     printf STDOUT ("Total number of (S,G) pairs with multiple RPs: %d </p>\n",
 		   $ndups);
+    printf STDOUT ("<table border=\"0\">\n<tr><th>RP</th><th>#SAs</th><th>#data pkts</th></tr>\n");
 }
 
 sub msdp_duplicate_report_trailer ($ ) {
     my ($announcements) = @_;
-    print STDOUT "</body></html>\n";
+    print STDOUT "</table>\n</body></html>\n";
 }
 
 sub msdp_map_group ($$$$) {
@@ -257,6 +263,15 @@ sub msdp_list_group ($$) {
 			print " $peer_learned_from (learned-from) != $rpf_peer (RPF peer)\n"
 			    if $peer_learned_from ne $rpf_peer;
 		    });
+}
+
+sub pretty_ip_html ($ ) {
+    my ($ip) = @_;
+    my ($name);
+
+    ($name = gethostbyaddr (inet_aton ($ip),AF_INET))
+	? "<tt>$ip</tt> ($name)"
+	: "<tt>$ip</tt>";
 }
 
 sub pretty_ip ($ ) {
