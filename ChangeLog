@@ -1,3 +1,12 @@
+Wed Jul  5 22:11:47 1995  Simon Leinen  <simon@lia.di.epfl.ch>
+
+	* wwwtest, party-test.pl: Added header comment.
+
+	* BER.pm, Party.pm: Added comments.
+
+	* Makefile (ALLDIST): mention $(DOCS) before $(ALLSRCS) so that
+ 	the README is the first file in a shar archive.
+
 Wed Jul  5 21:39:49 1995  Simon Leinen  <simon@lia.di.epfl.ch>
 
 	* wwwtest (html_error_message, html_quote): moved to the end of
