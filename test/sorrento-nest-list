@@ -19,19 +19,21 @@ my @nestmasters =
      ['mEZ11','public@130.59.49.16'],
     );
 
-@nestmasters = (['mEZ11','public@130.59.49.16']);
+## Override here if you just want to re-generate the names for one nest.
+# @nestmasters = (['mCE11','public@130.59.48.16']);
 
 my %short_types =
-    qw(GMI-1GSX c
-       GMI-1GLX c
-       GMOA-1A  A
-       GMTR-15  c
-       GMTR-25  c
-       GMOX-06  c
-       GMOX-15  c
-       GMOX-25  c
-       GMOX-ER  c
-       GM-GE2   c);
+    qw(GMI-1GSX      c
+       GMI-1GLX      c
+       GMOA-1A       A
+       GMTR-15       c
+       GMTR-25       c
+       GMOX-06       c
+       GMOX-15       c
+       GMOX-25       c
+       GMOX-ER       c
+       GM-GE2        c
+       GM-GE2-2.5G-A c);
 
 foreach (@nestmasters) {
     process_nest ($_->[0], $_->[1]);
