@@ -68,6 +68,11 @@ use SNMP_Session "0.67";	# requires map_table_4
 use POSIX;			# for exact time
 use Curses;
 
+### Forward declarations
+sub out_interface ($$$$$$@);
+sub pretty_bps ($$);
+sub usage ($ );
+
 my $version = '1';
 
 my $desired_interval = 5.0;
@@ -183,7 +188,7 @@ my $sleep_interval = $desired_interval + 0.0;
 my $interval;
 my $linecount;
 
-sub out_interface {
+sub out_interface ($$$$$$@) {
     my ($index, $descr, $admin, $oper, $in, $out);
     my ($crc, $comment);
     my ($drops);
