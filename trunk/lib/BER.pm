@@ -1,5 +1,7 @@
 package BER;			# -*- mode: Perl -*-
 
+use Exporter;
+
 @ISA = qw(Exporter);
 
 @EXPORT = qw(context_flag constructor_flag
