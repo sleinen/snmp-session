@@ -24,6 +24,9 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_Session.pm 0.89: Made <tt>lenient_source_port_matching</tt>
+the default. </li>
+
 <li> SNMP_util.pm 0.89: Fixed a long-standing bug where the code would
 generate PDUs with <tt>request-id</tt>s with large positive values,
 violating the SNMP spec which mandates that <tt>request-id</tt>s be
@@ -487,7 +490,7 @@ use SNMP_Session "0.52";
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20010714
+20010822
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
