@@ -1,3 +1,34 @@
+Tue Dec 17 18:16:55 1996  Simon Leinen  <simon@switch.ch>
+
+	* SNMP_Session.pm: Stripped contributor entries.
+
+	(decode_get_response): Call unwrap_response via eval and simply
+ 	return zero when it dies.
+
+	(receive_response):
+	Return zero if response comes from different address.
+
+	(request_response):
+ 	Wait for another packet when receive_response fails.
+
+	* BER.pm: Contributors list: slightly fixed.
+
+	(encode_oid): Removed comments.
+
+Tue Dec 17 13:54:42 1996  Simon Leinen  <simon@switch.ch>
+
+	* walk-test.pl: Changed path to Perl.
+
+	($hostname): Changed default.
+
+	* SNMP_Session.pm: Updated my e-mail address.
+
+	* BER.pm (encode_oid): Added check for negative OID subids, by
+ 	Yufang HU <yhu@casc.com>
+
+	support up to 32bit subids, by Philippe Simonet
+ 	<sip00@vg.swissptt.ch>.
+
 Sun Aug 25 23:49:15 1996  Simon Leinen  <simon@instrumatic.ch>
 
 	* SNMP_Session.pm (request_response):
