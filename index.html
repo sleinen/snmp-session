@@ -360,7 +360,7 @@ my ($community, $enterprise, $agent,
 my ($binding, $oid, $value);
 while ($bindings ne '') {
     ($binding,$bindings) = &amp;decode_sequence ($bindings);
-    ($oid, $value) = decode_by_template ("%O%@");
+    ($oid, $value) = decode_by_template ($binding, "%O%@");
     print BER::pretty_oid ($oid)," =&gt; ",pretty_print ($value),"\n";
 }
 </pre>
@@ -386,7 +386,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20021002
+20030224
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
