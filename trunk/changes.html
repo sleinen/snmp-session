@@ -24,6 +24,26 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> BER.pm 1.02: Additional decoders (``pretty printers'') can now be
+registered and unregistered for type codes using the
+<tt>register_pretty_printer</tt> and
+<tt>unregister_pretty_printer</tt> subroutines.  Implemented by Mike
+Mitchell. </li>
+
+<li> BER.pm 1.02: Corrected encoding of large integer-like
+values. </li>
+
+<li> SNMP_util.pm 1.02: <tt>snmpwalkhash</tt> now takes an additional
+optional argument that should be a reference to a hash.  If used,
+<tt>snmpwalkhash</tt> will insert the retrieved values into that
+hash. </li>
+
+<li> BER.pm 1.01: Properly parse the variant length format in
+integers.  Thanks to <a href="mailto:milen@batmbg.com">Milen
+Pavlov</a> for pointing out this bug.  Also, decoding should be
+slightly more efficient in general, because one <tt>substr()</tt>
+operation per (sub-) object has been eliminated. </li>
+
 <li> SNMP_Session 1.00: Added Luc Pauwels' implementation of the
 <tt>use_16bit_request_ids</tt> option.  Some SMC devices seem to
 require this. </li>
@@ -597,7 +617,7 @@ use SNMP_Session "0.52";
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20031214
+20040217
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
