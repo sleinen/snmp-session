@@ -12,6 +12,9 @@ my $community = shift @ARGV || 'public';
 
 my $pnniRouteAddrProto = [1,3,6,1,4,1,353,5,4,1,1,19,4,1,8];
 
+my $ilmionly = 1;
+my $hostonly = 1;
+
 my $session = SNMP_Session->open ($host, $community, 161)
     || die "couldn't open SNMP session";
 $session->map_table ([$pnniRouteAddrProto],
@@ -20,11 +23,15 @@ $session->map_table ([$pnniRouteAddrProto],
       grep (defined $_ && ($_=pretty_print $_),
 	    ($proto));
       ## we are only interested in routes whose proto is local(2).
-      return unless $proto == 2;
+      return if $ilmionly && $proto != 2;
       my @index = split ('\.',$index);
       my $nsap = join (".", grep ($_=sprintf ("%02x",$_),@index[1..19])); 
       my $prefix_length = $index[20];
-      print $nsap,"/",$prefix_length,"\n";
+
+      return if $hostonly && $prefix_length != 152;
+      print $nsap;
+      print "/",$prefix_length unless $hostonly;
+      print "\n";
   });
 $session->close;
 1;
