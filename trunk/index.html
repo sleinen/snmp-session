@@ -44,6 +44,26 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 <ul>
 
+<li> SNMP_Session.pm 0.66: Fix from <a
+href="mailto:Alan.Nichols@Ebay.Sun.COM">Alan Nichols</a> to the
+handling of error replies.  In the last few revisions of SNMP_Session,
+requests to which the agent responded with a non-zero
+<tt>errorStatus</tt> were erroneously retried.
+
+<li> SNMP_Session.pm 0.66: When the <tt>errorStatus</tt> is zero, we
+don't care about the <tt>errorIndex</tt>.  This makes us liberal
+enough to cope with very old versions of the CMU agent code which
+sometimes put a non-zero <tt>errorIndex</tt> in normal response
+packets.
+
+<li> BER.pm 0.66: Changed the <tt>$VERSION</tt> number to be in line
+with SNMP_Session.pm's.
+
+<li> BER.pm 0.66: Changed <tt>encode_oid</tt> so that it signals an
+error when passed an illegal Object ID, such as one whose first subid
+isn't 0, 1 or 2.  This should help people who try to use output from
+CMU/UCD SNMP directly in MRTG.
+
 <li> SNMP_Session.pm 0.65: Fix error message when binding to UDP port
 fails (<a href="mailto:jzhukovs@staff.juno.com">Jonathan
 Zhukovsky</a>).
@@ -478,7 +498,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19990103
+19990221
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
