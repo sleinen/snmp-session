@@ -1,3 +1,58 @@
+Wed Jul  5 21:39:49 1995  Simon Leinen  <simon@lia.di.epfl.ch>
+
+	* wwwtest (html_error_message, html_quote): moved to the end of
+ 	the file.
+
+	* wwwtest (write_query_form): default to liasg7 to simplify
+ 	testing at home.
+
+	* wwwtest (query_to_html_response): added heading containing the
+ 	name of the queried host.
+
+	(write_query_form): use here document to reduce quoting.
+
+	* wwwtest: Moved handling of parameterless case to
+ 	`write_query_form()'.
+
+	(write_query_form): new procedure.
+
+	(parse_query): return result rather than putting it in global hash
+ 	%query.
+
+	* wwwtest: Changed form to use SELECT tags so that there is a very
+ 	limited choice of host and community names.
+
+	* wwwtest: If called without QUERY_STRING, act as a form that
+ 	allows the user to specify a host and community name.
+
+	If called with a QUERY_STRING, extract host and community name and
+ 	use this as the target of the query.
+
+	Wrap SNMP session creation and get query in evals, and generate a
+ 	HTML error message if one of them fails.
+
+	* SNMP_Session.pm (host_not_found_error): generate an error
+ 	message trying to explain why a given host hasn't been found by
+ 	one of the gethostby...() routines.
+
+	(open): use `host_not_found_error' to generate better error
+ 	messages.
+
+	* test.pl: Added header comment.
+
+	Parse command-line arguments.
+
+Mon Jul  3 13:53:26 1995  Simon Leinen  <simon@lia.di.epfl.ch>
+
+	* README: Explain how to encode OIDs.
+
+	Explain (roughly) how to decode the results.
+
+Wed Jun 28 22:47:48 1995  Simon Leinen  <simon@lia.di.epfl.ch>
+
+	* wwwtest: Removed HP-agent-specific variables so that I can test
+ 	the code against CMU SNMPv2.
+
 Wed Jun 28 22:46:55 1995  Simon Leinen  <simon@lia.di.epfl.ch>
 
 	* Makefile (DOCS, ALLDIST): new variables.
