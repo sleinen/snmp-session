@@ -1,5 +1,4 @@
-
-# -*- mode: Perl -*-
+### -*- mode: Perl -*-
 ######################################################################
 ### SNMP Request/Response Handling
 ######################################################################
@@ -57,7 +56,7 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.97';
+$VERSION = '0.98';
 
 @ISA = qw(Exporter);
 
