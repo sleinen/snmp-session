@@ -3,7 +3,7 @@
 # iftop - display top interface counters in real time.
 #         (a quick hack based on if-counters.pl by Simon Leinen)
 #
-# $Id: iftop,v 1.1 2003-11-26 20:01:25 leinen Exp $
+# $Id: iftop,v 1.2 2003-12-14 15:00:00 leinen Exp $
 # Dave Plonka, 21-Nov-2003
 #
 ######################################################################
@@ -204,7 +204,9 @@ my $ifOutDiscards = [1,3,6,1,2,1,2,2,1,19];
 my $ifAlias = [1,3,6,1,2,1,31,1,1,1,18];
 ## Counter64 variants
 my $ifHCInOctets = [1,3,6,1,2,1,31,1,1,1,6];
+my $ifHCInUcastPkts = [1,3,6,1,2,1,31,1,1,1,7];
 my $ifHCOutOctets = [1,3,6,1,2,1,31,1,1,1,10];
+my $ifHCOutUcastPkts = [1,3,6,1,2,1,31,1,1,1,11];
 ## Cisco-specific variables enabled by `-c' option
 my $locIfInCRC = [1,3,6,1,4,1,9,2,2,1,1,12];
 my $locIfOutCRC = [1,3,6,1,4,1,9,2,2,1,1,12];
@@ -530,14 +532,18 @@ while (1) {
     }
     $linecount = 3;
     my @oids = ($ifDescr,$ifAdminStatus,$ifOperStatus);
-    if ($opt_P) {
-        @oids = (@oids,$ifInUcastPkts,$ifOutUcastPkts);
-    } else {
-        if ($counter64_p) {
+    if ($counter64_p) {
+	if ($opt_P) {
+	    @oids = (@oids,$ifHCInUcastPkts,$ifHCOutUcastPkts);
+	} else {
 	    @oids = (@oids,$ifHCInOctets,$ifHCOutOctets);
-        } else {
+	}
+    } else {
+	if ($opt_P) {
+	    @oids = (@oids,$ifInUcastPkts,$ifOutUcastPkts);
+	} else {
 	    @oids = (@oids,$ifInOctets,$ifOutOctets);
-        }
+	}
     }
     @oids = (@oids,$ifAlias);
     if ($cisco_p) {
