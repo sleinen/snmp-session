@@ -65,7 +65,7 @@ The basic usage of these routines works like this:
 	# port on which the agent listens (usually 161).
 	
 	$session = SNMP_Session->open ($host, $community, $port)
-	    || die "couldn't open SNMP session to $host";
+	    or die "couldn't open SNMP session to $host";
 	
 	# Set $oid1, $oid2... to the BER-encoded OIDs of the MIB
 	# variables you want to get.
@@ -265,14 +265,14 @@ generic, specific and sysUptime return values are only defined
 for SNMPv1 traps.  In SNMPv2 traps, the equivalent information is
 contained in the bindings.
 
-	my $trap_session = SNMP_Session->open_trap_session ()
-	  || die "cannot open trap session";
+	my $trap_session = SNMPv1_Session->open_trap_session ()
+	  or die "cannot open trap session";
 	my ($trap, $sender_addr, $sender_port) = $trap_session->receive_trap ()
-	  || die "cannot receive trap";
+	  or die "cannot receive trap";
 	my ($community, $enterprise, $agent,
 	    $generic, $specific, $sysUptime, $bindings)
 	  = $session->decode_trap_request ($trap)
-	    || die "cannot decode trap received"
+	    or die "cannot decode trap received"
 	...
 	my ($binding, $oid, $value);
 	while ($bindings ne '') {
