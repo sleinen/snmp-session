@@ -1,8 +1,7 @@
 package SNMP_Session;
 
-sub AF_INET { 2; }
-sub SOCK_STREAM { 2; }
-sub SOCK_DGRAM { 1; }
+require 'Socket.pm';
+use Socket;
 
 sub open
 {
@@ -74,7 +73,7 @@ sub receive_response
     ($remote_addr = recv ($this->{sock},$this->{pdu_buffer},$this->{max_pdu_len},0))
 	|| return 0;
     if ($remote_addr ne $this->{remote_addr}) {
-	warn "Response came from $remote_addr";
+	warn "Response came from $remote_addr, not ".$this->{remote_addr};
 	return 0;
     }
     return length $this->{pdu_buffer};
