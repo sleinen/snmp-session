@@ -572,10 +572,10 @@ sub receive_response_3
     if ($response_community ne $this->{community}
         || $response_id ne $this->{request_id}) {
 	if ($this->{'debug'}) {
-	    warn "$community != $this->{community}"
+	    warn "$response_community != $this->{community}"
 		unless $SNMP_Session::suppress_warnings
 		    || $community eq $this->{community};
-	    warn "$request_id != $this->{request_id}"
+	    warn "$response_id != $this->{request_id}"
 		unless $SNMP_Session::suppress_warnings
 		    || $request_id == $this->{request_id};
 	}
