@@ -45,10 +45,23 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 <ul>
 
+<li> The subroutines in SNMP_Session never call <tt>die()</tt> anymore
+ if it encouters error situations.  Instead, they issue a warning and
+ return <tt>undef</tt>.  <a href="mailto:btr@iol.unh.edu">Bradford
+ T. Ritchie</a> managed to convince me that library code should never
+ <tt>die</tt>.  Unfortunately I haven't revised <tt>BER.pm</tt>
+ yet, so subroutines related with BER transfer syntax encoding and
+ decoding may still <tt>die</tt>.
+
 <li> The code has been cleaned up to use more of the standard
  functionality of the Perl 5 <tt>Socket.pm</tt> module.  That should
  have eliminated some potential portability problems (and delegated
- responsability for potential bugs :-). </li>
+ responsability for potential bugs :-).  Note that this means that the
+ code requires Perl 5.002 or later.
+
+<li> Both source files now make extensive use of <tt>strict</tt> for
+ better compile-time error checking.  Please notify me in case you
+ have any problems because of this.
 
 <li> The library now attempts to retransmit queries for which no
  reponse has been received during a given time.  The default
@@ -56,7 +69,7 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
  in the <em>mrtg</em> mailing list, and seem to work quite well, both
  against overloaded routers that simply drop some SNMP requests and
  against routers that are behind slow or lossy links.  If you have
- feedback on the default parameters, please drop me an e-mail. </li>
+ feedback on the default parameters, please drop me an e-mail.
 
 <li> When I implemented the retransmission logic, I also fixed
  handling of request IDs.  In older versions, the request ID was never
@@ -66,7 +79,7 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
  retransmissions, the request ID isn't changed.  If we did change it,
  we could estimate response time and implement an adaptive
  retransmission algorithm.  This has been left for further
- study. </li>
+ study.
 
 <li> Added code contributed by <em>mrtg</em> users:
 
@@ -88,7 +101,7 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
   <li> More reasonable socket initialization, by <a
  href="mailto:peters@dkrz.de">Heine Peters</a> </li>
 
- </ul> </li>
+ </ul>
 
 </ul>
 
@@ -105,7 +118,8 @@ require 'SNMP_Session.pm';
 # which you want to talk to the agent.	Set port to the UDP
 # port on which the agent listens (usually 161).
 
-$session = SNMP_Session->open ($host, $community, $port);
+$session = SNMP_Session->open ($host, $community, $port)
+    || die "couldn't open SNMP session to $host";
 
 # Set $oid1, $oid2... to the BER-encoded OIDs of the MIB
 # variables you want to get.
@@ -219,7 +233,7 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-Last modified: Mon Apr 28 20:46:20 MET DST 1997
+Last modified: Thu Jun 12 10:56:38 MET DST 1997
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
