@@ -32,7 +32,7 @@ sub open
 	|| die "bind $local_addr: $!";
     $remote_addr = pack ($sockaddr, &AF_INET, $port, $remote_addr);
     bless {
-	'socket' => SOCKET,
+	'sock' => SOCKET,
 	'snmp_version' => 0,
 	'community' => $community,
 	'remote_addr' => $remote_addr,
@@ -47,14 +47,14 @@ sub open
 sub close
 {
     my($this) = shift;
-    close ($this->{socket}) || die "close: $!";
+    close ($this->{sock}) || die "close: $!";
 }
 
 sub send_query
 {
     my($this) = shift;
     my($query) = shift;
-    send ($this->{socket},$query,0,$this->{remote_addr});
+    send ($this->{sock},$query,0,$this->{remote_addr});
 }
 
 sub wait_for_response
@@ -63,7 +63,7 @@ sub wait_for_response
     my($timeout) = shift || 2.0;
     my($rin,$win,$ein) = ('','','');
     my($rout,$wout,$eout);
-    vec($rin,fileno($this->{socket}),1) = 1;
+    vec($rin,fileno($this->{sock}),1) = 1;
     select($rout=$rin,$wout=$win,$eout=$ein,$timeout);
 }
 
@@ -71,7 +71,7 @@ sub receive_response
 {
     my($this) = shift;
     my($remote_addr);
-    ($remote_addr = recv ($this->{socket},$this->{pdu_buffer},$this->{max_pdu_len},0))
+    ($remote_addr = recv ($this->{sock},$this->{pdu_buffer},$this->{max_pdu_len},0))
 	|| return 0;
     if ($remote_addr ne $this->{remote_addr}) {
 	warn "Response came from $remote_addr";
