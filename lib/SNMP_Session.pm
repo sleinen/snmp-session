@@ -122,31 +122,35 @@ sub get_request_response
 {
     my($this) = shift;
     my(@oids) = @_;
-    return $this->request_response_3 ($this->encode_get_request (@oids), get_response);
+    return $this->request_response_4 ($this->encode_get_request (@oids),
+				      get_response, \@oids);
 }
 
 sub getnext_request_response
 {
     my($this) = shift;
     my(@oids) = @_;
-    return $this->request_response_3 ($this->encode_getnext_request (@oids), get_response);
+    return $this->request_response_4 ($this->encode_getnext_request (@oids),
+				      get_response, \@oids);
 }
 
-sub request_response_3
+sub request_response_4
 {
     my $this = shift;
     my $req = shift;
     my $response_tag = shift;
+    my $oids = shift;
     my $retries = $this->retries;
     my $timeout = $this->timeout;
 
     $this->send_query ($req)
-	|| return &error_return ("send_query: $!");
+	|| return $this->error ("send_query: $!");
     while ($retries > 0) {
 	if ($this->wait_for_response($timeout)) {
 	    my($response_length);
 
-	    $response_length = $this->receive_response_1 ($response_tag);
+	    $response_length
+		= $this->receive_response_2 ($response_tag, $oids);
 	    if ($response_length) {
 		return $response_length;
 	    }
@@ -155,7 +159,7 @@ sub request_response_3
 	    --$retries;
 	    $timeout *= $this->backoff;
 	    $this->send_query ($req)
-		|| return &error_return ("send_query: $!");
+		|| return $this->error ("send_query: $!");
 	}
     }
     0;
@@ -194,12 +198,13 @@ sub open
 	unless $udp_proto;
     $udp_proto=17 unless $udp_proto;
     socket ($socket, PF_INET, SOCK_DGRAM, $udp_proto)
-	|| return error_return ("socket: $!");
+	|| return &error_return ("open($remote_hostname): socket: $!");
     $remote_addr = pack_sockaddr_in ($port, $remote_addr);
     bless {
 	'sock' => $socket,
 	'sockfileno' => fileno ($socket),
 	'community' => $community,
+	'remote_hostname' => $remote_hostname,
 	'remote_addr' => $remote_addr,
 	'max_pdu_len' => $max_pdu_len,
 	'pdu_buffer' => '\0' x $max_pdu_len,
@@ -220,7 +225,7 @@ sub max_pdu_len { $_[0]->{max_pdu_len} }
 sub close
 {
     my($this) = shift;
-    close ($this->sock) || &error_return ("close: $!");
+    close ($this->sock) || $this->error ("close: $!");
 }
 
 sub wrap_request
@@ -240,19 +245,26 @@ my @error_status_code = qw(noError tooBig noSuchName badValue readOnly
 			   commitFailed undoFailed authorizationError
 			   notWritable inconsistentName);
 
-sub unwrap_response_4
+sub unwrap_response_5
 {
-    my($this,$response,$tag,$request_id,$community,@rest);
+    my($this,$response,$tag,$request_id,$oids,$community,@rest);
     my ($error_status,$error_index,$snmpver);
-    ($this,$response,$tag,$request_id) = @_;
+    ($this,$response,$tag,$request_id,$oids) = @_;
     ($snmpver,$community,$request_id,$error_status,$error_index,@rest)
 	= decode_by_template ($response, "%{%i%s%*{%i%i%i%{%@",
 			      $tag);
-    return &error_return ("Received SNMP response with wrong snmp-version field $snmpver")
+    return $this->error ("Received SNMP response with unknown snmp-version field $snmpver")
 	unless $snmpver == $this->snmp_version;
     if ($error_status != 0 || $error_index != 0) {
 	$error_status = $error_status_code[$error_status] || $error_status;
-	return &error_return ("Received SNMP response with error status $error_status, index $error_index");
+	return $this->error ("Received SNMP response with error code\n"
+			     ."  error status: $error_status\n"
+			     ."  index ".$error_index
+			     .($error_index > 0 && $error_index-1 <= $#{$oids}
+			       ? " (OID: "
+			       .&BER::pretty_oid($oids->[$error_index-1])
+			       .")"
+			       : ""));
     }
     if ($this->{'debug'}) {
 	warn "$community != $this->{community}"
@@ -272,10 +284,11 @@ sub send_query
     send ($this->sock,$query,0,$this->remote_addr);
 }
 
-sub receive_response_1
+sub receive_response_2
 {
     my $this = shift;
     my $response_tag = shift;
+    my $oids = shift;
     my($remote_addr);
     $remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,0);
     return 0 unless $remote_addr;
@@ -291,7 +304,7 @@ sub receive_response_1
     }
 
     my @unwrapped = ();
-    eval '@unwrapped = $this->unwrap_response_4 ($response, $response_tag, $this->{"request_id"})';
+    eval '@unwrapped = $this->unwrap_response_5 ($response, $response_tag, $this->{"request_id"}, $oids)';
     if ($@ || !$unwrapped[0]) {
 	return 0;
     }
@@ -309,15 +322,43 @@ sub pretty_address
 sub describe
 {
     my($this) = shift;
+    print $this->to_string (),"\n";
+}
 
-    printf "SNMP_Session: %s (size %d timeout %g)\n",
-    &pretty_address ($this->remote_addr),$this->max_pdu_len,
-    $this->timeout;
+sub to_string
+{
+    my($this) = shift;
+    my ($class,$prefix);
+
+    $class = ref($this);
+    $prefix = ' ' x (length ($class) + 2);
+    ($class." (remote host: \"".$this->{remote_hostname}
+     ."\" ".&pretty_address ($this->remote_addr)."\n"
+     .$prefix."  community: \"".$this->{'community'}."\"\n"
+     .$prefix." request ID: ".$this->{'request_id'}."\n"
+     .$prefix."PDU bufsize: ".$this->{'max_pdu_len'}." bytes\n"
+     .$prefix."    timeout: ".$this->{timeout}."s\n"
+     .$prefix."    retries: ".$this->{retries}."\n"
+     .$prefix."    backoff: ".$this->{backoff}.")");
+##    sprintf ("SNMP_Session: %s (size %d timeout %g)",
+##	       &pretty_address ($this->remote_addr),$this->max_pdu_len,
+##	       $this->timeout);
 }
 
 sub error_return
 {
     warn @_;
+    return undef;
+}
+
+sub error
+{
+    my $this = shift;
+    my $message = shift;
+    my $session = $this->to_string;
+    $session =~ s/^/  /mg;
+    $message =~ s/^/  /mg;
+    warn ("SNMP Error:\n".$message."\n".$session."\n");
     return undef;
 }
 
