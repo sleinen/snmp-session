@@ -142,36 +142,30 @@ sub wait_for_response
     select($rout=$rin,$wout=$win,$eout=$ein,$timeout);
 }
 
-sub get_request_response
+sub get_request_response ($@)
 {
-    my($this) = shift;
-    my(@oids) = @_;
-    return $this->request_response_4 ($this->encode_get_request (@oids),
-				      get_response, \@oids);
+    my($this, @oids) = @_;
+    return $this->request_response_5 ($this->encode_get_request (@oids),
+				      get_response, \@oids, 0);
 }
 
-sub set_request_response
+sub set_request_response ($@)
 {
-    my($this) = shift;
-    my(@pairs) = @_;
-    return $this->request_response_4 ($this->encode_set_request (@pairs),
-				      get_response, \@pairs);
+    my($this, @pairs) = @_;
+    return $this->request_response_5 ($this->encode_set_request (@pairs),
+				      get_response, \@pairs, 0);
 }
 
-sub getnext_request_response
+sub getnext_request_response ($@)
 {
-    my($this) = shift;
-    my(@oids) = @_;
-    return $this->request_response_4 ($this->encode_getnext_request (@oids),
-				      get_response, \@oids);
+    my($this,@oids) = @_;
+    return $this->request_response_5 ($this->encode_getnext_request (@oids),
+				      get_response, \@oids, 0);
 }
 
-sub request_response_4
+sub request_response_5
 {
-    my $this = shift;
-    my $req = shift;
-    my $response_tag = shift;
-    my $oids = shift;
+    my ($this, $req, $response_tag, $oids, $errorp) = @_;
     my $retries = $this->retries;
     my $timeout = $this->timeout;
 
@@ -185,7 +179,7 @@ sub request_response_4
 	    my($response_length);
 
 	    $response_length
-		= $this->receive_response_2 ($response_tag, $oids);
+		= $this->receive_response_3 ($response_tag, $oids, $errorp);
 	    if ($response_length) {
 		return $response_length;
 	    } else {
@@ -248,6 +242,7 @@ sub map_table_start_end ($$$$$) {
   my ($session, $columns, $mapfn, $start, $end) = @_;
 
   my @encoded_oids;
+  my $call_counter = 0;
   my $base_index = $start;
 
   do {
@@ -274,14 +269,15 @@ sub map_table_start_end ($$$$$) {
 	if ($cmp == -1) {
 	  $smallest_index = $out_index;
 	  grep ($_=undef, @collected_values);
-	  push @collected_values, pretty_print ($value);
+	  push @collected_values, $value;
 	} elsif ($cmp == 1) {
 	  push @collected_values, undef;
 	} else {
-	  push @collected_values, pretty_print ($value);
+	  push @collected_values, $value;
 	}
       }
-      &$mapfn ($smallest_index, @collected_values)
+      (++$call_counter,
+       &$mapfn ($smallest_index, @collected_values))
 	if $smallest_index;
       $base_index = $smallest_index;
     } else {
@@ -291,6 +287,7 @@ sub map_table_start_end ($$$$$) {
   while ($base_index
 	&& (!defined $end
 	   || index_compare ($base_index, $end) < 0));
+  $call_counter;
 }
 
 sub index_compare ($$) {
@@ -369,19 +366,21 @@ sub open
 	|| return $this->error_return ("creating socket: $!");
     $remote_addr = pack_sockaddr_in ($port, $remote_addr);
     bless {
-	'sock' => $socket,
-	'sockfileno' => fileno ($socket),
-	'community' => $community,
-	'remote_hostname' => $remote_hostname,
-	'remote_addr' => $remote_addr,
-	'max_pdu_len' => $max_pdu_len,
-	'pdu_buffer' => '\0' x $max_pdu_len,
-	'request_id' => int (rand 0x80000000 + rand 0xffff),
-	'timeout' => $default_timeout,
-	'retries' => $default_retries,
-	'backoff' => $default_backoff,
-	'debug' => $default_debug,
-	};
+	   'sock' => $socket,
+	   'sockfileno' => fileno ($socket),
+	   'community' => $community,
+	   'remote_hostname' => $remote_hostname,
+	   'remote_addr' => $remote_addr,
+	   'max_pdu_len' => $max_pdu_len,
+	   'pdu_buffer' => '\0' x $max_pdu_len,
+	   'request_id' => int (rand 0x80000000 + rand 0xffff),
+	   'timeout' => $default_timeout,
+	   'retries' => $default_retries,
+	   'backoff' => $default_backoff,
+	   'debug' => $default_debug,
+	   'error_status' => 0,
+	   'error_index' => 0,
+	  };
 }
 
 sub sock { $_[0]->{sock} }
@@ -414,32 +413,40 @@ my @error_status_code = qw(noError tooBig noSuchName badValue readOnly
 			   commitFailed undoFailed authorizationError
 			   notWritable inconsistentName);
 
-sub unwrap_response_5
+sub unwrap_response_6
 {
-    my($this,$response,$tag,$request_id,$oids,$community,@rest);
-    my ($error_status,$error_index,$snmpver);
+    my ($this,$response,$tag,$request_id,$oids,$errorp) = @_;
+    my ($community,@rest,$snmpver);
 
-    ($this,$response,$tag,$request_id,$oids) = @_;
-    ($snmpver,$community,$request_id,$error_status,$error_index,@rest)
+    ($snmpver,$community,$request_id,
+     $this->{error_status},
+     $this->{error_index},
+     @rest)
 	= decode_by_template ($response, "%{%i%s%*{%i%i%i%{%@",
 			      $tag);
     return $this->ber_error ("Error decoding response PDU")
       unless defined $snmpver;
     return $this->error ("Received SNMP response with unknown snmp-version field $snmpver")
 	unless $snmpver == $this->snmp_version;
-    if ($error_status != 0 || $error_index != 0) {
+    if ($this->{error_status} != 0 || $this->{error_index} != 0) {
+      if ($errorp) {
 	my ($oid, $errmsg);
-	$errmsg = $error_status_code[$error_status] || $error_status;
-	$oid = $oids->[$error_index-1]
-	    if $error_index > 0 && $error_index-1 <= $#{$oids};
+	$errmsg = $error_status_code[$this->{error_status}] || $this->{error_status};
+	$oid = $oids->[$this->{error_index}-1]
+	  if $this->{error_index} > 0 && $this->{error_index}-1 <= $#{$oids};
 	$oid = $oid->[0]
-	    if ref($oid) eq 'ARRAY';
+	  if ref($oid) eq 'ARRAY';
 	return $this->error ("Received SNMP response with error code\n"
-				."  error status: $errmsg\n"
-				."  index ".$error_index
-				.(defined($oid)
-				  ? " (OID: ".&BER::pretty_oid($oid).")"
-				  : ""));
+			     ."  error status: $errmsg\n"
+			     ."  index ".$this->{error_index}
+			     .(defined($oid)
+			       ? " (OID: ".&BER::pretty_oid($oid).")"
+			       : ""));
+      } else {
+	if ($this->{error_index} == 1) {
+	  @rest[$this->{error_index}-1..$this->{error_index}] = ();
+	}
+      }
     }
     if ($this->{'debug'}) {
 	warn "$community != $this->{community}"
@@ -454,19 +461,16 @@ sub unwrap_response_5
     @rest;
 }
 
-sub send_query
+sub send_query ($$)
 {
-    my($this) = shift;
-    my($query) = shift;
+    my ($this,$query) = @_;
     send ($this->sock,$query,0,$this->remote_addr);
 }
 
-sub receive_response_2
+sub receive_response_3
 {
-    my $this = shift;
-    my $response_tag = shift;
-    my $oids = shift;
-    my($remote_addr);
+    my ($this, $response_tag, $oids, $errorp) = @_;
+    my ($remote_addr);
     $remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,0);
     return 0 unless $remote_addr;
     my $response = $this->{'pdu_buffer'};
@@ -482,7 +486,7 @@ sub receive_response_2
     }
 
     my @unwrapped = ();
-    @unwrapped = $this->unwrap_response_5 ($response, $response_tag, $this->{"request_id"}, $oids);
+    @unwrapped = $this->unwrap_response_6 ($response, $response_tag, $this->{"request_id", $errorp}, $oids);
     if (!defined $unwrapped[0]) {
 	$this->{'unwrapped'} = undef;
 	return 0;
