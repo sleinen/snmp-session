@@ -347,37 +347,6 @@ sub request_response_5 ($$$$$) {
     $this->error ("no response received");
 }
 
-
-sub error_return ($$) {
-    my ($this,$message) = @_;
-    $SNMP_Session::errmsg = $message;
-    unless ($SNMP_Session::suppress_warnings) {
-	$message =~ s/^/  /mg;
-	carp ("Error:\n".$message."\n");
-    }
-    return undef;
-}
-
-sub error ($$) {
-    my ($this,$message) = @_;
-    my $session = $this->to_string;
-    $SNMP_Session::errmsg = $message."\n".$session;
-    unless ($SNMP_Session::suppress_warnings) {
-	$session =~ s/^/  /mg;
-	$message =~ s/^/  /mg;
-	carp ("SNMP Error:\n".$SNMP_Session::errmsg."\n");
-    }
-    return undef;
-}
-
-sub ber_error ($$) {
-  my ($this,$type) = @_;
-  my ($errmsg) = $BER::errmsg;
-
-  $errmsg =~ s/^/  /mg;
-  return $this->error ("$type:\n$errmsg");
-}
-
 sub map_table ($$$) {
     my ($session, $columns, $mapfn) = @_;
     return $session->map_table_4 ($columns, $mapfn,
@@ -488,6 +457,37 @@ sub pretty_address {
 }
 
 sub version { $VERSION; }
+
+
+sub error_return ($$) {
+    my ($this,$message) = @_;
+    $SNMP_Session::errmsg = $message;
+    unless ($SNMP_Session::suppress_warnings) {
+	$message =~ s/^/  /mg;
+	carp ("Error:\n".$message."\n");
+    }
+    return undef;
+}
+
+sub error ($$) {
+    my ($this,$message) = @_;
+    my $session = $this->to_string;
+    $SNMP_Session::errmsg = $message."\n".$session;
+    unless ($SNMP_Session::suppress_warnings) {
+	$session =~ s/^/  /mg;
+	$message =~ s/^/  /mg;
+	carp ("SNMP Error:\n".$SNMP_Session::errmsg."\n");
+    }
+    return undef;
+}
+
+sub ber_error ($$) {
+  my ($this,$type) = @_;
+  my ($errmsg) = $BER::errmsg;
+
+  $errmsg =~ s/^/  /mg;
+  return $this->error ("$type:\n$errmsg");
+}
 
 package SNMPv1_Session;
 
