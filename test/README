@@ -1,0 +1,27 @@
+A collection of test scripts for the Perl SNMP code.
+
+test.pl
+	trivial application that reads some fixed variables from an
+	agent.
+
+set-test.pl
+	application that tries to change the sysContact.0 variable and
+	then changes it back to the original value.  Contributed by
+	Matthew Trunnell <matter@dune.media.mit.edu>
+
+walk-test.pl
+	another trivial application that walks two columns in the
+	interface table of RFC 1213.
+
+walk-intf.pl
+	a variant of walk-test.pl that walks several columns of the
+	RFC 1213 interfaces table.
+
+wwwtest
+	example for a CGI script that allows SNMP read access to a
+	specific set of devices over the Web.
+
+asn1-test.pl
+ber-test.pl
+	a few regression tests for BER encoding.  If you get errors
+	running these, I'd be very interested to hear about it!
