@@ -11,10 +11,11 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 </CENTER>
 
-<P> <A HREF="http://celeste.switch.ch/~leinen/snmp/perl/snmp.shar">This
-archive</A> contains Perl 5 modules SNMP_Session.pm and BER.pm, which,
-when used together, provide rudimentary access to remote SNMP (v1)
-agents. </P>
+<P> <A
+ HREF="http://celeste.switch.ch/~leinen/snmp/perl/snmp.shar">This
+ archive</A> contains Perl 5 modules <tt>SNMP_Session.pm</tt> and
+ <tt>BER.pm</tt>, which, when used together, provide rudimentary
+ access to remote SNMP (v1) agents. </P>
 
 <H2>Features</H2>
 
@@ -22,17 +23,74 @@ agents. </P>
  completely stand-alone, i.e. you don't need to have another SNMP
  package such as CMU SNMP.  It is also written entirely in Perl, so
  you don't have to compile any C modules.  It uses the Perl 5
- <SAMP>Socket</SAMP> module and should therefore be very
- portable. </P>
+ <SAMP>Socket.pm</SAMP> module and should therefore be very
+ portable, even to non-Unix systems. </P>
 
-<P> Currently supported SNMP operations include
- <SAMP>get</SAMP> and <SAMP>getNext</SAMP>.  There is no support for
- sending or receiving traps (notifications) yet, nor for setting MIB
- variables in an agent. </P>
+<p> The SNMP operations currently supported are "get" and
+ "get-next". That means that you can neither set variables in an
+ agent, nor receive or generate SNMP traps using these routines.
+ Hopefully I will get around to implementing these other operations
+ one day. </p>
+
+<p> For an excellent example of the type of application this is useful
+ for, see version 2.0 (currently in beta) of Tobias Oetiker's <a
+ href="http://www.ee.ethz.ch/~oetiker/webtools/mrtg/mrtg.html">``mrtg''
+ (Multi Router Traffic Grapher)</a> tool </p>
 
 <!-- <P> You can try a trivial <A				-->
 <!-- HREF="http://liawww.epfl.ch/cgi-bin/snmp/wwwtest">sample	-->
 <!-- application</A> I have built with this library. </P>	-->
+
+<h2> Recent Changes: </h2>
+
+<ul>
+
+<li> The code has been cleaned up to use more of the standard
+ functionality of the Perl 5 <tt>Socket.pm</tt> module.  That should
+ have eliminated some potential portability problems (and delegated
+ responsability for potential bugs :-). </li>
+
+<li> The library now attempts to retransmit queries for which no
+ reponse has been received during a given time.  The default
+ parameters for the retransmission logic have been discussed at length
+ in the <em>mrtg</em> mailing list, and seem to work quite well, both
+ against overloaded routers that simply drop some SNMP requests and
+ against routers that are behind slow or lossy links.  If you have
+ feedback on the default parameters, please drop me an e-mail. </li>
+
+<li> When I implemented the retransmission logic, I also fixed
+ handling of request IDs.  In older versions, the request ID was never
+ changed between reqeuest, which could lead to (late) resposes being
+ associated with the wrong request.  Now the request ID is incremented
+ for each request, and mismatching responses are ignored.  For
+ retransmissions, the request ID isn't changed.  If we did change it,
+ we could estimate response time and implement an adaptive
+ retransmission algorithm.  This has been left for further
+ study. </li>
+
+<li> Added code contributed by <em>mrtg</em> users:
+
+ <ul>
+
+  <li> Encoding of larger subids, by <a
+ href="mailto:sip00@vg.swissptt.ch">Philippe Simonet</a> and <a
+ href="mailto:yhu@casc.com">Yufang HU</a> </li>
+
+  <li> Decoding <tt>sysUpTime</tt>, by <a
+ href="mailto:dlr@Bungi.com">Dave Rand</a> </li>
+
+  <li> Decoding longer (unsigned) integers, by <a
+ href="mailto:oetiker@ee.ethz.ch">Tobias Oetiker</a> </li>
+
+  <li> Decoding longer strings, by <a
+ href="mailto:san@iem.pw.edu.pl">Andrzej Tobola</a> </li>
+
+  <li> More reasonable socket initialization, by <a
+ href="mailto:peters@dkrz.de">Heine Peters</a> </li>
+
+ </ul> </li>
+
+</ul>
 
 <H2>Usage</H2>
 
@@ -53,7 +111,6 @@ $session = SNMP_Session::open ($host, $community, $port);
 # variables you want to get.
 
 if ($session-&gt;get_request_response ($oid1, $oid2, ...)) {
-    $session-&gt;{pdu_buffer};
     ($bindings) = $session-&gt;decode_get_response ($session-&gt;{pdu_buffer});
 
     while ($bindings ne '') {
@@ -79,7 +136,8 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
 </PRE>
 
 <P> will return the BER-encoded OID for the <B>sysDescr.0</B>
-(1.3.6.1.2.1.1.1.0) instance of <A HREF="http://ds.internic.net/rfc/rfc1213.txt">MIB-2</A>. </P>
+ (1.3.6.1.2.1.1.1.0) instance of <A
+ HREF="http://ds.internic.net/rfc/rfc1213.txt">MIB-2</A>. </P>
 
 <H2>Decoding the results</H2>
 
@@ -161,7 +219,7 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-Last modified: Tue Dec 17 19:43:32 MET 1996
+Last modified: Tue Jan  7 17:35:41 MET 1997
 <!-- hhmts end -->
 <A HREF="http://celeste.switch.ch/~leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
