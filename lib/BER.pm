@@ -168,11 +168,11 @@ sub decode_by_template
 		push @results, $read;
 	    } elsif (($expected) = /^(\d*|\*)i(.*)/) {
 		$_ = $2;
-		$expected = shift if $expected eq '*';
+		$expected = int (shift) if $expected eq '*';
 		(($read,$pdu) = &decode_int ($pdu)) || die "cannot read int";
 		warn (sprintf ("Expected %d (0x%x), got %d (0x%x)",
 			       $expected, $expected, $read, $read))
-		    unless ($expected == $read);
+		    unless $expected == $read;
 	    } elsif (/^\@(.*)/) {
 		$_ = $1;
 		push @results, $pdu;
@@ -216,9 +216,9 @@ sub decode_int
     if ($result == 1) {
 	@result = (ord (substr ($pdu, 2, 1)), substr ($pdu, 3));
     } elsif ($result == 2) {
-	@result = (unpack ("n", (substr ($pdu, 2))), substr ($pdu, 4));
+	@result = (unpack ("n", (substr ($pdu, 2, 2))), substr ($pdu, 4));
     } elsif ($result == 4) {
-	@result = (unpack ("N", (substr ($pdu, 2))), substr ($pdu, 6));
+	@result = (unpack ("N", (substr ($pdu, 2, 4))), substr ($pdu, 6));
     } else {
 	die "Unsupported integer length $length";
     }
