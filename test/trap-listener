@@ -1,0 +1,65 @@
+#!/usr/local/bin/perl -w
+###
+### Listen for SNMP traps, decode and print them
+### Simple example for a trap listener program.
+###
+### To make this useful, you should probably add some filtering
+### capabilities and trap-specific pretty-printing.
+###
+package main;
+
+use strict;
+
+use SNMP_Session "0.59";
+use BER;
+use Socket;
+
+my $session = SNMPv1_Session->open_trap_session ();
+my ($trap, $sender, $sender_port);
+
+while (($trap, $sender, $sender_port) = $session->receive_trap ()) {
+    print STDERR "received trap from [".inet_ntoa ($sender)."].".$sender_port."\n";
+    $session->print_trap ($trap);
+}
+1;
+
+package SNMPv1_Session;
+
+use BER;
+
+use strict;
+
+sub decode_trap_request ($$) {
+    my ($this, $trap) = @_;
+    my ($snmp_version, $community, $ent, $agent, $gen, $spec, $dt, @pairs);
+    ($snmp_version, $community, $ent, $agent, $gen, $spec, $dt, @pairs)
+	= decode_by_template ($trap, "%{%i%s%*{%O%A%i%i%u%{%@",
+			      SNMP_Session::trap_request
+			      );
+    return undef
+	unless $snmp_version == snmp_version ();
+    if (!defined $ent) {
+	warn "BER error decoding trap:\n  ".$BER::errmsg."\n";
+    }
+    return ($community, $ent, $agent, $gen, $spec, $dt, @pairs);
+}
+
+sub print_trap ($$) {
+    my ($this, $trap) = @_;
+    my ($encoded_pair, $oid, $value);
+    my ($community, $ent, $agent, $gen, $spec, $dt, @pairs)
+	  = $this->decode_trap_request ($trap);
+    print "    community: ".$community."\n";
+    print "   enterprise: ".BER::pretty_oid ($ent)."\n";
+    print "   agent addr: ".inet_ntoa ($agent)."\n";
+    print "   generic ID: $gen\n";
+    print "  specific ID: $spec\n";
+    print "       uptime: ".BER::pretty_uptime_value ($dt)."\n";
+    my $prefix = "     bindings: ";
+    foreach $encoded_pair (@pairs) {
+	($oid, $value) = decode_by_template ($encoded_pair, "%{%O%@");
+	#next unless defined $oid;
+	print $prefix.BER::pretty_oid ($oid)." => ".pretty_print ($value)."\n";
+	$prefix = "		  ";
+    }
+}
