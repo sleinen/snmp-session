@@ -167,26 +167,20 @@ sub open
     my($name,$aliases,$remote_addr,$socket);
 
     my $udp_proto = 0;
-    my $sockaddr = 'S n a4 x8';
 
     $community = 'public' unless defined $community;
     $port = SNMP_Session::standard_udp_port unless defined $port;
     $max_pdu_len = 8000 unless defined $max_pdu_len;
-
-    if ($remote_hostname =~ /^\d+\.\d+\.\d+\.\d+$/) {
-	$remote_addr = pack('C4',split(/\./,$remote_hostname));
-    } else {
-	$remote_addr = (gethostbyname($remote_hostname))[4]
-	    || die (host_not_found_error ($remote_hostname, $?));
-    }
-    $socket = 'SNMP'.sprintf ("%08x04x",
-			      unpack ("N", $remote_addr), $port);
+    $remote_addr = inet_aton ($remote_hostname)
+	|| die "inet_aton($remote_hostname) failed";
+    $socket = 'SNMP'.sprintf ("%s:04x",
+			      inet_ntoa ($remote_addr), $port);
     (($name,$aliases,$udp_proto) = getprotobyname('udp'))
 	unless $udp_proto;
     $udp_proto=17 unless $udp_proto;
-    socket ($socket, AF_INET, SOCK_DGRAM, $udp_proto)
+    socket ($socket, PF_INET, SOCK_DGRAM, $udp_proto)
 	|| die "socket: $!";
-    $remote_addr = pack ($sockaddr, AF_INET, $port, $remote_addr);
+    $remote_addr = pack_sockaddr_in ($port, $remote_addr);
     bless {
 	'sock' => $socket,
 	'sockfileno' => fileno ($socket),
@@ -200,19 +194,6 @@ sub open
 	'backoff' => $default_backoff,
 	'debug' => $default_debug,
 	};
-}
-
-sub host_not_found_error
-{
-    my ($hostname, $h_errno) = @_;
-    my ($message);
-
-    $message = "host $hostname not found";
-    return $message unless $?;
-    return $message.": ".(('no such host', 'temporary name service failure',
-			   'name service error', 'host has no address')[$?-1])
-	if $? > 0 && $? < 5;
-    return $message.", h_errno==".$?;
 }
 
 sub sock { $_[0]->{sock} }
@@ -292,9 +273,8 @@ sub receive_response_1
 sub pretty_address
 {
     my($addr) = shift;
-    my($family,$port,@ipaddr) = unpack('S n a4 x8',$addr);
-    @ipaddr = unpack ('CCCC',$ipaddr[0]);
-    return sprintf ("[%d.%d.%d.%d].%d",@ipaddr,$port);
+    my($port,$ipaddr) = unpack_sockaddr_in($addr);
+    return sprintf ("[%s].%d",inet_ntoa($ipaddr),$port);
 }
 
 sub describe
