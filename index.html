@@ -411,6 +411,10 @@ compute the next value of <tt>maxRepetitions</tt>.  Remember to add
 one so that <tt>map_table</tt> notices when the table is finished!
 </p>
 
+<p> Note that for really big tables, this doesn't make a big
+difference, since the table won't fit in a single response packet
+anyway. </p>
+
 <H2><a name="trap-send">Sending Traps</a></H2>
 
 <p> To send a trap, you have to open an SNMP session to the trap
