@@ -747,7 +747,7 @@ sub snmpwalk_flg ($$@) {
 sub snmpset($@) {
   my($host, @vars) = @_;
   my(@enoid, $response, $bindings, $binding);
-  my($oid, @retvals, $type, $value);
+  my($oid, @retvals, $type, $value, $val);
   my $session;
 
   $session = &snmpopen($host, 0, \@vars);
@@ -761,30 +761,62 @@ sub snmpset($@) {
     ($oid) = toOID((shift @vars));
     $type  = shift @vars;
     $value = shift @vars;
-    if ($type =~ /string/i) {
-      $value = encode_string($value);
-      push @enoid, [$oid,$value];
-    } elsif ($type =~ /ipaddr/i) {
-      $value = encode_ip_address($value);
-      push @enoid, [$oid,$value];
-    } elsif ($type =~ /gauge/i) {
-      $value = encode_gauge32($value);
-      push @enoid, [$oid,$value];
-    } elsif ($type =~ /int/i) {
-      $value = encode_int($value);
-      push @enoid, [$oid,$value];
-    } elsif ($type =~ /oid/i) {
-      my $tmp = encode_oid_with_errmsg($value);
-      return undef unless defined $tmp;
-      push @enoid, [$oid,$tmp];
-    } elsif ($type =~ /timeticks/i) {
-      $value = encode_timeticks($value);
-      push @enoid, [$oid,$value];
+    $type =~ tr/A-Z/a-z/;
+    if ($type eq "int") {
+      $val = encode_int($value);
+    } elsif ($type eq "integer") {
+      $val = encode_int($value);
+    } elsif ($type eq "string") {
+      $val = encode_string($value);
+    } elsif ($type eq "octetstring") {
+      $val = encode_string($value);
+    } elsif ($type eq "octet string") {
+      $val = encode_string($value);
+    } elsif ($type eq "oid") {
+      $val = encode_oid_with_errmsg($value);
+    } elsif ($type eq "object id") {
+      $val = encode_oid_with_errmsg($value);
+    } elsif ($type eq "object identifier") {
+      $val = encode_oid_with_errmsg($value);
+    } elsif ($type eq "ipaddr") {
+      $val = encode_ip_address($value);
+    } elsif ($type eq "ip address") {
+      $val = encode_ip_address($value);
+    } elsif ($type eq "timeticks") {
+      $val = encode_timeticks($value);
+    } elsif ($type eq "uint") {
+      $val = encode_uinteger32($value);
+    } elsif ($type eq "uinteger") {
+      $val = encode_uinteger32($value);
+    } elsif ($type eq "uinteger32") {
+      $val = encode_uinteger32($value);
+    } elsif ($type eq "unsigned int") {
+      $val = encode_uinteger32($value);
+    } elsif ($type eq "unsigned integer") {
+      $val = encode_uinteger32($value);
+    } elsif ($type eq "unsigned integer32") {
+      $val = encode_uinteger32($value);
+    } elsif ($type eq "counter") {
+      $val = encode_counter32($value);
+    } elsif ($type eq "counter32") {
+      $val = encode_counter32($value);
+    } elsif ($type eq "counter64") {
+      $val = encode_counter64($value);
+    } elsif ($type eq "gauge") {
+      $val = encode_gauge32($value);
+    } elsif ($type eq "gauge32") {
+      $val = encode_gauge32($value);
     } else {
       carp "unknown SNMP type: $type\n"
 	unless ($SNMP_Session::suppress_warnings > 1);
       return undef;
     }
+    if (!defined($val)) {
+      carp "SNMP type $type value $value didn't encode properly\n"
+	unless ($SNMP_Session::suppress_warnings > 1);
+      return undef;
+    }
+    push @enoid, [$oid,$val];
   }
   return undef unless defined $enoid[0];
   if ($session->set_request_response(@enoid)) {
