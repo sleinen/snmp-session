@@ -51,6 +51,12 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 <li> SNMP_Session 0.74: Put under copyright and Artistic
 License. </li>
 
+<li> SNMP_util 0.72: Changed snmpgetnext so it will return the next
+lexicographical larger OID number, even if it is not in the same OID
+tree.  Before the change snmpget would discard the return value if the
+OID wasn't in the same tree. (Change from <a
+href="mailto:mcm@unx.sas.com">Mike Mitchell</a>, the author) </li>
+
 <li> SNMP_Session 0.73: The UDP socket associated with each SNMP
 session object is now created using <tt>IO::Socket::INET->new</tt>.
 Before this change, a Perl file descriptor name was generated for each
@@ -590,7 +596,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19990913
+19990914
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
