@@ -340,7 +340,7 @@ sub request_response_5 ($$$$$)
 		return $response_length;
 	    } elsif (defined ($response_length)) {
 		# A response has been received, but for a different
-		# request ID.
+		# request ID or from a different IP address.
 	    } else {
 		return undef;
 	    }
