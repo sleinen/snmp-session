@@ -204,13 +204,15 @@ receive_trap method and decode them using decode_trap_request:
 	my ($trap, $sender_addr, $sender_port) = $trap_session->receive_trap ()
 	  || die "cannot receive trap";
 	my ($community, $enterprise, $agent,
-	    $generic, $specific, $sysUptime, @bindings)
+	    $generic, $specific, $sysUptime, $bindings)
 	  = $session->decode_trap_request ($trap)
 	    || die "cannot decode trap received"
 	...
-	foreach $binding (@bindings) {
-	    my ($key, $value) = decode_by_template ("%O%@");
-	    print BER::pretty_oid ($key)," => ",pretty_print ($value),"\n";
+	my ($binding, $oid, $value);
+	while ($bindings ne '') {
+	    ($binding,$bindings) = &amp;decode_sequence ($bindings);
+	    ($oid, $value) = decode_by_template ("%O%@");
+	    print BER::pretty_oid ($oid)," => ",pretty_print ($value),"\n";
 	}
 
 			     Future Plans
