@@ -555,7 +555,11 @@ sub receive_response_3
     my ($this, $response_tag, $oids, $errorp) = @_;
     my ($remote_addr);
     $remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,0);
-    return 0 unless $remote_addr;
+    return $this->error ("receiving response PDU: $!")
+	unless defined $remote_addr;
+    return $this->error ("short (".length $this->{'pdu_buffer'}
+			 ." bytes) response PDU")
+	unless length $this->{'pdu_buffer'} > 2;
     my $response = $this->{'pdu_buffer'};
     ##
     ## Check whether the response came from the address we've sent the
@@ -572,7 +576,7 @@ sub receive_response_3
     @unwrapped = $this->unwrap_response_6 ($response, $response_tag, $this->{"request_id"}, $oids, $errorp);
     if (!defined $unwrapped[0]) {
 	$this->{'unwrapped'} = undef;
-	return 0;
+	return undef;
     }
     $this->{'unwrapped'} = \@unwrapped;
     return length $this->pdu_buffer;
