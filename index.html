@@ -28,8 +28,8 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
  <SAMP>Socket.pm</SAMP> module and should therefore be very
  portable, even to non-Unix systems. </P>
 
-<p> The SNMP operations currently supported are "get", "get-next", and
- "set", as well as trap generation and reception. </p>
+<p> The SNMP operations currently supported are "get", "get-next",
+ "get-bulk" and "set", as well as trap generation and reception. </p>
 
 <p> For an excellent example of the type of application this is useful
  for, see Tobias Oetiker's <a
@@ -43,6 +43,11 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 <h2> Recent Changes: </h2>
 
 <ul>
+
+<li> SNMP_Session.pm 0.67: Implement a <tt>map_table_start_end</tt>
+method for <tt>SNMPv2c_Session</tt> which uses <tt>getBulk</tt>.  See
+<a href="#map-table-4-use">Walking Tables With <tt>getBulk</tt></a>
+for more information.
 
 <li> SNMP_Session.pm 0.66: Fix from <a
 href="mailto:Alan.Nichols@Ebay.Sun.COM">Alan Nichols</a> to the
@@ -369,6 +374,42 @@ $n_rows = $session->map_table ($columns, \&amp;walk_function);
 </pre>
 
 </ol>
+
+<H3><a name="map-table-4-use">Walking Tables With
+<tt>getBulk</tt></a></H3>
+
+<p> Since version 0.67, <tt>SNMP_Session</tt> uses a different
+<tt>get_table</tt> implementation for <tt>SNMPv2c_Session</tt>s.  This
+version uses the ``powerful <tt>getBulk</tt> operator'' to retrieve
+many table rows with each request.  In general, this will make table
+walking much faster under SNMPv2c, especially when round-trip times to
+the agent are long. </p>
+
+<p> There is one difficulty, however: With <tt>getBulk</tt>, a management
+application can specify the maximum number of rows to return in a
+single response.  <tt>SNMP_Session.pm</tt> provides a new function,
+<tt>map_table_4</tt>, in which this <tt>maxRepetitions</tt> value can
+be specified explicitly. </p>
+
+<p> For maximum efficiency, it should be set to a value that is one
+greater than the number of rows in the table.  If it is smaller, then
+<tt>map_table</tt> will use more request/response cycles than
+necessary; if it is bigger, the agent will have to compute variable
+bindings beyond the end of the table (which <tt>map_table</tt> will
+throw away). </p>
+
+<p> Of course it is usually impossible to know the size of the table
+in advance.  If you don't specify <tt>maxRepetitions</tt> when walking
+a table, then <tt>map_table</tt> will use a per-session default
+(<tt>$session->default_max_repetitions</tt>).  The default value for
+this default is 12. </p>
+
+<p> If you walk a table multiple times, and the size of the table is
+relatively stable, you should use the return value of
+<tt>map_table</tt> (which is the number of rows it has encountered) to
+compute the next value of <tt>maxRepetitions</tt>.  Remember to add
+one so that <tt>map_table</tt> notices when the table is finished!
+</p>
 
 <H2><a name="trap-send">Sending Traps</a></H2>
 
