@@ -1,3 +1,30 @@
+1998-03-25  Simon Leinen  <simon@limmat.switch.ch>
+
+	* README: Added Mike Mitchell to the list of contributors.
+
+1998-03-13  Simon Leinen  <simon@limmat.switch.ch>
+
+	* BER.pm (pretty_uptime): Be careful to use integer arithmetic.
+
+	($VERSION): 0.54 -> 0.55.
+
+1998-03-05  Simon Leinen  <simon@limmat.switch.ch>
+
+	* README: Added Niels Bakker to the credits.
+
+1998-02-14  Simon Leinen  <simon@limmat.switch.ch>
+
+	* BER.pm ($VERSION): -> 0.54.
+
+	* BER.pm: Changed the spacing in prototype argument lists so that
+ 	Perl 5.003 likes it.
+
+1998-02-13  Simon Leinen  <simon@limmat.switch.ch>
+
+	* BER.pm: Removed forgotten diagnostic message.
+
+	Made spacing before parentheses consistent.
+
 1998-02-13  Simon Leinen  <simon@limmat.switch.ch>
 
 	* BER.pm: Removed forgotten diagnostic message.
