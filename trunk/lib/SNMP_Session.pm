@@ -86,7 +86,7 @@ sub open
     $max_pdu_len = 8000 unless defined $max_pdu_len;
 
     $remote_addr = (gethostbyname($remote_hostname))[4]
-	|| die "host $remote_hostname not found: $!";
+	|| die (host_not_found_error ($remote_hostname, $?));
     $socket = 'SNMP'.sprintf ("%08x04x",
 			      unpack ("N", $remote_addr), $port);
     (($name,$aliases,$udp_proto) = getprotobyname('udp'))
@@ -94,7 +94,7 @@ sub open
     $udp_proto=17 unless $udp_proto;
     chop($local_hostname = `uname -n`);
     $local_addr = (gethostbyname($local_hostname))[4]
-	|| die "local host $local_hostname not found: $!";
+	|| die (host_not_found_error ($local_hostname, $?));
     $local_addr = pack ($sockaddr, AF_INET, 0, $local_addr);
     socket ($socket, AF_INET, SOCK_DGRAM, $udp_proto)
 	|| die "socket: $!";
@@ -111,6 +111,19 @@ sub open
 	'request_id' => rand 0x80000000 + rand 0xffff,
 	'timeout' => 3.0
 	};
+}
+
+sub host_not_found_error
+{
+    my ($hostname, $h_errno) = @_;
+    my ($message);
+
+    $message = "host $hostname not found";
+    return $message unless $?;
+    return $message.": ".(('no such host', 'temporary name service failure',
+			   'name service error', 'host has no address')[$?-1])
+	if $? > 0 && $? < 5;
+    return $message.", h_errno==".$?;
 }
 
 sub sock { @_[0]->{sock} }
