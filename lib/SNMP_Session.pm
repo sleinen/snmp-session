@@ -30,13 +30,13 @@ my $default_timeout = 2.0;
 ### response awaited with a longer timeout (see the documentation on
 ### BACKOFF below).
 ###
-my $default_retries = 3;
+my $default_retries = 5;
 
 ### Default backoff factor for SNMP_Session objects.  This factor is
 ### used to increase the TIMEOUT every time an SNMP request is
 ### retried.
 ###
-my $default_backoff = 1.5;
+my $default_backoff = 1.0;
 
 sub get_request  { 0 | context_flag };
 sub getnext_request  { 1 | context_flag };
@@ -62,6 +62,7 @@ sub encode_request
     # and a NULL.
     grep($_ = encode_sequence($_,encode_null()),@encoded_oids);
 
+    ++$this->{request_id};
     $request = encode_tagged_sequence
 	($reqtype,
 	 encode_int ($this->{request_id}),
@@ -87,8 +88,7 @@ sub decode_get_response
 {
     my($this, $response) = @_;
     my @rest;
-    eval '@rest = $this->unwrap_response ($response, get_response)';
-    $@ ? 0 : @rest;
+    @{$this->{'unwrapped'}};
 }
 
 sub wait_for_response
@@ -105,20 +105,21 @@ sub get_request_response
 {
     my($this) = shift;
     my(@oids) = @_;
-    return $this->request_response ($this->encode_get_request (@oids));
+    return $this->request_response_3 ($this->encode_get_request (@oids), get_response);
 }
 
 sub getnext_request_response
 {
     my($this) = shift;
     my(@oids) = @_;
-    return $this->request_response ($this->encode_getnext_request (@oids));
+    return $this->request_response_3 ($this->encode_getnext_request (@oids), get_response);
 }
 
-sub request_response
+sub request_response_3
 {
     my $this = shift;
     my $req = shift;
+    my $response_tag = shift;
     my $retries = $this->retries;
     my $timeout = $this->timeout;
 
@@ -128,8 +129,10 @@ sub request_response
 	if ($this->wait_for_response($timeout)) {
 	    my($response_length);
 
-	    $response_length = $this->receive_response();
-	    return $response_length if $response_length;
+	    $response_length = $this->receive_response_1 ($response_tag);
+	    if ($response_length) {
+		return $response_length;
+	    }
 	} else {
 	    ## No response received - retry
 	    --$retries;
@@ -184,7 +187,7 @@ sub open
 	'remote_addr' => $remote_addr,
 	'max_pdu_len' => $max_pdu_len,
 	'pdu_buffer' => '\0' x $max_pdu_len,
-	'request_id' => rand 0x80000000 + rand 0xffff,
+	'request_id' => int (rand 0x80000000 + rand 0xffff),
 	'timeout' => $default_timeout,
 	'retries' => $default_retries,
 	'backoff' => $default_backoff,
@@ -226,12 +229,17 @@ sub wrap_request
 		     $request);
 }
 
-sub unwrap_response
+sub unwrap_response_4
 {
-    my($this,$response,$tag) = @_;
-    decode_by_template ($response, "%{%0i%*s%*{%*i%0i%0i%{%@", 
-			$this->{community}, $tag,
-			$this->{request_id});
+    my($this,$response,$tag,$request_id) = @_;
+    my($community,$request_id,@rest) = decode_by_template ($response, "%{%0i%s%*{%i%*i%*i%{%@", 
+							   $tag,
+							   $request_id,
+							   $this->snmp_version (),
+							   0);
+    return undef unless $community eq $this->{'community'};
+    return undef unless $request_id == $this->{request_id};
+    @rest;
 }
 
 sub send_query
@@ -241,31 +249,48 @@ sub send_query
     send ($this->sock,$query,0,$this->remote_addr);
 }
 
-sub receive_response
+sub receive_response_1
 {
-    my($this) = shift;
+    my $this = shift;
+    my $response_tag = shift;
     my($remote_addr);
     ($remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,0))
 	|| return 0;
+    my $response = $this->{'pdu_buffer'};
     ##
     ## Check whether the response came from the address we've sent the
     ## request to.  If this is not the case, we should probably ignore
     ## it, as it may relate to another request.
     ##
     if ($remote_addr ne $this->{'remote_addr'}) {
-	warn "Response came from $remote_addr, not ".$this->remote_addr;
+	warn "Response came from ".&pretty_address ($remote_addr)
+	    .", not ".&pretty_address($this->{'remote_addr'})."]";
 	return 0;
     }
+
+    my @unwrapped = ();
+    eval '@unwrapped = $this->unwrap_response_4 ($response, $response_tag, $this->{"request_id"})';
+    if ($@ || !$unwrapped[0]) {
+	return 0;
+    }
+    $this->{'unwrapped'} = \@unwrapped;
     return length $this->pdu_buffer;
+}
+
+sub pretty_address
+{
+    my($addr) = shift;
+    my($family,$port,@ipaddr) = unpack('S n a4 x8',$addr);
+    @ipaddr = unpack ('CCCC',$ipaddr[0]);
+    return sprintf ("[%d.%d.%d.%d].%d",@ipaddr,$port);
 }
 
 sub describe
 {
     my($this) = shift;
-    my($family,$port,@ipaddr) = unpack ('S n C4 x8',$this->remote_addr);
 
-    printf "SNMP_Session: %d.%d.%d.%d:%d (size %d timeout %g)\n",
-    $ipaddr[0],$ipaddr[1],$ipaddr[2],$ipaddr[3],$port,$this->max_pdu_len,
+    printf "SNMP_Session: %s (size %d timeout %g)\n",
+    &pretty_address ($this->remote_addr),$this->max_pdu_len,
     $this->timeout;
 }
 
