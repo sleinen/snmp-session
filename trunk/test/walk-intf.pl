@@ -7,6 +7,9 @@ use strict;
 use BER;
 use SNMP_Session;
 
+### Prototypes
+sub usage($ );
+
 my $hostname = $ARGV[0] || usage (1);
 my $community = $ARGV[1] || usage (1);
 
