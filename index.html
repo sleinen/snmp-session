@@ -44,6 +44,12 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 <ul>
 
+<li> SNMP_util.pm 0.56: New subroutine <tt>snmpmapOID</tt>, <a
+href="mailto:mcm@unx.sas.com">Mike Mitchell</a>.
+
+<li> SNMP_Session.pm 0.64: Fix of a bug in the detection of missing
+responses by <a href="mailto:mcm@unx.sas.com">Mike Mitchell</a>.
+
 <li> SNMP_Session.pm 0.63: Fixed response matching logic to ignore
  out-of-sequence responses.  This has been a long-standing bug which
  made it very hard to use a single session object for multiple queries
@@ -465,7 +471,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19981116
+19981211
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
