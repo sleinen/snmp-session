@@ -18,6 +18,8 @@
 ### Simon Leinen <simon@switch.ch>: more OIDs from Interface MIB
 ### Jacques Supcik <supcik@ip-plus.net>: Specify local IP, port
 ### Tobias Oetiker <oetiker@ee.ethz.ch>: HASH as first OID to set SNMP options
+### Simon Leinen <simon@switch.ch>: 'undefined port' bug
+### Daniel McDonald <dmcdonald@digicontech.com>: request for getbulk support
 ######################################################################
 
 package SNMP_util;
