@@ -7,52 +7,23 @@ use BER;
 
 $query_string = $ENV{'QUERY_STRING'};
 
-if (!defined ($query_string)) {
-    print "Content-type: text/html
-Content-transfer-encoding: binary
-
-<HTML>
-<HEAD><TITLE>Perl SNMP Module Test</TITLE></HEAD>
-<BODY>
-<H1>Perl SNMP Module Test</H1>
-<HR>
-<FORM>
-Host name:
-<SELECT NAME=hostname>
-<OPTION VALUE=\"liasg1.epfl.ch\">liasg1.epfl.ch
-<OPTION VALUE=\"liasg2.epfl.ch\">liasg2.epfl.ch
-<OPTION VALUE=\"liasg3.epfl.ch\">liasg3.epfl.ch
-<OPTION VALUE=\"liasg4.epfl.ch\">liasg4.epfl.ch
-<OPTION SELECTED VALUE=\"liasg5.epfl.ch\">liasg5.epfl.ch
-<OPTION VALUE=\"liasg6.epfl.ch\">liasg6.epfl.ch
-<OPTION VALUE=\"liasg7.epfl.ch\">liasg7.epfl.ch
-<OPTION VALUE=\"liasg8.epfl.ch\">liasg8.epfl.ch
-<OPTION VALUE=\"liasg9.epfl.ch\">liasg9.epfl.ch
-</SELECT>
-Community name:
-<SELECT NAME=community>
-<OPTION VALUE=\"public\">public
-</SELECT>
-<BR>
-<INPUT TYPE=submit VALUE=\"Send request\">
-<INPUT TYPE=reset VALUE=\"Clear\">
-</FORM>
-</BODY>
-</HTML>
-";
+if (!defined ($query_string) || !$query_string) {
+    write_query_form ();
 } else {
-    parse_query ();
+    my (%query) = parse_query ();
     init_oids ();
     query_to_html_response ($query{'hostname'}, $query{'community'});
 }
+1;
 
 sub parse_query
 {
-    undef %query;
+    my (%query) = (());
     foreach (split('&',$query_string)) {
 	($lhs,$rhs) = split('=',$_,2);
 	$query{$lhs} = $rhs if $rhs;
     }
+    return %query;
 }
 
 sub init_oids
@@ -138,4 +109,40 @@ sub html_quote
     s/</&lt;/g;
     s/>/&gt;/g;
     $_;
+}
+
+sub write_query_form
+{
+    print "Content-type: text/html
+Content-transfer-encoding: binary
+
+<HTML>
+<HEAD><TITLE>Perl SNMP Module Test</TITLE></HEAD>
+<BODY>
+<H1>Perl SNMP Module Test</H1>
+<HR>
+<FORM>
+Host name:
+<SELECT NAME=hostname>
+<OPTION VALUE=\"liasg1.epfl.ch\">liasg1.epfl.ch
+<OPTION VALUE=\"liasg2.epfl.ch\">liasg2.epfl.ch
+<OPTION VALUE=\"liasg3.epfl.ch\">liasg3.epfl.ch
+<OPTION VALUE=\"liasg4.epfl.ch\">liasg4.epfl.ch
+<OPTION SELECTED VALUE=\"liasg5.epfl.ch\">liasg5.epfl.ch
+<OPTION VALUE=\"liasg6.epfl.ch\">liasg6.epfl.ch
+<OPTION VALUE=\"liasg7.epfl.ch\">liasg7.epfl.ch
+<OPTION VALUE=\"liasg8.epfl.ch\">liasg8.epfl.ch
+<OPTION VALUE=\"liasg9.epfl.ch\">liasg9.epfl.ch
+</SELECT>
+Community name:
+<SELECT NAME=community>
+<OPTION VALUE=\"public\">public
+</SELECT>
+<BR>
+<INPUT TYPE=submit VALUE=\"Send request\">
+<INPUT TYPE=reset VALUE=\"Clear\">
+</FORM>
+</BODY>
+</HTML>
+";
 }
