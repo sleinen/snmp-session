@@ -29,6 +29,10 @@ ber-test.pl
 	a few regression tests for BER encoding.  If you get errors
 	running these, I'd be very interested to hear about it!
 
+sun-ps
+	list the process table of a remote system using the "sun" MIB
+	implemented in Sun's Solstice Enterprise Agents.
+
 trap-send
 	send an SNMPv1 trap to a remote management station
 
