@@ -3,17 +3,21 @@ package SNMP_Session;
 require 'Socket.pm';
 use Socket;
 
+sub get_request  { 0 | BER::context_flag | BER::constructor_flag };
+sub get_response { 2 | BER::context_flag | BER::constructor_flag };
+
+sub standard_udp_port { 161 };
+
 sub open
 {
     my($this,$remote_hostname,$community,$port,$max_pdu_len) = @_;
     my($name,$aliases,$local_hostname,$local_addr,$remote_addr);
 
-    $snmp_standard_udp_port = 161;
     $udp_proto = 0;
     $sockaddr = 'S n a4 x8';
 
     $community = 'public' unless defined $community;
-    $port = $snmp_standard_udp_port unless defined $port;
+    $port = standard_udp_port unless defined $port;
     $max_pdu_len = 8000 unless defined $max_pdu_len;
 
     (($name,$aliases,$udp_proto) = getprotobyname('ucp'))
@@ -21,15 +25,15 @@ sub open
     chop($local_hostname = `uname -n`);
     $local_addr = (gethostbyname($local_hostname))[4]
 	|| die "local host $local_hostname not found: $!";
-    $local_addr = pack ($sockaddr, &AF_INET, 0, $local_addr);
+    $local_addr = pack ($sockaddr, AF_INET, 0, $local_addr);
     $udp_proto=17 unless $udp_proto;
     $remote_addr = (gethostbyname($remote_hostname))[4]
 	|| die "host $remote_hostname not found: $!";
-    socket (SOCKET, &AF_INET, &SOCK_DGRAM, $udp_proto)
+    socket (SOCKET, AF_INET, SOCK_DGRAM, $udp_proto)
 	|| die "socket: $!";
     bind (SOCKET, $local_addr)
 	|| die "bind $local_addr: $!";
-    $remote_addr = pack ($sockaddr, &AF_INET, $port, $remote_addr);
+    $remote_addr = pack ($sockaddr, AF_INET, $port, $remote_addr);
     bless {
 	'sock' => SOCKET,
 	'snmp_version' => 0,
@@ -39,8 +43,7 @@ sub open
 	'pdu_buffer' => '\0' x $max_pdu_len,
 	'request_id' => rand 0x80000000 + rand 0xffff,
 	'timeout' => 3.0
-	}, 
-    SNMP_Session;
+	};
 }
 
 sub close
@@ -101,8 +104,9 @@ sub describe
     my($this) = shift;
     my($family,$port,@ipaddr) = unpack ('S n C4 x8',$this->{remote_addr});
 
-    printf "SNMP_Session: %d.%d.%d.%d:%d (%d)\n",
-    $ipaddr[0],$ipaddr[1],$ipaddr[2],$ipaddr[3],$port,$this->{max_pdu_len};
+    printf "SNMP_Session: %d.%d.%d.%d:%d (size %d timeout %g)\n",
+    $ipaddr[0],$ipaddr[1],$ipaddr[2],$ipaddr[3],$port,$this->{max_pdu_len},
+    $this->{timeout};
 }
 
 sub encode_get_request
@@ -113,7 +117,7 @@ sub encode_get_request
     return BER::encode_sequence (BER::encode_int ($this->{snmp_version}),
 			       BER::encode_string ($this->{community}),
 			       BER::encode_tagged_sequence
-				 (0x80,
+				 (get_request,
 				BER::encode_int ($this->{request_id}),
 				BER::encode_int (0),
 				BER::encode_int (0),
@@ -125,8 +129,9 @@ sub decode_get_response
 {
     my($this) = shift;
     my($response) = shift;
-    BER::decode_by_template ($response, "%{%0i%*s%162{%*i%0i%0i%{%@", 
-			     $this->{community}, $this->{request_id});
+    BER::decode_by_template ($response, "%{%0i%*s%*{%*i%0i%0i%{%@", 
+			     $this->{community}, get_response,
+			     $this->{request_id});
 }
 
 1;
