@@ -3,7 +3,7 @@
 ### Name:	  asn1-test.pl
 ### Date Created: Sat Feb  1 18:45:38 1997
 ### Author:	  Simon Leinen  <simon@switch.ch>
-### RCS $Id: asn1-test.pl,v 1.1 1997-02-02 15:54:47 simon Exp $
+### RCS $Id: asn1-test.pl,v 1.2 1997-02-02 16:47:30 simon Exp $
 ######################################################################
 
 require 5.002;
@@ -21,4 +21,10 @@ my ($result, $index) = &ASN_1::BER::decode ("\x01\x01\x00", 0);
 die unless ref($result) eq 'ASN_1::Boolean';
 die unless $result->value eq 0;
 die unless $index == 3;
+my ($result, $index) = &ASN_1::BER::decode ("\x10\x03\x01\x01\x00", 0);
+die "$result" unless ref($result) eq 'ASN_1::Sequence';
+die unless length $result->members == 1;
+die unless ref(($result->members)[0]) eq 'ASN_1::Boolean';
+die unless ($result->members)[0]->value eq 0;
+die unless $index == 5;
 1;
