@@ -64,7 +64,7 @@ require 5.003;
 use strict;
 
 use BER;
-use SNMP_Session "0.67";	# requires map_table_4
+use SNMP_Session "0.96";	# requires map_table_4() and ipv4only
 use POSIX;			# for exact time
 use Curses;
 use Math::BigInt;
@@ -92,7 +92,11 @@ my $show_out_discards = 0;
 
 my $cisco_p = 0;
 
+## Whether to use 64-bit counters.  Can be requested with `-l' option.
 my $counter64_p = 0;
+
+## Whether to select IPv4-only in open().  Can be set using `-4' option.
+my $ipv4_only_p = 0;
 
 my $host;
 
@@ -108,7 +112,7 @@ while (defined $ARGV[0]) {
 	}
 	if ($ARGV[0] eq '1') {
 	    $version = '1';
-	} elsif ($ARGV[0] eq '2c') {
+	} elsif ($ARGV[0] eq '2c' or $ARGV[0] eq '2') {
 	    $version = '2c';
 	} else {
 	    usage (1);
@@ -162,6 +166,8 @@ while (defined $ARGV[0]) {
 	$debug = 1;
     } elsif ($ARGV[0] eq '-D') {
 	$show_out_discards = 1;
+    } elsif ($ARGV[0] eq '-4') {
+	$ipv4_only_p = 1;
     } elsif ($ARGV[0] eq '-h') {
 	usage (0);
 	exit 0;
@@ -349,8 +355,8 @@ sub pretty_bps ($$) {
 $win->erase ()
     unless $suppress_output;
 my $session =
-    ($version eq '1' ? SNMPv1_Session->open ($host, $community, $port)
-     : $version eq '2c' ? SNMPv2c_Session->open ($host, $community, $port)
+    ($version eq '1' ? SNMPv1_Session->open ($host, $community, $port, undef, undef, undef, undef, $ipv4_only_p)
+     : $version eq '2c' ? SNMPv2c_Session->open ($host, $community, $port, undef, undef, undef, undef, $ipv4_only_p)
      : die "Unknown SNMP version $version")
   || die "Opening SNMP_Session";
 $session->debug (1) if $debug;
@@ -430,7 +436,7 @@ while (1) {
 
 sub usage ($) {
     warn <<EOM;
-Usage: $0 [-t secs] [-v (1|2c)] [-c] [-l] [-m max] [-p port] host [community]
+Usage: $0 [-t secs] [-v (1|2c)] [-c] [-l] [-m max] [-4] [-p port] host [community]
        $0 -h
 
   -h           print this usage message and exit.
@@ -449,6 +455,10 @@ Usage: $0 [-t secs] [-v (1|2c)] [-c] [-l] [-m max] [-p port] host [community]
 
   -m max       specifies the maxRepetitions value to use in getBulk requests
                (only relevant for SNMPv2c).
+
+  -4           use only IPv4 addresses, even if host also has an IPv6
+               address.  Use this for devices that are IPv6-capable
+               but whose SNMP agent doesn\'t listen to IPv6 requests.
 
   -m port      can be used to specify a non-standard UDP port of the SNMP
                agent (the default is UDP port 161).
