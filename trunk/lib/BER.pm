@@ -91,8 +91,10 @@ sub encode_oid
     foreach $subid (@oid) {
 	if ($subid < 128) {
 	    $result .= pack ("C", $subid);
+	} elsif ($subid < 16384) {
+	    $result .= pack ("CC", 0x80 | $subid >> 7, $subid & 0x7f);
 	} else {
-	    die "Cannot encode subid $subid";
+	    die "Cannot encode subid $subid yet.";
 	}
     }
     encode_header (object_id_tag, length $result).$result;
