@@ -21,14 +21,33 @@ require 5;
 require 'SNMP_Session.pm';
 use BER;
 
-$query_string = $ENV{'QUERY_STRING'};
+sub parse_query;
+sub init_oids;
+sub query_to_html_response;
+sub snmp_get;
+sub write_query_form;
+sub html_error_message;
+sub html_quote;
+
+my @allowed_hosts=qw(liasg1.epfl.ch liasg2.epfl.ch liasg3.epfl.ch
+	liasg4.epfl.ch liasg5.epfl.ch liasg6.epfl.ch
+	liasg7.epfl.ch liasg8.epfl.ch liasg9.epfl.ch);
+my %allowed_hosts;
+foreach (@allowed_hosts) { $allowed_hosts{$_} = 1; }
+
+my $query_string = $ENV{'QUERY_STRING'};
 
 if (!defined ($query_string) || !$query_string) {
     write_query_form ();
 } else {
     my (%query) = parse_query ();
     init_oids ();
-    query_to_html_response ($query{'hostname'}, $query{'community'});
+    if (! defined ($allowed_hosts{$query{'hostname'}})) {
+	print "Content-type: text/html\n\n";
+	html_error_message ("parsing the query", "Illegal hostname");
+    } else {
+	query_to_html_response ($query{'hostname'}, $query{'community'});
+    }
 }
 1;
 
@@ -161,7 +180,7 @@ sub html_error_message
 {
     my($context, $errmsg) = @_;
 
-    print "<H2>SNMP Error</H2>\n";
+    print "<H2>SNMP Error</H2>\n<HR>\n";
     print "<P>While ",$context,", the following error occurred:</P>\n";
     print "<PRE>",&html_quote($errmsg),"</PRE></BODY></HTML>";
 }
