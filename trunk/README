@@ -108,27 +108,99 @@ reference to a two-element array, the first element being the encoded
 OID and the second one the encoded value.  See the `test/set-test.pl'
 script for an example, in particular the subroutine `snmpset'.
 
+			    Walking Tables
+			    ..............
+
+Beginning with version 0.57 of SNMP_Session.pm, there is API support
+for walking tables.  The map_table method can be used for this as
+follows:
+
+	sub walk_function ($$$) {
+	  my ($index, $val1, $val3) = @_;
+	  ...
+	}
+	
+	...
+	$columns = [$base_oid1, $base_oid3];
+	$n_rows = $session->map_table ($columns, \&walk_function);
+
+The COLUMNS argument must be a reference to a list of OIDs for table
+columns sharing the same index.  The method will traverse the table
+and call the WALK_FUNCTION for each row. The arguments for these calls
+will be:
+
+* the row index as a partial OID in dotted notation, e.g. "1.3", or
+  "10.0.1.34".
+
+* the values of the requested table columns in that row, in
+  BER-encoded form.  If you want to use the standard pretty_print
+  subroutine to decode the values, you can use the following idiom:
+
+	grep (defined $_ && ($_=pretty_print $_), ($val1, $val3));
+
+			    Sending Traps
+			    .............
+
+To send a trap, you have to open an SNMP session to the trap receiver.
+Usually this is a process listening to UDP port 162 on a network
+management station.  Then you can use the trap_request_send method to
+encode and send the trap.  There is no way to find out whether the
+trap was actually received at the management station - SNMP traps are
+fundamentally unreliable.
+
+When constructing a trap, you must provide
+
+* the "enterprise" Object Identifier for the entity that generates the
+  trap
+
+* your IP address
+
+* the generic trap type
+
+* the specific trap type
+
+* the sysUpTime at the time of trap generation
+
+* a sequence (may be empty) of variable bindings further describing
+ the trap.
+
+Here is a short example:
+
+	my $trap_receiver = "netman.noc";
+	my $trap_community = "SNMP_Traps";
+	my $trap_session = SNMP_Session::open ($trap_receiver, $trap_community, 162);
+	my $myIpAddress = ...;
+	my $start_time = time;
+	
+	...
+	
+	sub link_down_trap ($) {
+	  my ($if_index) = @_;
+	  my $genericTrap = 2;		# linkDown
+	  my $specificTrap = 0;
+	  my @ifIndexOID = ( 1,3,6,1,2,1,2,2,1,1 );
+	  my $upTime = int ((time - $start_time) * 100.0);
+	  my @myOID = ( 1,3,6,1,4,1,2946,0,8,15 );
+	
+	  warn "Sending trap failed"
+	    unless $trap_session->trap_request_send (encode_oid (@myOID),
+						     encode_ip_address ($myIpAddress),
+						     encode_int ($genericTrap),
+						     encode_int ($specificTrap),
+						     encode_timeticks ($upTime),
+						     [encode_oid (@ifIndexOID,$if_index),
+						      encode_int ($if_index)]);
+	}
 			     Future Plans
 			     ............
 
-			    SNMPv2 Support
+			    SNMPv3 Support
 
-The SNMP_Session type has already been subclassed into SNMPv1_Session
-and SNMPv2_Session.  There is also some code to parse party database
-from the CMU SNMPv2 package.  The same should be done for the context
-database.  Then I can to write a method that creates a SNMPv2_Session
-from source and destination parties and a context, and write PDU
-encoding/decoding methods that handle the SNMPv2 packet formats.  MD5
-hashing and DES encryption should be added so that authentication and
-privacy can be used.  Then the getBulk PDU should be implemented.
-
-Unfortunately(?) this is all more or less moot since the
-``traditional'' SNMPv2 party model has been abandoned because it was
-considered to be too difficult to deploy.  The current standard is
-SNMPv2C, which is basically SNMPv2 with the community-based
-``security'' model from SNMPv1.  This would still be worthwhile
-because of the addition of getBulk and other improvements.  However, I
-don't have any agent implementation I could test my code against.
+The code could first be restructured to follow the modularization
+proposed in RFC 2271 (An Architecture for Describing SNMP Management
+Frameworks).  Later, one could add support for SNMPv2c and SNMPv3
+encodings, and support for user-based security.  An interface to
+getBulk requests should be provided.
 
 			   More Operations
 
@@ -137,10 +209,6 @@ applications.  The elementary application would be a program that just
 sits there and waits for traps, logging them or sending some kinds of
 notifications.  A larger management application could react on traps
 by sending out SNMP requests to localize problems more exactly.
-
-An interface to sending traps would help those people who have network
-management systems that react on SNMP traps and want to integrate Perl
-tools that can send alarms.
 
 			     MIB parsing
 
@@ -166,7 +234,3 @@ name-to-type or oid-to-type mappings).
 The current programming interface is very close to the level of SNMP
 operations and PDUs.  For actual management applications, there are
 probably more convenient interfaces that could be defined.
-
-At the very least, there should be an interface to traverse tables.
-The implementation of the table-traversing interface should use
-getBulk on SNMPv2 sessions.
