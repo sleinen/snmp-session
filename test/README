@@ -24,6 +24,11 @@ if-counters.pl (requires Curses.pm)
 	real-time.  Demonstrates map_table_4 and a heuristic for
 	maxRepetitions.
 
+iftop (requires Curses.pm)
+	Display top interface counters in real time.
+	Based on if-counters.pl.
+	Contributed by Dave Plonka <plonka@doit.wisc.edu>
+
 set-test.pl
 	Application that tries to change the sysContact.0 variable and
 	then changes it back to the original value.  Contributed by
