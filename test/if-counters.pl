@@ -14,7 +14,7 @@ require 5.003;
 use strict;
 
 use BER;
-use SNMP_Session;
+use SNMP_Session "0.67";	# requires map_table_4
 use POSIX;			# for exact time
 use Curses;
 
