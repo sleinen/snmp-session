@@ -1,4 +1,6 @@
-Sat Feb  1 17:33:57 1997  Simon Leinen  <simon@switch.ch>
+Sat Feb  1 17:42:01 1997  Simon Leinen  <simon@switch.ch>
+
+	* Makefile (PROGSRCS): Added ber-test.pl.
 
 	* BER.pm: Use integer.
 
