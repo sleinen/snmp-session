@@ -32,10 +32,10 @@ sub snmp_get
 	($bindings) = $session->decode_get_response ($response);
 
 	while ($bindings ne '') {
-	    ($binding,$bindings) = &BER::decode_sequence ($bindings);
-	    ($oid,$value) = &BER::decode_by_template ($binding, "%O%@");
+	    ($binding,$bindings) = BER::decode_sequence ($bindings);
+	    ($oid,$value) = BER::decode_by_template ($binding, "%O%@");
 	    print $pretty_oids{$oid}," => ",
-	    &BER::pretty_print ($value), "\n";
+	    BER::pretty_print ($value), "\n";
 	}
     } else {
 	warn "Response not received.\n";
