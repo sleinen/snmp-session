@@ -1,3 +1,44 @@
+Mon Jul  8 17:07:59 1996  Simon Leinen  <simon@instrumatic.ch>
+
+	* walk-test.pl: Initial revision
+
+	* test.pl: Actually use the hostname passed on the command line.
+
+	* BER.pm (encoded_oid_prefix_p): New subroutine that checks
+ 	whether one encoded OID is a prefix of the other.
+
+	* SNMP_Session.pm (request_response): New function called by both
+ 	get_request_response and getnext_request_response.
+
+	* SNMP_Session.pm:
+	(getnext_request, encode_getnext_request,
+ 	getnext_request_response): New functions.
+
+	(encode_request): New subroutine called by both encode_get_request
+ 	and encode_getnext_request.
+
+	* BER.pm (pretty_oid): Print subids beyond 127 CORRECTLY.
+
+	* BER.pm (pretty_oid): Print subids beyond 127.
+
+	* BER.pm (pretty_print): Call `pretty_ip_address' for objects with
+ 	snmp_ip_address_tag.
+
+	(pretty_ip_address): New subroutine that prints an IP address
+ 	object in decimal quad notation.
+
+Wed Jun 12 15:55:20 1996  Simon Leinen  <simon@instrumatic.ch>
+
+	* BER.pm (encode_oid): Support OID subids up to 16383, up from 127.
+
+Fri Dec 22 11:45:02 1995  Simon Leinen  <simon@instrumatic.ch>
+
+	* wwwtest: Added forward definitions of all subroutines.
+
+	Check whether the hostname is in the list of allowed hosts.
+
+	(html_error_message): added horizontal line below the title.
+
 Fri Jul 28 17:23:14 1995  Simon Leinen  <simon@lia.di.epfl.ch>
 
 	* wwwtest (write_query_form): added a footer with links to the
