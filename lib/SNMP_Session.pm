@@ -48,7 +48,7 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.82';
+$VERSION = '0.83';
 
 @ISA = qw(Exporter);
 
@@ -316,6 +316,7 @@ sub request_response_5 ($$$$$) {
     while ($retries > 0) {
 	$this->send_query ($req)
 	    || return $this->error ("send_query: $!");
+      wait_for_response:
 	($nfound, $timeleft) = $this->wait_for_response($timeleft);
 	if ($nfound > 0) {
 	    my($response_length);
@@ -325,6 +326,7 @@ sub request_response_5 ($$$$$) {
 	    if ($response_length) {
 		return $response_length;
 	    } elsif (defined ($response_length)) {
+		goto wait_for_response;
 		# A response has been received, but for a different
 		# request ID or from a different IP address.
 	    } else {
@@ -496,9 +498,11 @@ use IO::Socket;
 sub snmp_version { 0 }
 
 sub open {
-    my($this,$remote_hostname,$community,$port,
-       $max_pdu_len,$bind_to_port,$max_repetitions) = @_;
-    my($remote_addr,$socket);
+    my($this,
+       $remote_hostname,$community,$port,
+       $max_pdu_len,$local_port,$max_repetitions,
+       $local_hostname) = @_;
+    my($remote_addr,$local_addr,$socket);
 
     $community = 'public' unless defined $community;
     $port = SNMP_Session::standard_udp_port unless defined $port;
@@ -509,12 +513,17 @@ sub open {
 	$remote_addr = inet_aton ($remote_hostname)
 	    or return $this->error_return ("can't resolve \"$remote_hostname\" to IP address");
     }
+    if (defined $local_hostname) {
+	$local_addr = inet_aton ($local_hostname)
+	    or return $this->error_return ("can't resolve \"$local_hostname\" to IP address");
+    }
     if ($SNMP_Session::recycle_socket && defined $the_socket) {
 	$socket = $the_socket;
     } else {
 	$socket = IO::Socket::INET->new(Proto => 17,
 					Type => SOCK_DGRAM,
-					LocalPort => $bind_to_port)
+					LocalAddr => $local_addr,
+					LocalPort => $local_port)
 	    || return $this->error_return ("creating socket: $!");
 	$the_socket = $socket
 	    if $SNMP_Session::recycle_socket;
@@ -538,6 +547,7 @@ sub open {
 	   'error_index' => 0,
 	   'default_max_repetitions' => $max_repetitions,
 	   'use_getbulk' => 1,
+	   'lenient_source_address_matching' => 1,
 	  };
 }
 
@@ -560,6 +570,8 @@ sub debug { defined $_[1] ? $_[0]->{debug} = $_[1] : $_[0]->{debug} }
 
 sub close {
     my($this) = shift;
+    ## Avoid closing the socket if it may be shared with other session
+    ## objects.
     if (! defined $the_socket || $this->sock ne $the_socket) {
 	close ($this->sock) || $this->error ("close: $!");
     }
@@ -632,11 +644,13 @@ sub send_query ($$) {
 ## where sockaddr_in contains other elements than just the IP address
 ## and port number, notably FreeBSD.
 ##
-sub sa_equal_p ($$) {
-    my ($sa1, $sa2) = @_;
+sub sa_equal_p ($$$) {
+    my ($this, $sa1, $sa2) = @_;
     my ($p1, $a1) = sockaddr_in ($sa1);
     my ($p2, $a2) = sockaddr_in ($sa2);
-    return 0 if $a1 ne $a2;
+    if (! $this->{'lenient_source_address_matching'}) {
+	return 0 if $a1 ne $a2;
+    }
     return 0 if $p1 != $p2;
     return 1;
 }
@@ -657,7 +671,7 @@ sub receive_response_3 {
     ## it, as it may relate to another request.
     ##
     if (defined $this->{'remote_addr'}) {
-	if (! sa_equal_p ($remote_addr, $this->{'remote_addr'})) {
+	if (! $this->sa_equal_p ($remote_addr, $this->{'remote_addr'})) {
 	    if ($this->{'debug'} && !$SNMP_Session::recycle_socket) {
 		warn "Response came from ".&SNMP_Session::pretty_address($remote_addr)
 		    .", not ".&SNMP_Session::pretty_address($this->{'remote_addr'})
