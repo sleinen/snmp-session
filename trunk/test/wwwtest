@@ -18,13 +18,13 @@
 
 require 5;
 
-use lib qw(/home/leinen/perl/SNMP_Session-0.96/lib);
+use lib qw(/home/leinen/perl/SNMP_Session-0.96/lib /home/leinen/perl/SNMP_Session-0.96/blib/lib);
 
 use SNMP_Session;
 use BER;
+use CGI qw(:debug);
 use strict;
 
-sub parse_query ();
 sub init_oids ();
 sub query_to_html_response ($$);
 sub snmp_get ($@);
@@ -32,10 +32,12 @@ sub write_query_form ();
 sub html_error_message ($$);
 sub html_quote ($ );
 
-my @allowed_hosts=qw(localhost babar.switch.ch);
+my @allowed_hosts=qw(localhost ::1 127.0.0.1);
 my %allowed_hosts;
 
 my $community_file_name = "/home/leinen/snmp/.zxc";
+
+my $ipv4_only_p = 0;
 
 my $intro = <<EOM;
 <P> This is a sample application of an
@@ -47,31 +49,21 @@ my (%ugly_oids, %pretty_oids);
 
 foreach (@allowed_hosts) { $allowed_hosts{$_} = 1; }
 
-my $query_string = $ENV{'QUERY_STRING'};
+my $q = new CGI;
 
-if (!defined ($query_string) || !$query_string) {
+if (!defined ($q) || !defined $q->param ('hostname')) {
     write_query_form ();
 } else {
-    my (%query) = parse_query ();
     init_oids ();
-    if (! exists ($allowed_hosts{$query{'hostname'}})) {
+    if (! exists ($allowed_hosts{$q->param ('hostname')})) {
 	print "Content-type: text/html\n\n";
-	html_error_message ("parsing the query", "Illegal hostname $query{'hostname'}");
+	html_error_message ("parsing the query", "Illegal hostname ".$q->param ('hostname'));
     } else {
-	query_to_html_response ($query{'hostname'}, $query{'community'});
+	query_to_html_response ($q->param ('hostname'),
+				$q->param ('community'));
     }
 }
 1;
-
-sub parse_query ()
-{
-    my (%query) = (());
-    foreach (split('&',$query_string)) {
-	my ($lhs,$rhs) = split('=',$_,2);
-	$query{$lhs} = $rhs if $rhs;
-    }
-    return %query;
-}
 
 sub init_oids ()
 {
@@ -103,7 +95,11 @@ sub query_to_html_response ($$)
     html_quote ($community), "@", html_quote ($hostname), "</H1>\n<HR>\n";
 
     srand();
-    eval { $session = SNMP_Session->open ($hostname, $community, 161) };
+    eval { $session = SNMPv2c_Session->open ($hostname, $community, 161,
+					     undef, undef, undef, undef,
+					     $ipv4_only_p) };
+    html_error_message ("opening SNMP session", $SNMP_Session::errmsg), return 0
+	unless defined $session;
     html_error_message ("opening SNMP session", $@), return 0 if $@;
     eval { snmp_get ($session, qw(sysDescr.0 sysLocation.0)) };
     html_error_message ("executing SNMP query", $@), return 0 if $@;
