@@ -117,27 +117,3 @@ sub pretty_service ($) {
 	: $service == 18 ? 'dtpt'
 	    : 'unknown('.$service.')';
 }
-
-sub out_session {
-    my ($index, $i2, $valid, $user, $addr, $mask, $service, $call_ref) = @_;
-
-    grep (defined $_ && ($_=pretty_print $_),
-	  ($i2, $valid, $user, $addr, $mask, $service, $call_ref));
-    return if $valid == 1;	# invalid
-    printf STDOUT ("%2d  %-24s %-15s %-15s %5d %s\n",
-		   $index,
-		   defined $user ? $user : '',
-		   inet_ntoa (pack ("C4",split ('\.',$addr))),
-		   inet_ntoa (pack ("C4",split ('\.',$mask))),
-		   $call_ref,
-		   pretty_service ($service));
-}
-
-sub out_call {
-    my ($index, $valid, $rate) = @_;
-
-    grep (defined $_ && ($_=pretty_print $_),
-	  ($valid, $rate));
-    return if $valid == 1;	# invalid
-    printf STDOUT ("%2d  %d\n", $index, $rate);
-}
