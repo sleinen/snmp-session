@@ -572,8 +572,12 @@ BEGIN {
     if (eval {require Socket6;})  {
 	import Socket6;
 
-	if (eval {require IO::Socket::INET6;})  {
-	    import IO::Socket::INET6;
+	if (eval {require IO::Socket::INET6;
+		  IO::Socket::INET6->VERSION ("1.26");
+	      })  {
+	    use IO::Socket::INET6;
+	} else {
+	    ## warn "failed to import INET6: $@";
 	}
 	if ( ! $@ ) {
 	    $ipv6available = 1;
@@ -645,9 +649,7 @@ sub open {
 	    $socket = IO::Socket::INET6->new(Proto => 17,
 					     Type => SOCK_DGRAM,
 					     LocalAddr => $local_hostname,
-					     LocalPort => $local_port,
-					     PeerAddr => $remote_hostname,
-					     PeerPort => $port)
+					     LocalPort => $local_port)
 	         || return $this->error_return ("creating socket: $!");
 	    $the_socket = $socket
 	        if $SNMP_Session::recycle_socket;
