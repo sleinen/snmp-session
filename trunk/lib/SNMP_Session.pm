@@ -234,12 +234,13 @@ sub decode_trap_request ($$) {
 	 $bindings)
 	    = decode_by_template ($trap, "%{%i%s%*{%i%i%i%{%@",
 				  trap2_request);
-	error_return ("v2 trap request contained errorStatus/errorIndex "
-		      .$error_status."/".$error_index)
-	    if $error_status != 0 || $error_index != 0;
+	return $this->error_return ("v2 trap request contained errorStatus/errorIndex "
+				    .$error_status."/".$error_index)
+	    if defined $error_status && defined $error_index
+	    && ($error_status != 0 || $error_index != 0);
     }
     if (!defined $snmp_version) {
-	error_return ("BER error decoding trap:\n  ".$BER::errmsg);
+	return $this->error_return ("BER error decoding trap:\n  ".$BER::errmsg);
     }
     return ($community, $ent, $agent, $gen, $spec, $dt, $bindings);
 }
