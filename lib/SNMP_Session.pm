@@ -18,7 +18,9 @@
 ### Heine Peters <peters@dkrz.de>
 ### Daniel L. Needles <dan_needles@INS.COM>
 ### Mike Mitchell <mcm@unx.sas.com>
-### Clinton Wong  <clintdw@netcom.com>
+### Clinton Wong <clintdw@netcom.com>
+### Alan Nichols <Alan.Nichols@Ebay.Sun.COM>
+### Mike McCauley <mikem@open.com.au>
 ######################################################################
 
 package SNMP_Session;		
@@ -39,7 +41,7 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.67';
+$VERSION = '0.68';
 
 @ISA = qw(Exporter);
 
@@ -670,6 +672,56 @@ sub to_string
 ##    sprintf ("SNMP_Session: %s (size %d timeout %g)",
 ##    &SNMP_Session::pretty_address ($this->remote_addr),$this->max_pdu_len,
 ##	       $this->timeout);
+}
+
+### SNMP Agent support
+### contributed by Mike McCauley <mikem@open.com.au>
+###
+sub receive_request
+{
+    my ($this) = @_;
+    my ($remote_addr, $iaddr, $port, $request);
+
+    $remote_addr = recv($this->sock, $this->{'pdu_buffer'}, 
+			$this->{'max_pdu_len'}, 0);
+    return undef unless $remote_addr;
+    ($port, $iaddr) = sockaddr_in($remote_addr);
+    $request = $this->{'pdu_buffer'};
+    return ($request, $iaddr, $port);
+}
+
+sub decode_request
+{
+    my ($this, $request) = @_;
+    my ($snmp_version, $community, $requestid, $errorstatus, $errorindex, $bindings);
+
+    ($snmp_version, $community, $requestid, $errorstatus, $errorindex, $bindings)
+	= decode_by_template ($request, "%{%i%s%*{%i%i%i%@", SNMP_Session::get_request);
+    if (defined $snmp_version)
+    {
+	# Its a valid get_request
+	return(SNMP_Session::get_request, $requestid, $bindings, $community);
+    }
+
+    ($snmp_version, $community, $requestid, $errorstatus, $errorindex, $bindings)
+	= decode_by_template ($request, "%{%i%s%*{%i%i%i%@", SNMP_Session::getnext_request);
+    if (defined $snmp_version)
+    {
+	# Its a valid getnext_request
+	return(SNMP_Session::getnext_request, $requestid, $bindings, $community);
+    }
+
+    ($snmp_version, $community, $requestid, $errorstatus, $errorindex, $bindings)
+	= decode_by_template ($request, "%{%i%s%*{%i%i%i%@", SNMP_Session::set_request);
+    if (defined $snmp_version)
+    {
+	# Its a valid set_request
+	return(SNMP_Session::set_request, $requestid, $bindings, $community);
+    }
+
+    # Something wrong with this packet
+    # Decode failed
+    return undef;
 }
 
 package SNMPv2c_Session;
