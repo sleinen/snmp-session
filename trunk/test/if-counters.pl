@@ -220,11 +220,13 @@ sub out_interface ($$$$$$@) {
 		unless $suppress_output;
 	}
 	if ($cisco_p) {
-	    $win->addstr (sprintf (" %10s %s",
-				   defined $crc ? $crc : '-',
-				   defined $comment ? $comment : ''))
+	    $win->addstr (sprintf (" %10s",
+				   defined $crc ? $crc : '-'))
 		unless $suppress_output;
 	}
+	$win->addstr (sprintf (" %s",
+			       defined $comment ? $comment : ''))
+	    unless $suppress_output;
     } else {
 	my $old = $old{$index};
 
@@ -251,11 +253,13 @@ sub out_interface ($$$$$$@) {
 		unless $suppress_output;
 	}
 	if ($cisco_p) {
-	    $win->addstr (sprintf (" %10.1f %s",
-				   defined $crc ? $d_crc : 0,
-				   defined $comment ? $comment : ''))
+	    $win->addstr (sprintf (" %10.1f",
+				   defined $crc ? $d_crc : 0))
 		unless $suppress_output;
 	}
+	$win->addstr (sprintf (" %s",
+			       defined $comment ? $comment : ''))
+	    unless $suppress_output;
 	$win->standend() if $alarm && !$suppress_output;
     }
     $old{$index} = {'in' => $in,
@@ -318,10 +322,9 @@ while (1) {
 				   "drops/s"));
 	}
 	if ($cisco_p) {
-	    $win->addstr (sprintf ((" %10s %s"),
-				   "pkts/s",
-				   "description"));
+	    $win->addstr (sprintf ((" %10s"), "pkts/s"));
 	}
+	$win->addstr (sprintf ((" %s"), "description"));
 	$win->addstr (2, 0,
 		      sprintf (("%2s  %-24s %10s %10s"),
 			       "", "",
