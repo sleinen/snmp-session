@@ -3,7 +3,23 @@
 ## Author:	Simon Leinen  <simon@switch.ch>
 ## Description:	Find ifIndex for given IP address
 ######################################################################
-## Usage: test/ip-addr-to-if-index community@hostname ipaddr...
+## Usage: test/ip-addr-to-if-index [-q] community@hostname ipaddr...
+##
+## This script finds the interface indices corresponding to the given
+## IP addresses on the node.
+##
+## Example: 
+##
+## $ ./test/ip-addr-to-if-index public@babar 127.0.0.1 130.59.4.2
+## 127.0.0.1       lo0        1
+## 130.59.4.2      hme0       2
+##
+## The `-q' form suppresses the IP addresses and interface
+## description:
+##
+## $ ./test/ip-addr-to-if-index -q public@babar 127.0.0.1 130.59.4.2
+## 1
+## 2
 ######################################################################
 
 require 5.002;
@@ -15,7 +31,16 @@ sub usage();
 sub ether_hex($ );
 sub ifDescr($ $ );
 
-my ($hostname,$community);
+my ($hostname,$community,$quiet);
+$quiet = 0;
+while ($ARGV[0] =~ /^-/) {
+    if ($ARGV[0] eq '-q') {
+	$quiet = 1;
+	shift @ARGV;
+    } else {
+	usage ();
+    }
+}
 $hostname = shift @ARGV || usage();
 ($community,$hostname) = ($hostname =~ /^(.*)@(.*)$/);
 
@@ -29,11 +54,7 @@ while ($ip_address = shift @ARGV) {
     my ($ip1,$ip2,$ip3,$ip4);
     usage()
 	unless (($ip1,$ip2,$ip3,$ip4)
-		= $ip_address =~ m/^([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)$/)
-	    && $ip1 > 0 && $ip1 < 256
-		&& $ip2 > 0 && $ip2 < 256
-		    && $ip3 > 0 && $ip3 < 256
-			&& $ip4 > 0 && $ip4 < 256;
+		= $ip_address =~ m/^([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)$/);
 
     my @ifIndex_OID = qw(1 3 6 1 2 1 4 20 1 2);
     push @ifIndex_OID, $ip1;
@@ -55,9 +76,11 @@ while ($ip_address = shift @ARGV) {
 	($oid,$value) = decode_by_template ($binding, "%O%@");
 	$ifIndex = pretty_print ($value);
 
-	printf STDOUT ("%-20s %d\n",
-		       ifDescr ($ifIndex, $session),
-		       $ifIndex);
+	if (!$quiet) {
+	    printf STDOUT ("%-15s %-10s ", $ip_address,
+			   &ifDescr ($ifIndex, $session));
+	}
+	printf STDOUT ("%d\n", $ifIndex);
 
     } else {
 	die "No response received.\n";
