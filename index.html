@@ -241,9 +241,15 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
 <H3>More Operations</H3>
 
 <p> Support for receiving traps would be useful for some management
- applications.  There may even be use for sending traps, but I cannot
- imagine any except when people would start agents using this library,
- and I don't know whether that would be a good idea. </p>
+ applications.  The elementary application would be a program that
+ just sits there and waits for traps, logging them or sending some
+ kinds of notifications.  A larger management application could react
+ on traps by sending out SNMP requests to localize problems more
+ exactly. </p>
+
+<p> An interface to sending traps would help those people who have
+ network management systems that react on SNMP traps and want to
+ integrate Perl tools that can send alarms. </p>
 
 <H3>MIB parsing</H3>
 
@@ -277,7 +283,7 @@ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19971114
+19971125
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
