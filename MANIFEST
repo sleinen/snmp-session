@@ -16,6 +16,7 @@ test/map-table.pl
 test/test-table.pl
 test/if-status.pl
 test/if-to-routes.pl
+test/sun-ps
 README.SNMP_util
 Makefile.PL
 MANIFEST
