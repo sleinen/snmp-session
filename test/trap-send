@@ -1,7 +1,7 @@
 #!/usr/local/bin/perl -w
 
 use strict;
-use BER;
+use BER '0.58';
 use SNMP_Session '0.58';
 
 my $trap_receiver = shift @ARGV || die;
@@ -11,18 +11,6 @@ my $start_time = time;
 
 link_down_trap (1);
 1;
-
-sub encode_ip_address ($) {
-  my ($addr) = @_;
-  die "IP address must consist of four bytes"
-    unless length $addr == 4;
-  return BER::encode_header (BER::snmp_ip_address_tag, 4).$addr;
-}
-
-sub encode_timeticks ($) {
-  my ($tt) = @_;
-  return BER::encode_intlike ($tt, BER::snmp_timeticks_tag);
-}
 
 sub link_down_trap ($) {
   my ($if_index) = @_;
