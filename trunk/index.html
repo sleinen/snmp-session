@@ -49,6 +49,11 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_Session.pm 0.82: Fixed retry logic to avoid sending a last
+retry without waiting for the response anymore.  Thanks to <a
+href="mailto:wardenb@eluminant.com">Brett T Warden</a> for the
+fix. </li>
+
 <li> BER.pm 0.82: OIDs with only two subids can now be encoded.  The
 most common case is the "null" OID (0.0).  Thanks to <a
 href="mailto:wardenb@eluminant.com">Brett T Warden</a> for pointing out
@@ -723,7 +728,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20001203
+20001210
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
