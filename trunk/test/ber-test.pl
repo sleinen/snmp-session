@@ -3,7 +3,7 @@
 ### Name:	  ber-test.pl
 ### Date Created: Sat Feb  1 16:09:46 1997
 ### Author:	  Simon Leinen  <simon@switch.ch>
-### RCS $Id: ber-test.pl,v 1.5 1998-04-09 12:05:52 leinen Exp $
+### RCS $Id: ber-test.pl,v 1.6 1998-04-30 10:59:12 leinen Exp $
 ######################################################################
 ### Regression Tests for BER encoding/decoding
 ######################################################################
@@ -21,6 +21,8 @@ exit ($exitcode);
 sub regression_test
 {
     &eq_test ('encode_string ("public")', "\x04\x06\x70\x75\x62\x6C\x69\x63");
+    &eq_test ('encode_ip_address ("\x82\x3b\x04\x02")', "\x40\x04\x82\x3b\x04\x02");
+    &eq_test ('encode_ip_address ("130.59.4.2")', "\x40\x04\x82\x3b\x04\x02");
     &encode_int_test (0x4aec3116, "\x02\x04\x4A\xEC\x31\x16");
     &encode_int_test (0xec3116, "\x02\x04\x00\xEC\x31\x16");
     &encode_int_test (0x3c3116, "\x02\x03\x3C\x31\x16");
