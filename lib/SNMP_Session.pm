@@ -31,7 +31,7 @@ use vars qw(@ISA $VERSION @EXPORT);
 use Socket;
 use BER;
 
-$VERSION = '0.53';
+$VERSION = '0.54';
 
 @ISA = qw(Exporter);
 
@@ -278,10 +278,13 @@ sub unwrap_response_5
 {
     my($this,$response,$tag,$request_id,$oids,$community,@rest);
     my ($error_status,$error_index,$snmpver);
+
     ($this,$response,$tag,$request_id,$oids) = @_;
     ($snmpver,$community,$request_id,$error_status,$error_index,@rest)
 	= decode_by_template ($response, "%{%i%s%*{%i%i%i%{%@",
 			      $tag);
+    return $this->ber_error ("BER decoding error")
+      unless defined $snmpver;
     return $this->error ("Received SNMP response with unknown snmp-version field $snmpver")
 	unless $snmpver == $this->snmp_version;
     if ($error_status != 0 || $error_index != 0) {
@@ -395,6 +398,15 @@ sub error
     $message =~ s/^/  /mg;
     warn ("SNMP Error:\n".$message."\n".$session."\n");
     return undef;
+}
+
+sub ber_error ($ )
+{
+  my ($this,$type) = @_;
+  my ($errmsg) = $BER::errmsg;
+
+  $errmsg =~ s/^/  /mg;
+  return $this->error ("$type:\n$errmsg");
 }
 
 1;
