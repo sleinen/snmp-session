@@ -19,6 +19,8 @@ my @nestmasters =
      ['mEZ11','public@130.59.49.16'],
     );
 
+@nestmasters = (['mEZ11','public@130.59.49.16']);
+
 my %short_types =
     qw(GMI-1GSX c
        GMI-1GLX c
@@ -28,7 +30,8 @@ my %short_types =
        GMOX-06  c
        GMOX-15  c
        GMOX-25  c
-       GMOX-ER  c);
+       GMOX-ER  c
+       GM-GE2   c);
 
 foreach (@nestmasters) {
     process_nest ($_->[0], $_->[1]);
@@ -55,7 +58,11 @@ sub process_nest ($$) {
 	my ($slotIndex, $slotIpAddress, $cardName) = @_;
 	return unless exists $slot_name{$slotIndex};
 
-	my $short_type = $short_types{$slot_type{$slotIndex}} || "other";
+	my $short_type = $short_types{$slot_type{$slotIndex}};
+	if (!defined $short_type) {
+	    warn "unknown type $slot_type{$slotIndex}";
+	    $short_type = 'other';
+	}
 	out_ip ($name.'-'.$short_type.$slotIndex, $slotIpAddress, $slot_type{$slotIndex});
 	#print "$name: slotIndex $slotIndex (name $slot_name{$slotIndex} type $slot_type{$slotIndex}) ip $slotIpAddress type $cardName\n";
     },
