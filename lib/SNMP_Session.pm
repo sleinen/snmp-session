@@ -35,6 +35,7 @@
 ### Valerio Bontempi <v.bontempi@inwind.it>: IPv6 support
 ### Lorenzo Colitti <lorenzo@colitti.com>: IPv6 support
 ### Philippe Simonet <Philippe.Simonet@swisscom.com>: Export avoid...
+### Luc Pauwels <Luc.Pauwels@xalasys.com>: use_16bit_request_ids
 ######################################################################
 
 package SNMP_Session;		
@@ -45,7 +46,8 @@ use strict;
 use Exporter;
 use vars qw(@ISA $VERSION @EXPORT $errmsg
 	    $suppress_warnings
-	    $default_avoid_negative_request_ids);
+	    $default_avoid_negative_request_ids
+	    $default_use_16bit_request_ids);
 use Socket;
 use BER '0.95';
 use Carp;
@@ -106,6 +108,13 @@ my $default_max_repetitions = 12;
 ### which prevents this code from matching such responses to requests.
 ###
 $SNMP_Session::default_avoid_negative_request_ids = 0;
+
+### Default value for "use_16bit_request_ids".
+###
+### Set this to non-zero if you have agents that use 16bit request IDs,
+### and don't forget to complain to your agent vendor.
+###
+$SNMP_Session::default_use_16bit_request_ids = 0;
 
 ### Whether all SNMP_Session objects should share a single UDP socket.
 ###
@@ -183,6 +192,8 @@ sub encode_request_3 ($$$@) {
 	? -0x80000000 : $this->{request_id}+1;
     $this->{request_id} += 0x80000000
 	if ($this->{avoid_negative_request_ids} && $this->{request_id} < 0);
+    $this->{request_id} &= 0x0000ffff
+	if ($this->{use_16bit_request_ids});
     foreach $_ (@{$encoded_oids_or_pairs}) {
       if (ref ($_) eq 'ARRAY') {
 	$_ = &encode_sequence ($_->[0], $_->[1])
@@ -679,6 +690,7 @@ sub open {
 	   'lenient_source_address_matching' => 1,
 	   'lenient_source_port_matching' => 1,
 	   'avoid_negative_request_ids' => $SNMP_Session::default_avoid_negative_request_ids,
+	   'use_16bit_request_ids' => $SNMP_Session::default_use_16bit_request_ids,
 	   'capture_buffer' => undef,
 	  };
 }
