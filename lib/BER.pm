@@ -20,7 +20,7 @@
 ### Dave Rand <dlr@Bungi.com>:  Added SysUpTime decode
 ### Philippe Simonet <sip00@vg.swissptt.ch>:  Support larger subids
 ### Yufang HU <yhu@casc.com>:  Support even larger subids
-### Mike Mitchell <mcm@unx.sas.com>: New generalized encode_int()
+### Mike Mitchell <Mike.Mitchell@sas.com>: New generalized encode_int()
 ### Mike Diehn <mdiehn@mindspring.net>: encode_ip_address()
 ### Rik Hoorelbeke <rik.hoorelbeke@pandora.be>: encode_oid() fix
 ### Brett T Warden <wardenb@eluminant.com>: pretty UInteger32
@@ -35,10 +35,11 @@ package BER;
 require 5.002;
 
 use strict;
-use vars qw(@ISA @EXPORT $VERSION $pretty_print_timeticks $errmsg);
+use vars qw(@ISA @EXPORT $VERSION $pretty_print_timeticks
+	    %pretty_printer $errmsg);
 use Exporter;
 
-$VERSION = '1.01';
+$VERSION = '1.02';
 
 @ISA = qw(Exporter);
 
@@ -51,7 +52,8 @@ $VERSION = '1.01';
 	     decode_sequence decode_by_template
 	     pretty_print pretty_print_timeticks
 	     hex_string hex_string_of_type
-	     encoded_oid_prefix_p errmsg);
+	     encoded_oid_prefix_p errmsg
+	     register_pretty_printer unregister_pretty_printer);
 
 ### Variables
 
@@ -63,6 +65,9 @@ $VERSION = '1.01';
 ## unsigned integer representing hundredths of seconds.
 ##
 $pretty_print_timeticks = 1;
+
+## A hash of pretty-printing subroutines for different type codes.
+%pretty_printer = ();
 
 ### Prototypes
 sub encode_header ($$);
@@ -85,6 +90,8 @@ sub pretty_uptime ($);
 sub pretty_uptime_value ($);
 sub pretty_ip_address ($);
 sub pretty_generic_sequence ($);
+sub register_pretty_printer ($);
+sub unregister_pretty_printer ($);
 sub hex_string ($);
 sub hex_string_of_type ($$);
 sub decode_oid ($);
@@ -188,12 +195,11 @@ sub encode_intlike ($$) {
     $sign = ($int >= 0) ? 0 : 0xff;
     if (ref $int && $int->isa ("Math::BigInt")) {
 	for(;;) {
-	    $val = $int->bmod (256);
+	    $val = $int->copy()->bmod (256);
 	    unshift(@vals, $val);
 	    return encode_header ($tag, $#vals + 1).pack ("C*", @vals)
 		if ($int >= -128 && $int < 128);
-	    $int = $int - $sign;
-	    $int = $int / 256;
+	    $int->bsub ($sign)->bdiv (256);
 	}
     } else {
 	for(;;) {
@@ -201,8 +207,7 @@ sub encode_intlike ($$) {
 	    unshift(@vals, $val);
 	    return encode_header ($tag, $#vals + 1).pack ("C*", @vals)
 		if ($int >= -128 && $int < 128);
-	    $int -= $sign;
-	    $int = int($int / 256);
+	    $int -= $sign, $int = int($int / 256);
 	}
     }
 }
@@ -305,9 +310,12 @@ sub encode_timeticks ($) {
 
 sub pretty_print ($) {
     my ($packet) = @_;
-    my ($type,$rest);
     return undef unless defined $packet;
     my $result = ord (substr ($packet, 0, 1));
+    if (exists ($pretty_printer{$result})) {
+	my $c_ref = $pretty_printer{$result};
+	return &$c_ref ($packet);
+    }
     return pretty_intlike ($packet)
 	if $result == int_tag;
     return pretty_unsignedlike ($packet)
@@ -794,6 +802,44 @@ sub decode_length ($@) {
 	@result = ($result, substr ($pdu, $index+1));
     }
     @result;
+}
+
+# This takes a hashref that specifies functions to call when
+# the specified value type is being printed.  It returns the
+# number of functions that were registered.
+sub register_pretty_printer($)
+{
+    my ($h_ref) = shift;
+    my ($type, $val, $cnt);
+
+    $cnt = 0;
+    while(($type, $val) = each %$h_ref) {
+	if (ref $val eq "CODE") {
+	    $pretty_printer{$type} = $val;
+	    $cnt++;
+	}
+    }
+    return($cnt);
+}
+
+# This takes a hashref that specifies functions to call when
+# the specified value type is being printed.  It removes the
+# functions from the list for the types specified.
+# It returns the number of functions that were unregistered.
+sub unregister_pretty_printer($)
+{
+    my ($h_ref) = shift;
+    my ($type, $val, $cnt);
+
+    $cnt = 0;
+    while(($type, $val) = each %$h_ref) {
+	if ((exists ($pretty_printer{$type}))
+	    && ($pretty_printer{$type} == $val)) {
+	    delete $pretty_printer{$type};
+	    $cnt++;
+	}
+    }
+    return($cnt);
 }
 
 #### OID prefix check
