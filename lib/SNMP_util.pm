@@ -26,6 +26,7 @@
 ### Valerio Bontempi <v.bontempi@inwind.it>: IPv6 support
 ### Lorenzo Colitti <lorenzo@colitti.com>: IPv6 support
 ### Joerg Kummer <JOERG.KUMMER@Roche.COM>: TimeTicks support in snmpset()
+### Christopher J. Tengi <tengi@CS.Princeton.EDU>: Gauge32 support in snmpset()
 ######################################################################
 
 package SNMP_util;
