@@ -1,3 +1,22 @@
+### - *- mode: Perl -*-
+######################################################################
+### SNMP_util -- SNMP utilities using SNMP_Session.pm and BER.pm
+######################################################################
+### Copyright (c) 1998-2000, Mike Mitchell.
+###
+### This program is free software; you can redistribute it under the
+### "Artistic License" included in this distribution (file "Artistic").
+######################################################################
+### Created by:  Mike Mitchell   <Mike.Mitchell@sas.com>
+###
+### Contributions and fixes by:
+###
+### Tobias Oetiker <oetiker@ee.ethz.ch>:  Basic layout
+### Simon Leinen <simon@switch.ch>: SNMP_session.pm/BER.pm
+### Jeff Allen <jeff.allen@acm.org>: length() of undefined value
+### Johannes Demel <demel@zid.tuwien.ac.at>: MIB file parse problem
+######################################################################
+
 package SNMP_util;
 
 require 5.002;
@@ -10,7 +29,7 @@ use BER "0.58";
 use SNMP_Session "0.59";
 use Socket;
 
-$VERSION = '0.72';
+$VERSION = '0.73';
 
 @ISA = qw(Exporter);
 
@@ -853,6 +872,7 @@ sub snmpMIB_to_OID ($)
 	}
 
 	$buf =~ s/OBJECT-TYPE/OBJECT IDENTIFIER/;
+	$buf =~ s/OBJECT-IDENTITY/OBJECT IDENTIFIER/;
 	$buf =~ s/MODULE-IDENTITY/OBJECT IDENTIFIER/;
 	$buf =~ s/ IMPORTS .*\;//;
 	$buf =~ s/ SEQUENCE {.*}//;
