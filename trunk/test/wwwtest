@@ -51,8 +51,7 @@ snmp_get ($session, qw(sysDescr.0 sysContact.0 ipForwarding.0
 		       computerSystemIdleCpu.0
 		       ifNumber.0
 		       ifMtu.1 ifInOctets.1 ifOutOctets.1
-		       ifMtu.2 ifInOctets.2 ifOutOctets.2))
-    || die "snmpget: $!";
+		       ifMtu.2 ifInOctets.2 ifOutOctets.2));
 $session->close ();
 
 print "</BODY>\n</HTML>\n";
@@ -79,7 +78,8 @@ sub snmp_get
 	print "</TABLE>\n";
 	1;
     } else {
-	warn "Response not received.\n";
+	print "<H1>SNMP Error</H1>\n";
+	print "<P>No response received.</P>";
 	0;
     }
 }
