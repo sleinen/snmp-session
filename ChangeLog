@@ -1,3 +1,12 @@
+Fri Jul 28 16:43:24 1995  Simon Leinen  <simon@lia.di.epfl.ch>
+
+	* wwwtest (write_query_form): added a footer with links to the
+ 	source and to my home page.
+
+Mon Jul 17 13:51:04 1995  Simon Leinen  <simon@lia.di.epfl.ch>
+
+	* Makefile (DOCS): removed ChangeLog.
+
 Thu Jul  6 13:15:59 1995  Simon Leinen  <simon@lia.di.epfl.ch>
 
 	* test.pl, wwwtest, SNMP_Session.pm:
