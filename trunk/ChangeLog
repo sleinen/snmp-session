@@ -1,4 +1,10 @@
-Mon Jul  8 17:07:59 1996  Simon Leinen  <simon@instrumatic.ch>
+Mon Jul  8 17:15:43 1996  Simon Leinen  <simon@instrumatic.ch>
+
+	* README: Updated my e-mail address.
+
+	Note that get-next is now supported.
+
+	* Makefile (PROGSRCS): Added walk-test.pl.
 
 	* walk-test.pl: Initial revision
 
