@@ -301,61 +301,60 @@ sub ber_error ($$)
 }
 
 sub map_table ($$$) {
-  my ($session, $columns, $mapfn) = @_;
-
-  return map_table_start_end ($session, $columns, $mapfn, "", undef);
+    my ($session, $columns, $mapfn) = @_;
+    return map_table_start_end ($session, $columns, $mapfn, "", undef);
 }
 
 sub map_table_start_end ($$$$$) {
-  my ($session, $columns, $mapfn, $start, $end) = @_;
+    my ($session, $columns, $mapfn, $start, $end) = @_;
 
-  my @encoded_oids;
-  my $call_counter = 0;
-  my $base_index = $start;
+    my @encoded_oids;
+    my $call_counter = 0;
+    my $base_index = $start;
 
-  do {
-    @encoded_oids = @{$columns};
-    @encoded_oids = grep ($_=encode_oid (@{$_},split '\.',$base_index),
-			  @encoded_oids);
-    if ($session->getnext_request_response (@encoded_oids)) {
-      my $response = $session->pdu_buffer;
-      my ($bindings) = $session->decode_get_response ($response);
-      my $smallest_index = undef;
-      my @collected_values = ();
+    do {
+	@encoded_oids = @{$columns};
+	@encoded_oids = grep ($_=encode_oid (@{$_},split '\.',$base_index),
+			      @encoded_oids);
+	if ($session->getnext_request_response (@encoded_oids)) {
+	    my $response = $session->pdu_buffer;
+	    my ($bindings) = $session->decode_get_response ($response);
+	    my $smallest_index = undef;
+	    my @collected_values = ();
 
-      my @bases = @{$columns};
-      while ($bindings ne '') {
-	my ($binding, $oid, $value);
-	my $base = shift @bases;
-	($binding, $bindings) = decode_sequence ($bindings);
-	($oid, $value) = decode_by_template ($binding, "%O%@");
+	    my @bases = @{$columns};
+	    while ($bindings ne '') {
+		my ($binding, $oid, $value);
+		my $base = shift @bases;
+		($binding, $bindings) = decode_sequence ($bindings);
+		($oid, $value) = decode_by_template ($binding, "%O%@");
 
-	my $out_index;
+		my $out_index;
 
-	$out_index = &oid_diff ($base, $oid);
-	my $cmp;
-	if (!defined $smallest_index
-	    || ($cmp = index_compare ($out_index,$smallest_index)) == -1) {
-	  $smallest_index = $out_index;
-	  grep ($_=undef, @collected_values);
-	  push @collected_values, $value;
-	} elsif ($cmp == 1) {
-	  push @collected_values, undef;
+		$out_index = &oid_diff ($base, $oid);
+		my $cmp;
+		if (!defined $smallest_index
+		    || ($cmp = index_compare ($out_index,$smallest_index)) == -1) {
+		    $smallest_index = $out_index;
+		    grep ($_=undef, @collected_values);
+		    push @collected_values, $value;
+		} elsif ($cmp == 1) {
+		    push @collected_values, undef;
+		} else {
+		    push @collected_values, $value;
+		}
+	    }
+	    (++$call_counter,
+	     &$mapfn ($smallest_index, @collected_values))
+		if defined $smallest_index;
+	    $base_index = $smallest_index;
 	} else {
-	  push @collected_values, $value;
+	    return undef;
 	}
-      }
-      (++$call_counter,
-       &$mapfn ($smallest_index, @collected_values))
-	if defined $smallest_index;
-      $base_index = $smallest_index;
-    } else {
-      die "SNMP error";
     }
-  }
-  while (defined $base_index
-	&& (!defined $end || index_compare ($base_index, $end) < 0));
-  $call_counter;
+    while (defined $base_index
+	   && (!defined $end || index_compare ($base_index, $end) < 0));
+    $call_counter;
 }
 
 sub index_compare ($$) {
