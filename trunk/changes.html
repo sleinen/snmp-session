@@ -24,6 +24,29 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_Session.pm 0.93: There's a new variable
+<tt>$default_avoid_negative_request_ids</tt>.  If it is set to a
+non-zero value, newly created <tt>SNMP_Session</tt> objects will be
+configured so that only request IDs in the range 0..2<sup>31</sup>-1
+will be used.  This is needed to work around a bug in several SNMP
+agents.  If you sometimes see requests fail, and the error message
+always shows a negative request ID when that happens, please notify
+the vendor of your agent of the bug.  While the vendor fixes the
+problem, you can set the variable mentioned above to work around the
+bug.  The problem has been described in a few mails on the
+<em>mrtg-developers</em> mailing list that can hopefully be found <a
+href="http://www.ee.ethz.ch/~slist/mrtg-developers/msg01609.html">here</a>
+in the archive. </li>
+
+<li> SNMP_util.pm 0.93: <tt>snmpwalk</tt> now will walk multiple OID
+trees simultaneously.  If more than one OID is passed to the function,
+the returned <em>OID:value</em> pairs will contain the entire OID
+instead of just the leaf from the starting point. </li>
+
+<li> SNMP_util.pm 0.93: <tt>snmpwalkhash</tt> now passes the textual
+OID of the starting point as the seventh argument to the passed-in
+hash function. </li>
+
 <li> SNMP_util.pm 0.92: New subroutine <tt>snmpmaptable4</tt>, which
 allows specifying the <em>max-repeaters</em>. </li>
 
@@ -523,7 +546,7 @@ use SNMP_Session "0.52";
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20020212
+20020912
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
