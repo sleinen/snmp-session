@@ -14,7 +14,7 @@ day.
 
 The basic usage of these routines works like this:
 
-	require 'BER.pm';
+	use BER;
 	require 'SNMP_Session.pm';
 
 	# Set $host to the name of the host whose SNMP agent you want
@@ -32,10 +32,10 @@ The basic usage of these routines works like this:
 	    ($bindings) = $session->decode_get_response ($response);
 	
 	    while ($bindings ne '') {
-		($binding,$bindings) = &BER::decode_sequence ($bindings);
-		($oid,$value) = &BER::decode_by_template ($binding, "%O%@");
+		($binding,$bindings) = &decode_sequence ($bindings);
+		($oid,$value) = &decode_by_template ($binding, "%O%@");
 		print $pretty_oids{$oid}," => ",
-		      &BER::pretty_print ($value), "\n";
+		      &pretty_print ($value), "\n";
 	    }
 	} else {
 	    die "No response from agent on $host";
