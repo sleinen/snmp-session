@@ -41,6 +41,7 @@ use Exporter;
 use vars qw(@ISA $VERSION @EXPORT $errmsg $suppress_warnings);
 use Socket;
 use BER;
+use Carp;
 
 sub map_table ($$$ );
 sub map_table_4 ($$$$);
@@ -118,18 +119,18 @@ sub retries { $_[0]->{retries} }
 sub backoff { $_[0]->{backoff} }
 sub set_timeout {
     my ($session, $timeout) = @_;
-    die "timeout ($timeout) must be a positive number" unless $timeout > 0.0;
+    croak ("timeout ($timeout) must be a positive number") unless $timeout > 0.0;
     $session->{'timeout'} = $timeout;
 }
 sub set_retries {
     my ($session, $retries) = @_;
-    die "retries ($retries) must be a non-negative integer"
+    croak ("retries ($retries) must be a non-negative integer")
 	unless $retries == int ($retries) && $retries >= 0;
     $session->{'retries'} = $retries; 
 }
 sub set_backoff {
     my ($session, $backoff) = @_;
-    die "backoff ($backoff) must be a number >= 1.0"
+    croak ("backoff ($backoff) must be a number >= 1.0")
 	unless $backoff == int ($backoff) && $backoff >= 1.0;
     $session->{'backoff'} = $backoff; 
 }
@@ -348,7 +349,7 @@ sub error_return ($$) {
     $SNMP_Session::errmsg = $message;
     unless ($SNMP_Session::suppress_warnings) {
 	$message =~ s/^/  /mg;
-	warn ("Error:\n".$message."\n");
+	carp ("Error:\n".$message."\n");
     }
     return undef;
 }
@@ -360,7 +361,7 @@ sub error ($$) {
     unless ($SNMP_Session::suppress_warnings) {
 	$session =~ s/^/  /mg;
 	$message =~ s/^/  /mg;
-	warn ("SNMP Error:\n".$SNMP_Session::errmsg."\n");
+	carp ("SNMP Error:\n".$SNMP_Session::errmsg."\n");
     }
     return undef;
 }
@@ -676,8 +677,8 @@ sub receive_response_3 {
     if (defined $this->{'remote_addr'}) {
 	if (! $this->sa_equal_p ($remote_addr, $this->{'remote_addr'})) {
 	    if ($this->{'debug'} && !$SNMP_Session::recycle_socket) {
-		warn "Response came from ".&SNMP_Session::pretty_address($remote_addr)
-		    .", not ".&SNMP_Session::pretty_address($this->{'remote_addr'})
+		carp ("Response came from ".&SNMP_Session::pretty_address($remote_addr)
+		      .", not ".&SNMP_Session::pretty_address($this->{'remote_addr'}))
 			unless $SNMP_Session::suppress_warnings;
 	    }
 	    return 0;
@@ -690,10 +691,10 @@ sub receive_response_3 {
     if ($response_community ne $this->{community}
         || $response_id ne $this->{request_id}) {
 	if ($this->{'debug'}) {
-	    warn "$response_community != $this->{community}"
+	    carp ("$response_community != $this->{community}")
 		unless $SNMP_Session::suppress_warnings
 		    || $response_community eq $this->{community};
-	    warn "$response_id != $this->{request_id}"
+	    carp ("$response_id != $this->{request_id}")
 		unless $SNMP_Session::suppress_warnings
 		    || $response_id == $this->{request_id};
 	}
