@@ -39,11 +39,7 @@ my $community_file_name = "/home/leinen/snmp/.zxc";
 
 my $ipv4_only_p = 0;
 
-my $intro = <<EOM;
-<P> This is a sample application of an
-<A HREF="http://www.switch.ch/misc/leinen/snmp/perl/">SNMP Module</A> (version ${SNMP_Session::VERSION})
-I have written for Perl 5. </P>
-EOM
+my $home_url = "http://www.switch.ch/misc/leinen/snmp/perl/";
 
 my (%ugly_oids, %pretty_oids);
 
@@ -56,8 +52,9 @@ if (!defined ($q) || !defined $q->param ('hostname')) {
 } else {
     init_oids ();
     if (! exists ($allowed_hosts{$q->param ('hostname')})) {
-	print "Content-type: text/html\n\n";
-	html_error_message ("parsing the query", "Illegal hostname ".$q->param ('hostname'));
+	print (header ());
+	       html_error_message ("parsing the query",
+			    "Illegal hostname ".$q->param ('hostname'));
     } else {
 	query_to_html_response ($q->param ('hostname'),
 				$q->param ('community'));
@@ -141,41 +138,45 @@ sub write_query_form ()
     my $first_p = 1;
     my $options = join
 	("\n",
-	 map ({if ($first_p) {
-	     $first_p = 0; "<option selected value=\"$_\">$_</option>"; }
-	      else { "<option value=\"$_\">$_</option>"; }; } @allowed_hosts));
+	 map ({my $res = $q->option ({-selected=>$first_p, -value=>$_}, $_);
+	       $first_p = 0;
+	       $res;}
+	      @allowed_hosts));
     print (header (),
 	   start_html ("Perl SNMP Module Test"),
 	   h1 ("Perl SNMP Module Test"),
-	   $intro,
+	   p ("This is a sample application of an ",
+	      a ({href => $home_url}, "SNMP Module"),
+	      "(version ${SNMP_Session::VERSION}) for Perl 5."),
 	   hr (),
 	   $q->start_form (-method=>'GET'),
-	   "Host name: ",
+	   "Host name:\n",
 	   Select ({name => 'hostname'},
-		   $options),
-	   "Community name: ",
+		   $options), "\n",
+	   "Community name:\n",
 	   Select ({name => 'community'},
 		   option ({value => 'public'},
 			   "public")),
-	   br (),
+	   br (), "\n",
 	   input ({type => 'submit',
-		   value => "Send request"}),
+		   value => "Send request"}), "\n",
 	   input ({type => 'reset',
-		   value => "Clear"}),
+		   value => "Clear"}), "\n",
 	   $q->end_form (),
-	   hr (),
+	   hr (), "\n",
 	   address (a ({href=>"http://www.switch.ch/misc/leinen/"},
-		       "Simon Leinen &lt;simon\@switch.ch&gt;")),
-	   end_html ());
+		       "Simon Leinen &lt;simon\@switch.ch&gt;")), "\n",
+	   end_html (), "\n");
 }
 
 sub html_error_message ($$)
 {
     my($context, $errmsg) = @_;
 
-    print "<H2>SNMP Error</H2>\n<HR>\n";
-    print "<P>While ",$context,", the following error occurred:</P>\n";
-    print "<PRE>",&html_quote($errmsg),"</PRE></BODY></HTML>";
+    print ($q->h2 ("SNMP Error"), hr (),
+	   p ("While ",$context,", the following error occurred:"),
+	   pre (html_quote($errmsg)),
+	   end_html ());
 }
 
 sub html_quote ($ ) {
