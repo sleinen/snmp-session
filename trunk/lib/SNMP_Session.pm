@@ -42,17 +42,17 @@ use vars qw(@ISA $VERSION @EXPORT $errmsg $suppress_warnings);
 use Socket;
 use BER;
 
-sub map_table ($$$);
+sub map_table ($$$ );
 sub map_table_4 ($$$$);
 sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.78';
+$VERSION = '0.79';
 
 @ISA = qw(Exporter);
 
-@EXPORT = qw(errmsg suppress_warnings index_compare oid_diff);
+@EXPORT = qw(errmsg suppress_warnings index_compare oid_diff recycle_socket);
 
 my $default_debug = 0;
 
@@ -85,6 +85,12 @@ my $default_backoff = 1.0;
 ### map_table_4().
 ###
 my $default_max_repetitions = 12;
+
+### Whether all SNMP_Session objects should share a single UDP socket.
+###
+$SNMP_Session::recycle_socket = 0;
+
+my $the_socket;
 
 $SNMP_Session::errmsg = '';
 $SNMP_Session::suppress_warnings = 0;
@@ -520,13 +526,22 @@ sub open
     $max_pdu_len = 8000 unless defined $max_pdu_len;
     $max_repetitions = $default_max_repetitions
 	unless defined $max_repetitions;
-    $remote_addr = inet_aton ($remote_hostname)
-	|| return $this->error_return ("can't resolve \"$remote_hostname\" to IP address");
-    $socket = IO::Socket::INET->new(Proto => 17,
-				    Type => SOCK_DGRAM,
-				    LocalPort => $bind_to_port)
-	|| return $this->error_return ("creating socket: $!");
-    $remote_addr = pack_sockaddr_in ($port, $remote_addr);
+    if (defined $remote_hostname) {
+	$remote_addr = inet_aton ($remote_hostname)
+	    or return $this->error_return ("can't resolve \"$remote_hostname\" to IP address");
+    }
+    if ($SNMP_Session::recycle_socket && defined $the_socket) {
+	$socket = $the_socket;
+    } else {
+	$socket = IO::Socket::INET->new(Proto => 17,
+					Type => SOCK_DGRAM,
+					LocalPort => $bind_to_port)
+	    || return $this->error_return ("creating socket: $!");
+	$the_socket = $socket
+	    if $SNMP_Session::recycle_socket;
+    }
+    $remote_addr = pack_sockaddr_in ($port, $remote_addr)
+	if defined $remote_addr;
     bless {
 	   'sock' => $socket,
 	   'sockfileno' => fileno ($socket),
@@ -550,7 +565,7 @@ sub open
 sub open_trap_session (@) {
     my ($this, $port) = @_;
     $port = 162 unless defined $port;
-    return $this->open ("0.0.0.0", "", 161, undef, $port);
+    return $this->open (undef, "", 161, undef, $port);
 }
 
 sub sock { $_[0]->{sock} }
@@ -567,7 +582,9 @@ sub debug { defined $_[1] ? $_[0]->{debug} = $_[1] : $_[0]->{debug} }
 sub close
 {
     my($this) = shift;
-    close ($this->sock) || $this->error ("close: $!");
+    if (! defined $the_socket || $this->sock ne $the_socket) {
+	close ($this->sock) || $this->error ("close: $!");
+    }
 }
 
 sub wrap_request
@@ -649,10 +666,15 @@ sub receive_response_3
     ## request to.  If this is not the case, we should probably ignore
     ## it, as it may relate to another request.
     ##
-    if ($this->{'debug'} && $remote_addr ne $this->{'remote_addr'}) {
-	warn "Response came from ".&SNMP_Session::pretty_address($remote_addr)
-	    .", not ".&SNMP_Session::pretty_address($this->{'remote_addr'})
-		unless $SNMP_Session::suppress_warnings;
+    if (defined $this->{'remote_addr'}) {
+	if ($remote_addr ne $this->{'remote_addr'}) {
+	    if ($this->{'debug'} && !$SNMP_Session::recycle_socket) {
+		warn "Response came from ".&SNMP_Session::pretty_address($remote_addr)
+		    .", not ".&SNMP_Session::pretty_address($this->{'remote_addr'})
+			unless $SNMP_Session::suppress_warnings;
+	    }
+	    return 0;
+	}
     }
     $this->{'last_sender_addr'} = $remote_addr;
     my ($response_community, $response_id, @unwrapped)
@@ -702,8 +724,12 @@ sub to_string
 
     $class = ref($this);
     $prefix = ' ' x (length ($class) + 2);
-    ($class." (remote host: \"".$this->{remote_hostname}
-     ."\" ".&SNMP_Session::pretty_address ($this->remote_addr)."\n"
+    ($class
+     .(defined $this->{remote_hostname}
+       ? " (remote host: \"".$this->{remote_hostname}."\""
+       ." ".&SNMP_Session::pretty_address ($this->remote_addr).")"
+       : " (no remote host specified)")
+     ."\n"
      .$prefix."  community: \"".$this->{'community'}."\"\n"
      .$prefix." request ID: ".$this->{'request_id'}."\n"
      .$prefix."PDU bufsize: ".$this->{'max_pdu_len'}." bytes\n"
