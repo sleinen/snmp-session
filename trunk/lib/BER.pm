@@ -148,7 +148,7 @@ sub decode_oid
     $result = ord (substr ($pdu, 0, 1));
     die "Object ID expected" unless $result == object_id_tag;
     ($result, $pdu_rest) = decode_length (substr ($pdu, 1));
-    @result = (substr ($pdu, 0, $result + (length ($pdu) - length ($pdu_rest))),
+    @result = (substr ($pdu, 0, $result + (length($pdu) - length($pdu_rest))),
 	       substr ($pdu_rest, $result));
     @result;
 }
@@ -168,10 +168,12 @@ sub decode_by_template
 		$expected = shift if ($expected eq '*');
 		$expected = sequence_tag | constructor_flag
 		    if $expected eq '';
-		die "Expected sequence tag $expected, got ", ord (substr ($pdu, 0, 1))
+		die "Expected sequence tag $expected, got ",
+		ord (substr ($pdu, 0, 1))
 		    unless (ord (substr ($pdu, 0, 1)) == $expected);
 		$pdu = substr ($pdu,1);
-		(($length,$pdu) = decode_length ($pdu)) || die "cannot read length";
+		(($length,$pdu) = decode_length ($pdu))
+		    || die "cannot read length";
 		die "Expected length $length" unless length $pdu == $length;
 		@results = decode_by_template ($pdu, $_, @_);
 		$pdu = ''; $_ = '';
@@ -179,8 +181,10 @@ sub decode_by_template
 	    } elsif (/^\*s(.*)/) {
 		$_ = $1;
 		$expected = shift @_;
-		(($read,$pdu) = decode_string ($pdu)) || die "cannot read string";
-		die "Expected $expected, read $read" unless $expected eq $read;
+		(($read,$pdu) = decode_string ($pdu))
+		    || die "cannot read string";
+		die "Expected $expected, read $read"
+		    unless $expected eq $read;
 	    } elsif (/^O(.*)/) {
 		$_ = $1;
 		(($read,$pdu) = decode_oid ($pdu)) || die "cannot read OID";
@@ -250,7 +254,7 @@ sub decode_string
     my($result,$length);
     my(@result);
     $result = ord (substr ($pdu, 0, 1));
-    die "Expected type 4" unless $result == octet_string_tag;
+    die "Expected octet string" unless $result == octet_string_tag;
     $length = ord (substr ($pdu, 1, 1));
     die "Unsupported length" unless $length < 128;
     @result = (substr ($pdu, 2, $length), substr ($pdu, 2+$length));
