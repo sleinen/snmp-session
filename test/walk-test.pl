@@ -7,8 +7,8 @@ use strict;
 use BER;
 use SNMP_Session;
 
-my $hostname = 'neon-tetra';
-my $community = 'public';
+my $hostname = $ARGV[0] || 'neon-tetra';
+my $community = $ARGV[1] || 'public';
 
 my $session;
 
