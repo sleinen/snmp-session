@@ -1,3 +1,173 @@
+1999-12-15  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Use &gt; rather than > in a few places.
+
+1999-10-05  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Clarified SNMPv2 traps.
+
+	* README: Documented new features (SNMPv2 Traps).
+
+	* index.html:
+	Changed documentation of v2_trap_request_send for new signature.
+
+	* index.html: Documented changes in version 0.75.
+
+1999-09-14  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Added note about removed uninitialized variable warning.
+
+	* index.html: Added change log entry for SNMP_util.pm 0.72.
+
+1999-09-13  Simon Leinen  <simon@limmat.switch.ch>
+
+	* MANIFEST (Artistic): Added.
+
+	* Makefile.PL (dist): Use "gzip -9f" for compression.
+
+	* Makefile.PL: New file.
+
+	* index.html, README:
+	Added copyright and pointer to "Artistic" license.
+
+	* Artistic: New file.
+
+1999-09-02  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Documented introduction of IO::Socket.
+
+1999-07-29  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Documented $BER::pretty_print_timeticks.
+
+1999-06-30  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Mention changes in new SNMP_util.pm.
+
+	* README.SNMP_util: Upgraded to 0.71 from Mike Mitchell.
+
+1999-04-22  Simon Leinen  <simon@limmat.switch.ch>
+
+	* mibparse.pl: New file.
+
+1999-04-07  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Added pointer to README.SNMP_util file.
+
+	* index.html:
+	Document 0.70 changes (MIB parsing addition to lib/SNMP_util.pm</tt>.
+
+	* README.SNMP_util:
+	Update from Mike Mitchell to include snmpMIB_to_OID().
+
+1999-03-10  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Document new community string parsing.
+
+1999-02-22  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Documented changes for SNMP_util.pm 0.57 -> 0.58.
+
+1999-02-21  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Document agent methods.
+
+	* README: Added Mike McCauley's credit.
+
+	* MANIFEST (test/SNMPAgent.pm): Added.
+
+1999-02-21  simon  <simon@babar.switch.ch>
+
+	* index.html: Fixed a few Weblint warnings.
+
+	* index.html: Added note about really big tables.
+
+	* index.html: Documented map_table implementation for SNMPv2c.
+
+	Documented map_table_4.
+
+	* MANIFEST (test/if-counters.pl): Added.
+
+1999-02-21  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Documented recent changes.
+
+	* README: Added Alan Nichols (Sun) to the list of contributors.
+
+1999-02-17  Simon Leinen  <simon@limmat.switch.ch>
+
+	* mibtree.pl: New file.
+
+1999-01-03  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Added note about bind() error message fix.
+
+1998-12-21  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Document SNMP_util.pm change.
+
+1998-12-11  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Added Mike Mitchell's changes.
+
+	* README.SNMP_util: New version from Mike Mitchell.
+
+1998-11-16  Simon Leinen  <simon@limmat.switch.ch>
+
+	* MANIFEST (test/sun-ps): Added.
+
+	* MANIFEST: New file.
+
+	* index.html: Document fixed response matching logic.
+
+1998-10-22  Simon Leinen  <simon@limmat.switch.ch>
+
+	* Makefile.orig (TESTSRCS): Added test/discover.
+
+	* index.html: Point to FTP directory rather than the archive directly.
+
+	* index.html: Mentioned Clinton Wong's changes.
+
+1998-10-21  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Added a note on broadcast/multicast support.
+
+1998-09-08  Simon Leinen  <simon@limmat.switch.ch>
+
+	* README, index.html: Fixed sample trap-reception code.
+
+1998-08-19  Simon Leinen  <simon@limmat.switch.ch>
+
+	* trap-send.pl: New file.
+
+1998-08-18  Simon Leinen  <simon@limmat.switch.ch>
+
+	* Makefile.orig (DOCS): Added README.SNMP_util.
+
+	* README.SNMP_util: New file.
+
+1998-08-14  Simon Leinen  <simon@limmat.switch.ch>
+
+	* SNMP_Simple.pm: New file.
+
+1998-08-10  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Added pointer to FTP location.
+
+1998-07-21  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Get html40 validator icon locally.
+
+1998-07-16  Simon Leinen  <simon@limmat.switch.ch>
+
+	* index.html: Made HTML 4.0 (Transitional) compliant.
+
+1998-07-01  Simon Leinen  <simon@limmat.switch.ch>
+
+	* Makefile.orig (TESTSRCS): Added trap-send and trap-listener.
+
+	* index.html, README: Added documentation about receiving traps.
+
 1998-07-01  Simon Leinen  <simon@limmat.switch.ch>
 
 	* SNMP_Session.pm ($VERSION): Upped version to 0.60.
