@@ -24,6 +24,16 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_util.pm 0.90: New version from Mike Mitchell.
+ <tt>snmpwalkhash</tt> and <tt>snmpwalk</tt> now share most
+ code. </li>
+
+<li> SNMP_util.pm 0.90: Corrected handling of the optional port number in
+ <tt>snmpopen</tt>. </li>
+
+<li> test/if-counters.pl: Support 64-bit counters, and use
+<tt>ifAlias</tt> to portably get interface descriptions. </li>
+
 <li> SNMP_util.pm 0.89: New version from Mike Mitchell, with new
  <tt>snmpwalkhash</tt> subroutine by <a
  href="mailto:girod.laurent@pmintl.ch">Laurent Girod</a>. </li>
@@ -199,9 +209,9 @@ href="demel@zid.tuwien.ac.at">Johannes Demel</a>) to treat
 <tt>map_table</tt>, which still doesn't work reliably when the SNMPv2
 <tt>get-bulk</tt> operator is used. </li>
 
-<li> <tt>test/if-counters.pl</tt>: Added <samp>-c</samp> option to
-enable Cisco-specific variables (which are no longer retrieved by
-default as in previous versions). </li>
+<li> test/if-counters.pl: Added <samp>-c</samp> option to enable
+Cisco-specific variables (which are no longer retrieved by default as
+in previous versions). </li>
 
 <li> SNMP_Session 0.75: Fixed a bug in versions 0.73-0.74 where
 creation of trap listener sockets would fail.  Rather than using
@@ -494,7 +504,7 @@ use SNMP_Session "0.52";
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20010827
+20011114
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
