@@ -29,7 +29,7 @@ use BER "0.58";
 use SNMP_Session "0.59";
 use Socket;
 
-$VERSION = '0.73';
+$VERSION = '0.77';
 
 @ISA = qw(Exporter);
 
@@ -297,6 +297,7 @@ my $agent_start_time = time;
 
 undef $SNMP_util::Host;
 undef $SNMP_util::Session;
+undef $SNMP_util::Version;
 $SNMP_util::Debug = 0;
 $SNMP_util::CacheFile = "OID_cache.txt";
 $SNMP_util::CacheLoaded = 0;
@@ -326,28 +327,35 @@ sub version () { $VERSION; }
 sub snmpopen (@) {
   my($host) = @_;
   my($nhost, $port, $community);
-  my($timeout, $retries, $backoff);
+  my($timeout, $retries, $backoff, $version);
 
   $community = "public";
   $port = 161;
 
   ($community, $host) = ($1, $2) if ($host =~ /^(.*)@([^@]+)$/);
-  ($host, $port, $timeout, $retries, $backoff) = split(':', $host, 5)
+  ($host, $port, $timeout, $retries, $backoff, $version) = split(':', $host, 6)
     if ($host =~ /:/);
+  $version = '1' unless defined $version;
   $port = 161 if (defined($port) && (length($port) <= 0));
   $nhost = "$community\@$host:$port";
 
   if ((!defined($SNMP_util::Session))
-    || ($SNMP_util::Host ne $nhost))
+    || ($SNMP_util::Host ne $nhost)
+      || ($SNMP_util::Version ne $version))
   {
     if (defined($SNMP_util::Session))
     {
       $SNMP_util::Session->close();    
       undef $SNMP_util::Session;
       undef $SNMP_util::Host;
+      undef $SNMP_util::Version;
     }
-    $SNMP_util::Session = SNMP_Session->open($host, $community, $port);
-    $SNMP_util::Host = $nhost if defined($SNMP_util::Session);
+    $SNMP_util::Session =
+	($version =~ /^2c?/)
+	    ? SNMPv2c_Session->open($host, $community, $port)
+		: SNMP_Session->open($host, $community, $port);
+    ($SNMP_util::Host = $nhost, $SNMP_util::Version = $version)
+	if defined($SNMP_util::Session);
   }
 
   if (defined($SNMP_util::Session))
