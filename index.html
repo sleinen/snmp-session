@@ -49,6 +49,33 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_Session.pm 0.79: A new variable
+<tt>$SNMP_Session::recycle_socket</tt> has been introduced.  When this
+variable is set to a non-zero value (the default is zero), all newly
+created SNMP_Session objects will share the same UDP socket.  This
+saves file descriptors and system calls, but will cause problems with
+multiple outstanding SNMP requests on different session objects.
+Applications which don't perform parallel/asynchronous SNMP requests
+can safely set this variable to reduce OS overhead somewhat.
+Suggestion from <a href="mailto:schmid@switch.ch">Ulrich
+Schmid</a>. </li>
+
+<li> SNMP_Session.pm 0.79: The handling of incoming packets from
+unexpected addresses has been cleaned up.  If a packet is received
+from an IP address other than the one to which the request has been
+sent, this packet is silently ignored, as mandated by the SNMP
+standard. </li>
+
+<li> SNMP_Session.pm 0.79: Receive-only session objects (such as the
+ones created by <tt>open_trap_session</tt> now have <samp>undef</samp>
+as the <samp>remote_addr</samp> value, rather than IP address
+<samp>0.0.0.0</samp>. </li>
+
+<li> BER.pm 0.79: There are new exported subroutines for encoding
+different types of values: <samp>encode_uinteger32</samp>,
+<samp>encode_counter32</samp>, <samp>encode_counter64</samp>,
+<samp>encode_gauge32</samp>. </li>
+
 <li> SNMP_Session.pm 0.78: The <tt>map_table</tt> implementation for
 SNMPv2 sessions has been completely rewritten to reliably support
 tables with holes in them.  Note that this hasn't been completely
@@ -667,7 +694,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20001005
+20001017
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
