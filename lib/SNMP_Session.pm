@@ -817,6 +817,8 @@ sub open {
     return bless $session;
 }
 
+## map_table_start_end using get-bulk
+##
 sub map_table_start_end ($$$$$$) {
     my ($session, $columns, $mapfn, $start, $end, $max_repetitions) = @_;
 
@@ -827,7 +829,8 @@ sub map_table_start_end ($$$$$$) {
     my @collected_values = ();
 
     if (! $session->{'use_getbulk'}) {
-	return SNMP_Session::map_table_start_end ($session, $columns, $mapfn, $start, $end, $max_repetitions);
+	return SNMP_Session::map_table_start_end
+	    ($session, $columns, $mapfn, $start, $end, $max_repetitions);
     }
     $max_repetitions = $session->default_max_repetitions
 	unless defined $max_repetitions;
@@ -851,6 +854,10 @@ sub map_table_start_end ($$$$$$) {
 	    my $n_bindings = 0;
 	    my $binding;
 
+	    ## Copy all bindings into the colstack.
+	    ## The colstack is a vector of vectors.
+	    ## It contains one vector for each "repeater" variable.
+	    ##
 	    while ($bindings ne '') {
 		($binding, $bindings) = decode_sequence ($bindings);
 		my ($oid, $value) = decode_by_template ($binding, "%O%@");
@@ -859,7 +866,16 @@ sub map_table_start_end ($$$$$$) {
 		++$k; $k = 0 if $k >= $ncols;
 	    }
 
-	    my $last_min_index = undef;
+	    ## Now collect rows from the column stack:
+	    ##
+	    ## Iterate through the column stacks to find the smallest
+	    ## index, collecting the values for that index in
+	    ## @collected_values.
+	    ##
+	    ## As long as a row can be assembled, the map function is
+	    ## called on it and the iteration proceeds.
+	    ##
+	    $base_index = undef;
 	  walk_rows_from_pdu:
 	    for (;;) {
 		my $min_index = undef;
@@ -894,18 +910,18 @@ sub map_table_start_end ($$$$$$) {
 			}
 		    }
 		}
-		last unless defined $min_index;
+		($base_index = undef), last
+		    if !defined $min_index;
 		last if defined $end && index_compare ($min_index, $end) >= 0;
 		&$mapfn ($min_index, @collected_values);
 		++$call_counter;
-		$last_min_index = $min_index;
+		$base_index = $min_index;
 	    }
-	    $base_index = $last_min_index;
 	} else {
 	    return undef;
 	}
-	last unless (defined $base_index
-		     && (!defined $end || index_compare ($base_index, $end) < 0));
+	last if !defined $base_index;
+	last if defined $end and index_compare ($base_index, $end) >= 0;
     }
     $call_counter;
 }
