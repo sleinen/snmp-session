@@ -138,6 +138,7 @@ sub pretty_print
 		|| $result == snmp_gauge32_tag;
     return pretty_string ($packet) if $result == octet_string_tag;
     return pretty_oid ($packet) if $result == object_id_tag;
+    return pretty_ip_address ($packet) if $result == snmp_ip_address_tag;
     return "(null)" if $result == null_tag;
     die "Cannot pretty print objects of type $result";
 }
@@ -184,6 +185,19 @@ sub pretty_oid
     }
     $pdu = substr ($pdu, $result);
     join ('.', @oid);
+}
+
+sub pretty_ip_address
+{
+    my $pdu = shift;
+    my ($length, $rest);
+    die "IP Address tag (".snmp_ip_address_tag.") expected"
+	unless ord (substr ($pdu, 0, 1)) == snmp_ip_address_tag;
+    $pdu = substr ($pdu, 1);
+    ($length,$pdu) = decode_length ($pdu);
+    die "Length of IP address should be four"
+	unless $length == 4;
+    sprintf "%d.%d.%d.%d", unpack ("CCCC", $pdu);
 }
 
 sub decode_oid
