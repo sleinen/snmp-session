@@ -49,6 +49,13 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_Session.pm 0.80: A portability bug was fixed in the code
+that matches incoming responses to outstanding requests.  The bug had
+manifested itself, notably on some FreeBSD versions, by timeouts
+waiting for responses, because the library thought the responses came
+from another address than the corresponding requests had been sent
+to. </li>
+
 <li> SNMP_Session.pm 0.79: A new variable
 <tt>$SNMP_Session::recycle_socket</tt> has been introduced.  When this
 variable is set to a non-zero value (the default is zero), all newly
@@ -694,7 +701,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20001017
+20001030
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
