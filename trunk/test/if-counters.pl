@@ -252,7 +252,8 @@ sub out_interface ($$$$$$@) {
 	unless $suppress_output;
     return unless $all_p || defined $oper && $oper == 1;	# up
     return unless defined $in && defined $out;
-
+    ## Suppress interfaces called "unrouted VLAN..."
+    return if $descr =~ /^unrouted VLAN/;
     if (!defined $old{$index}) {
 	$win->addstr ($linecount, 0,
 		      sprintf ("%2d  %-24s %10s %10s",
