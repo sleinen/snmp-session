@@ -52,7 +52,7 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.88';
+$VERSION = '0.89';
 
 @ISA = qw(Exporter);
 
@@ -551,7 +551,7 @@ sub open {
 	   'default_max_repetitions' => $max_repetitions,
 	   'use_getbulk' => 1,
 	   'lenient_source_address_matching' => 1,
-	   'lenient_source_port_matching' => 0,
+	   'lenient_source_port_matching' => 1,
 	  };
 }
 
@@ -647,6 +647,11 @@ sub send_query ($$) {
 ## two sockaddr_in structures, but this didn't work on some systems
 ## where sockaddr_in contains other elements than just the IP address
 ## and port number, notably FreeBSD.
+##
+## We allow for varying degrees of leniency when checking the source
+## address.  By default we now ignore it altogether, because there are
+## agents that don't respond from UDP port 161, and there are agents
+## that don't respond from the IP address the query had been sent to.
 ##
 sub sa_equal_p ($$$) {
     my ($this, $sa1, $sa2) = @_;
