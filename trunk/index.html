@@ -45,6 +45,13 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 <ul>
 
+<li> SNMP_Session.pm 0.61: The sender address of the last response
+ received for a session is stored in
+ <em>$session->{'last_sender_addr'}</em>.  In connection with
+ broadcast or multicast addresses, this can be used to discover SNMP
+ agents listening to specific communities, as illustrated in
+ <tt>test/discover</tt>.
+
 <li> SNMP_Session.pm 0.60: Added support for <a
  href="#trap-recv">receiving SNMPv1 traps</a>.
 
@@ -447,7 +454,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19980908
+19981021
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
