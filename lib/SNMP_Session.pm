@@ -47,7 +47,7 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.74';
+$VERSION = '0.75';
 
 @ISA = qw(Exporter);
 
@@ -197,6 +197,13 @@ sub encode_trap_request ($$$$$$@)
     return $this->wrap_request ($request);
 }
 
+sub encode_v2_trap_request ($@)
+{
+    my($this, @pairs) = @_;
+
+    return encode_request_3($this, trap2_request, \@pairs);
+}
+
 sub decode_get_response
 {
     my($this, $response) = @_;
@@ -207,15 +214,26 @@ sub decode_get_response
 sub decode_trap_request ($$) {
     my ($this, $trap) = @_;
     my ($snmp_version, $community, $ent, $agent, $gen, $spec, $dt,
+	$request_id, $error_status, $error_index,
 	$bindings);
-    ($snmp_version, $community, $ent, $agent, $gen, $spec, $dt, $bindings)
+    ($snmp_version, $community,
+     $ent, $agent,
+     $gen, $spec, $dt,
+     $bindings)
 	= decode_by_template ($trap, "%{%i%s%*{%O%A%i%i%u%{%@",
-			      SNMP_Session::trap_request
-			      );
-    return undef
-	unless $snmp_version == $this->snmp_version ();
-    if (!defined $ent) {
-	warn "BER error decoding trap:\n  ".$BER::errmsg."\n";
+			    trap_request);
+    if (! defined ($snmp_version)) {
+	($snmp_version, $community,
+	 $request_id, $error_status, $error_index,
+	 $bindings)
+	    = decode_by_template ($trap, "%{%i%s%*{%i%i%i%{%@",
+				  trap2_request);
+	error_return ("v2 trap request contained errorStatus/errorIndex "
+		      .$error_status."/".$error_index)
+	    if $error_status != 0 || $error_index != 0;
+    }
+    if (!defined $snmp_version) {
+	error_return ("BER error decoding trap:\n  ".$BER::errmsg);
     }
     return ($community, $ent, $agent, $gen, $spec, $dt, $bindings);
 }
@@ -265,6 +283,19 @@ sub trap_request_send ($$$$$$@)
     my($req);
 
     $req = $this->encode_trap_request ($ent, $agent, $gen, $spec, $dt, @pairs);
+    ## Encoding may have returned an error.
+    return undef unless defined $req;
+    $this->send_query($req)
+	|| return $this->error ("send_trap: $!");
+    return 1;
+}
+
+sub v2_trap_request_send ($@)
+{
+    my($this, @pairs) = @_;
+    my($req);
+
+    $req = $this->encode_v2_trap_request (@pairs);
     ## Encoding may have returned an error.
     return undef unless defined $req;
     $this->send_query($req)
@@ -484,14 +515,10 @@ sub open
 	unless defined $max_repetitions;
     $remote_addr = inet_aton ($remote_hostname)
 	|| return $this->error_return ("can't resolve \"$remote_hostname\" to IP address");
-    $socket = IO::Socket::INET->new(Proto => "udp",
-				    Type => SOCK_DGRAM)
+    $socket = IO::Socket::INET->new(Proto => 17,
+				    Type => SOCK_DGRAM,
+				    LocalPort => $bind_to_port)
 	|| return $this->error_return ("creating socket: $!");
-    if (defined $bind_to_port) {
-	my $sockaddr = sockaddr_in ($bind_to_port, INADDR_ANY);
-	bind ($socket, $sockaddr)
-	    || return $this->error_return ("binding to port $bind_to_port: $!");
-    }
     $remote_addr = pack_sockaddr_in ($port, $remote_addr);
     bless {
 	   'sock' => $socket,
