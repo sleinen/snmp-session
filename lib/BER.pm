@@ -175,9 +175,6 @@ sub decode_by_template
 		(($length,$pdu) = decode_length ($pdu))
 		    || die "cannot read length";
 		die "Expected length $length" unless length $pdu == $length;
-		@results = decode_by_template ($pdu, $_, @_);
-		$pdu = ''; $_ = '';
-		last;
 	    } elsif (/^\*s(.*)/) {
 		$_ = $1;
 		$expected = shift @_;
