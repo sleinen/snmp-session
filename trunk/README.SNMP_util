@@ -1,3 +1,4 @@
+
 		       README for SNMP_util.pm
 
 		   Mike Mitchell <mcm@unx.sas.com>
@@ -14,13 +15,44 @@ for the basic layout of the functions.
 
 The SNMP_utils.pm module contains the functions
 
-  snmpget(community@host:port, OID, [OID...])
-  snmpgetnext(community@host:port, OID, [OID...])
-  snmpwalk(community@host:port, OID)
-  snmpset(community@host:port, OID, type, value, [OID, type, value ...])
-  snmptrap(community@host:port, enterpriseOID, agent, generalID,
-	    specificID, OID, type, value, [OID, type, value ...])
+  snmpmapOID(text, OID, [text, OID ...])
 
+  snmpget(community@host:port:timeout:retries:backoff, OID, [OID...])
+  snmpgetnext(community@host:port:timeout:retries:backoff, OID, [OID...])
+  snmpwalk(community@host:port:timeout:retries:backoff, OID)
+  snmpset(community@host:port:timeout:retries:backoff, OID, type, value,
+	    [OID, type, value ...])
+  snmptrap(community@host:port:timeout:retries:backoff, enterpriseOID,
+	    agent, generalID, specificID, OID, type, value,
+	    [OID, type, value ...])
+
+
+The functions have a small mapping table for commonly used OIDs.  It
+is much easier to say "ifInOctets.4" instead of "1.3.6.1.2.1.2.2.1.10.4".
+The snmpmapOID() function will let you add your own entries to the mapping
+table.  It doesn't return anything.  Be sure to leave off any instance
+number from the OID passed to snmpmapOID()!  The example above would be
+    &snmpmapOID("ifInOctets", "1.3.6.1.2.1.2.2.1.10").
+Don't use
+    &snmpmapOID("ifInOctets.4", "1.3.6.1.2.1.2.2.1.10.4").
+The trailing ".4" is interpreted as an instance number, and not the entire
+OID.  The snmpmapOID function will ignore the attempt to add a mapping entry
+that includes an instance number.  The call
+    &snmpmapOID("ifInOctets.four", "1.3.6.1.2.1.2.2.1.10.4")
+would be accepted, because the text ".four" is interpreted differently
+than the number 4.
+
+The rest of the functions require a hostname/IP address as the first
+argument.  The community string, port number, timeout, retries, and backoff
+values are all optional.  If the community string isn't specified,
+"public" is used.  If the port number isn't specified, 161 is used
+for everything but snmptrap().  snmptrap() uses port 162 as its default.
+
+The timeout, retries, and backoff values default to whatever SNMP_Session.pm
+uses.  For SNMP_Session.pm version 0.63 they are 2 seconds, 5 retries, and a
+1.0 backoff factor.  The backoff factor is used as a multiplier to increase
+the timeout after every retry.  With a backoff factor of 1.0 the timeout
+stays the same for every retry.
 
 The snmpget function returns an array with the results of the 'get'
 operation.  The value associated with each OID is returned as a
@@ -54,7 +86,7 @@ BEGIN {
 # large integers ... 
 require 5.003;
 
-use SNMP_util "0.54";
+use SNMP_util "0.56";
 }
 
 use strict;
@@ -68,6 +100,10 @@ sub main {
 
   $host = "127.0.0.1";
   $cont = "Your Name";
+
+  # This snmpmapOID() isn't necessary, as it is already in
+  # the internal map table.  It is just an example...
+  &snmpmapOID("ifDescr", "1.3.6.1.2.1.2.2.1.2");
 
   print "Trying 'getnext' on $host\n";
   @ret = &snmpgetnext($host, "ifDescr");
