@@ -37,7 +37,7 @@ sub map_table_start_end ($$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '0.58';
+$VERSION = '0.59';
 
 @ISA = qw(Exporter);
 
@@ -83,6 +83,23 @@ sub open
 sub timeout { $_[0]->{timeout} }
 sub retries { $_[0]->{retries} }
 sub backoff { $_[0]->{backoff} }
+sub set_timeout {
+    my ($session, $timeout) = @_;
+    die "timeout ($timeout) must be a positive number" unless $timeout > 0.0;
+    $session->{timeout} = $timeout;
+}
+sub set_retries {
+    my ($session, $retries) = @_;
+    die "retries ($retries) must be a non-negative integer"
+	unless $retries == int ($retries) && $retries >= 0;
+    $session->{retries} = $retries; 
+}
+sub set_backoff {
+    my ($session, $backoff) = @_;
+    die "backoff ($backoff) must be a number >= 1.0"
+	unless $backoff == int ($backoff) && $backoff >= 1.0;
+    $session->{backoff} = $backoff; 
+}
 
 sub encode_request ($$@)
 {
@@ -299,8 +316,9 @@ sub map_table_start_end ($$$$$) {
 	my $out_index;
 
 	$out_index = &oid_diff ($base, $oid);
-	my $cmp = index_compare ($out_index,$smallest_index);
-	if ($cmp == -1) {
+	my $cmp;
+	if (!defined $smallest_index
+	    || ($cmp = index_compare ($out_index,$smallest_index)) == -1) {
 	  $smallest_index = $out_index;
 	  grep ($_=undef, @collected_values);
 	  push @collected_values, $value;
@@ -312,24 +330,29 @@ sub map_table_start_end ($$$$$) {
       }
       (++$call_counter,
        &$mapfn ($smallest_index, @collected_values))
-	if $smallest_index;
+	if defined $smallest_index;
       $base_index = $smallest_index;
     } else {
       die "SNMP error";
     }
   }
-  while ($base_index
-	&& (!defined $end
-	   || index_compare ($base_index, $end) < 0));
+  while (defined $base_index
+	&& (!defined $end || index_compare ($base_index, $end) < 0));
   $call_counter;
 }
 
 sub index_compare ($$) {
   my ($i1, $i2) = @_;
-  if (!$i1) {
-    return !$i2 ? 0 : 1;
+  $i1 = '' unless defined $i1;
+  $i2 = '' unless defined $i2;
+  if ($i1 eq '') {
+      return $i2 eq '' ? 0 : 1;
+  } elsif ($i2 eq '') {
+      return 1;
+  } elsif (!$i1) {
+      return $i2 eq '' ? 1 : !$i2 ? 0 : 1;
   } elsif (!$i2) {
-    return -1;
+      return -1;
   } else {
     my ($f1,$r1) = split('\.',$i1,2);
     my ($f2,$r2) = split('\.',$i2,2);
