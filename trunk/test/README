@@ -27,7 +27,8 @@ if-counters.pl (requires Curses.pm)
 iftop (requires Curses.pm)
 	Display top interface counters in real time.
 	Based on if-counters.pl.
-	Contributed by Dave Plonka <plonka@doit.wisc.edu>
+	Contributed by Dave Plonka <plonka@doit.wisc.edu>, see also
+	    http://net.doit.wisc.edu/~plonka/iftop/
 
 set-test.pl
 	Application that tries to change the sysContact.0 variable and
