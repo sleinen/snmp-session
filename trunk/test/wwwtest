@@ -141,6 +141,14 @@ Community name:
 <INPUT TYPE=submit VALUE="Send request">
 <INPUT TYPE=reset VALUE="Clear">
 </FORM>
+<HR>
+<P> This is a sample application of an
+ <A HREF="http://liawww.epfl.ch/simon/snmp/perl/">SNMP Module</A>
+ I have written for Perl 5. </P>
+<ADDRESS>
+<A HREF="http://liawww.epfl.ch/simon.html">
+ Simon Leinen &lt;simon.leinen\@lia.di.epfl.ch&gt;</A>
+</ADDRESS>
 </BODY>
 </HTML>
 EOM
