@@ -17,6 +17,7 @@ sub link_down_trap ($) {
   my $genericTrap = 2;		# linkDown
   my $specificTrap = 0;
   my @ifIndexOID = ( 1,3,6,1,2,1,2,2,1,1 );
+  my @ifDescrOID = ( 1,3,6,1,2,1,2,2,1,2 );
   my $upTime = int ((time - $start_time) * 100);
   my $myIpAddress = pack "CCCC", 130, 59, 4, 2;
   my @myOID = ( 1,3,6,1,4,1,2946,0,8,15 );
@@ -28,5 +29,7 @@ sub link_down_trap ($) {
 					     encode_int ($specificTrap),
 					     encode_timeticks ($upTime),
 					     [encode_oid (@ifIndexOID,$if_index),
-					      encode_int ($if_index)]);
+					      encode_int ($if_index)],
+					     [encode_oid (@ifDescrOID,$if_index),
+					      encode_string ("foo")]);
 }
