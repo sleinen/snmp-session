@@ -49,4 +49,5 @@ $session->map_table ([
 		      $ciscoMemoryPoolFree,
 		      $ciscoMemoryPoolLargestFree],
 		     \&out_memory_pool_entry);
+$session->close ();
 1;
