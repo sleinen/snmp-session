@@ -1,5 +1,14 @@
 #!/usr/local/bin/perl -w
-
+#
+# max-list-sessions
+#
+# Use ASCEND-SESSION-MIB to print a list of active connections on an
+# Ascend dialin router such as a MAX.
+#
+# Date Created: 1998/06/29
+# Author:       Simon Leinen  <simon@switch.ch>
+# RCS $Header: /home/leinen/CVS/SNMP_Session/test/max-list-sessions,v 1.5 2000-09-24 18:54:03 leinen Exp $
+#
 use strict;
 
 use SNMP_Session "0.59";
@@ -62,15 +71,17 @@ sub read_calls ($) {
 
 sub read_sessions ($) {
     my ($session) = @_;
-    $session->map_table ([$ssnStatusIndex, $ssnStatusValidFlag,
+    $session->map_table ([$ssnStatusValidFlag,
 			  $ssnStatusUserName,
 			  $ssnStatusUserIPAddress, $ssnStatusUserSubnetMask,
 			  $ssnStatusCurrentService, $ssnStatusCallReferenceNum],
 			 sub {
-			     my ($index, $i2, $valid, $user, $addr, $mask, $service, $call_ref) = @_;
+			     my ($index, $valid, $user, $addr, $mask,
+				 $service, $call_ref) = @_;
 			     
 			     map (defined $_ && ($_=pretty_print $_),
-				   ($i2, $valid, $user, $addr, $mask, $service, $call_ref));
+				   ($valid, $user, $addr, $mask,
+				    $service, $call_ref));
 			     return if $valid == 1;	# invalid
 			     $call_to_session{$call_ref}
 			     = { 'index' => $index,
