@@ -1,3 +1,5 @@
+#!/usr/local/bin/perl
+
 use BER;
 require 'SNMP_Session.pm';
 
@@ -6,12 +8,14 @@ require 'SNMP_Session.pm';
 # which you want to talk to the agent.	Set port to the UDP
 # port on which the agent listens (usually 161).
 
-$routerfile = 'd:/mrtg/routers';
-open(INFO, $routerfile);
-@routers = <INFO>;
-$redline=10;
-$yellowline=5;
+my $routerfile = 'test/routers';
+my @routers = qw(swiEG1.switch.ch swiEZ1.switch.ch swiEZ2.switch.ch swiCS1.switch.ch swiCS2.switch.ch);
+my $redline=10;
+my $yellowline=5;
 
+my $redball = "<table bgcolor=red><tr><td>&nbsp;</td></tr></table>";
+my $yelball = "<table bgcolor=yellow><tr><td>&nbsp;</td></tr></table>";
+my $greenball = "<table bgcolor=green><tr><td>&nbsp;</td></tr></table>";
 
 print <<"TEXT";    
  <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
@@ -25,12 +29,11 @@ print <<"TEXT";
  <body background="/images/background.gif">
 <table border="0" cellpadding="0" cellspacing="1" width="80%">
     <tr>
-        <td align="right" rowspan="2"><img
-        src="../images/pushme2.gif" width="150" height="159"></td>
+        <td align="right" rowspan="2">
+<!-- <img src="../images/pushme2.gif" width="150" height="159"></td> -->
         <td colspan="2"><p align="center"><font size="5"
-        face="Bookman Old Style"><strong>WAN Routers at a Glance<br>
-        </strong></font><font size="4" face="Bookman Old
-Style"><strong>Technical
+        face="Palatino"><strong>WAN Routers at a Glance<br>
+        </strong></font><font size="4" face="Palatino"><strong>Technical
         Team Only</strong></font></p>
         </td>
     </tr>
@@ -41,9 +44,9 @@ TEXT
 for ($currouter=0; $currouter < $#routers; $currouter++) {
 
 $host=@routers[$currouter];
-$community = "public";
+$community = "hctiws";
 $port = "161";
-$path = 'i:/inetpub/wwwroot/stats/';
+$path = 'test/stats/';
 
 $session = SNMP_Session->open ($host, $community, $port)
     || die "couldn't open SNMP session to $host";
@@ -83,11 +86,11 @@ TEXT
 @outvalue=();
 @outhead[0]="CPU";
 if ($cpupercent>$redline){
-	    $graphic="<img src = red.gif>";
+	    $graphic=$redball;
 	  } elsif ($cpupercent>$yellowline) {
-	    $graphic="<img src = yellow.gif>";
+	    $graphic=$yelball;
 	  } else {
-	    $graphic="<img src = green.gif>";
+	    $graphic=$greenball;
 	  }
 @outvalue[0]=$graphic;
 $a=1;
@@ -110,25 +113,29 @@ if ($session->get_request_response ($oid1,$oid2,$oid3)) {
 	
 	if ($status=="1") {
 	  $file = $path.$host.".".$i.".log";
-	@temp=split(/\n/,$file);
-	$file=@temp[0].@temp[1];
-	#print $file,"\n"; 
-	open(INFO, $file);
+	  @temp=split(/\n/,$file);
+	  $file=@temp[0].@temp[1];
+	  #print $file,"\n"; 
+	  open(INFO, $file);
 	  @lines = <INFO>;
 	  @elements=split(/ /,@lines[1]);
 	  $curtot=@elements[1]+@elements[2];
-	  $percentage=($curtot/$maxspeed)*100;
-	  if ($percentage>$redline){
-	    $graphic="<img src = red.gif>";
-	  } elsif ($percentage>$yellowline) {
-	    $graphic="<img src = yellow.gif>";
+	  if ($maxspeed == 0) {
+	    $graphic="";
 	  } else {
-	    $graphic="<img src = green.gif>";
+	    $percentage=($curtot/$maxspeed)*100;
+	    if ($percentage>$redline){
+	      $graphic=$redball;
+	    } elsif ($percentage>$yellowline) {
+	      $graphic=$yelball;
+	    } else {
+	      $graphic=$greenball;
+	    }
 	  }
-@outhead[$a]=$name;
-@outvalue[$a]=$graphic;
-$a++;
-  }} 
+	  @outhead[$a]=$name;
+	  @outvalue[$a]=$graphic;
+	  $a++;
+	}} 
 } else {
     die "No response from agent on $host";
 }
