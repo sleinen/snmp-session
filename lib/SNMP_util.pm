@@ -72,12 +72,18 @@ sub version () { $VERSION; }
 # Start an snmp session
 #
 sub snmpopen (@) {
-  my($host,$community) = @_;
-  my($nhost,$port);
+  my($host) = @_;
+  my($nhost,$port,$community);
 
-  $community = "public" if (length($community) <= 0);
+  $community = "public";
+  $port = 161;
+
+  ($community, $host) = split('@', $host, 2) if ($host =~ /\@/);
+  ($host, $port) = split(':', $host, 2) if ($host =~ /:/);
+  $nhost = "$community\@$host:$port";
+
   if ((!defined($SNMP_util::Session))
-    || ($SNMP_util::Host ne "$host:$community"))
+    || ($SNMP_util::Host ne $nhost))
   {
     if (defined($SNMP_util::Session))
     {
@@ -85,11 +91,8 @@ sub snmpopen (@) {
       undef $SNMP_util::Session;
       undef $SNMP_util::Host;
     }
-    $port = 161;
-    $nhost = $host;
-    ($nhost, $port) = split(':', $host, 2) if ($host =~ /:/);
-    $SNMP_util::Session = SNMP_Session->open($nhost,$community,$port);
-    $SNMP_util::Host = "$host:$community" if defined($SNMP_util::Session);
+    $SNMP_util::Session = SNMP_Session->open($host,$community,$port);
+    $SNMP_util::Host = $nhost if defined($SNMP_util::Session);
   }
   return $SNMP_util::Session;
 }
@@ -99,15 +102,15 @@ sub snmpopen (@) {
 # A restricted snmpget.
 #
 sub snmpget (@) {
-  my($host,$community,@vars) = @_;
+  my($host,@vars) = @_;
   my(@enoid, $var,$response, $bindings, $binding, $value,$oid,@retvals);
 
   @enoid = &toOID(@vars);
 
   my $session;
-  $session = &snmpopen($host, $community);
+  $session = &snmpopen($host);
   if (! defined($session)) {
-    warn "SNMPGET Problem for $community\@$host\n";
+    warn "SNMPGET Problem for $host\n";
     return undef;
   }
 
@@ -118,10 +121,6 @@ sub snmpget (@) {
       ($binding,$bindings) = decode_sequence ($bindings);
       ($oid,$value) = decode_by_template ($binding, "%O%@");
       my $tempo = pretty_print($value);
-      $tempo=~s/\t/ /g;
-      $tempo=~s/\n/ /g;
-      $tempo=~s/^\s+//;
-      $tempo=~s/\s+$//;
       push @retvals,  $tempo;
     }
     return (@retvals);
@@ -135,16 +134,16 @@ sub snmpget (@) {
 # A restricted snmpgetnext.
 #
 sub snmpgetnext (@) {
-  my($host,$community,@vars) = @_;
+  my($host,@vars) = @_;
   my(@enoid, $var,$response, $bindings, $binding, $value,$upoid,$oid,@retvals);
   my($noid, $ok);
 
   @enoid = &toOID(@vars);
 
   my $session;
-  $session = &snmpopen($host,$community);
+  $session = &snmpopen($host);
   if (! defined($session)) {
-    warn "SNMPGETNEXT Problem for $community\@$host\n";
+    warn "SNMPGETNEXT Problem for $host\n";
     return undef;
   }
 
@@ -176,10 +175,6 @@ sub snmpgetnext (@) {
       if ($ok)
       {
 	my $tempv = pretty_print($value);
-	$tempv=~s/\t/ /g;
-	$tempv=~s/\n/ /g;
-	$tempv=~s/^\s+//;
-	$tempv=~s/\s+$//;
 ##################################################################
 ####
 #### Don't remove the OID prefix because there could be multiple
@@ -204,16 +199,16 @@ sub snmpgetnext (@) {
 # A restricted snmpwalk.
 #
 sub snmpwalk (@) {
-  my($host,$community,@vars) = @_;
+  my($host,@vars) = @_;
   my(@enoid, $var,$response, $bindings, $binding, $value,$upoid,$oid,@retvals);
   my($got, @nnoid, $noid, $ok);
 
   @enoid = toOID(@vars);
 
   my $session;
-  $session = &snmpopen($host,$community);
+  $session = &snmpopen($host);
   if (! defined($session)) {
-    warn "SNMPWALK Problem for $community\@$host\n";
+    warn "SNMPWALK Problem for $host\n";
     return undef;
   }
 
@@ -249,10 +244,6 @@ sub snmpwalk (@) {
       {
 	push @nnoid,  encode_oid(split(/\./, $tempo));
 	my $tempv = pretty_print($value);
-	$tempv=~s/\t/ /g;
-	$tempv=~s/\n/ /g;
-	$tempv=~s/^\s+//;
-	$tempv=~s/\s+$//;
 	$tempo=~s/^$upoid\.//;
 	push @retvals,  "$tempo:$tempv";
       }
@@ -275,7 +266,7 @@ sub snmpwalk (@) {
 # A restricted snmpset.
 #
 sub snmpset(@) {
-    my($host,$community,@vars) = @_;
+    my($host,@vars) = @_;
     my(@enoid, $response, $bindings, $binding);
     my($oid, @retvals, $type, $value);
 
@@ -306,10 +297,10 @@ sub snmpset(@) {
 	}
     }
     my $session;
-    $session = &snmpopen($host,$community);
+    $session = &snmpopen($host);
     if (! defined($session))
     {
-	warn "SNMPSET Problem for $community\@$host\n";
+	warn "SNMPSET Problem for $host\n";
 	return undef;
     }
     if ($session->set_request_response(@enoid))
@@ -336,7 +327,7 @@ sub snmpset(@) {
 # Send an SNMP trap
 #
 sub snmptrap(@) {
-    my($host,$community,$ent,$agent,$gen,$spec,@vars) = @_;
+    my($host,$ent,$agent,$gen,$spec,@vars) = @_;
     my($oid, @retvals, $type, $value);
     my(@enoid);
 
@@ -381,10 +372,10 @@ sub snmptrap(@) {
     }
     my $session;
     $host = $host . ':162' if !($host =~ /:/);
-    $session = &snmpopen($host,$community);
+    $session = &snmpopen($host);
     if (! defined($session))
     {
-	warn "SNMPTRAP Problem for $community\@$host\n";
+	warn "SNMPTRAP Problem for $host\n";
 	return undef;
     }
     return($session->trap_request_send(@enoid));
