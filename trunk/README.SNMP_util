@@ -37,7 +37,7 @@ The SNMP_utils.pm module contains the functions
   snmpget(community@host:port:timeout:retries:backoff:version, OID, [OID...])
   snmpgetnext(community@host:port:timeout:retries:backoff:version, OID,
 	    [OID...])
-  snmpwalk(community@host:port:timeout:retries:backoff:version, OID)
+  snmpwalk(community@host:port:timeout:retries:backoff:version, OID, [OID...])
   snmpgetbulk(community@host:port:timeout:retries:backoff:version, non_repeat,
 	    max_repeat, OID, [OID...])
   snmpset(community@host:port:timeout:retries:backoff:version, OID, type, value,
@@ -162,13 +162,15 @@ The snmpgetnext function returns an array with the results of the
 'getnext' operation.  The OID number is added to the result as a
 prefix with a colon separator, like '1.3.6.1.2.1.2.2.1.2.1:ethernet'
 
-The snmpwalk function only accepts one OID number as an argument, and
-returns an array with all the OID numbers and values.  The instance
-part of the OID number is added as a prefix just like in the
-snmpgetnext functions.  A walk might return an array like
-'1:ethernet', '2:ethernet', '3:fddi'.
-The snmpwalk function will use a 'getbulk' query for efficiency
-if the SNMP version is 2 or higher.
+The snmpwalk function returns an array with all the OID numbers and values,
+like the 'snmpgetnext' function.  If only one OID is specified for the walk,
+only the instance part of the OID number is added as a prefix.  If multiple
+OID are specified for the walk, the entire OID number is added as a prefix.
+For instance, a walk of just '1.3.6.1.2.1.2.2.1.2' will return values
+like '1:ethernet', '2:ethernet', '3:fddi'.  A walk multiple OIDs will return
+values like '1.3.6.1.2.1.2.2.1.2.1:ethernet'.
+The snmpwalk function will use a 'getbulk' query for efficiency if the
+SNMP version is 2 or higher.
 
 The snmpgetbulk function, like the snmpgetnext function,  returns an array
 with the results of the 'getbulk' operation.  The OID number is added to the
@@ -194,10 +196,10 @@ snmpmaptable function uses the default of 12 rows.
 
 The snmpwalkhash acts like snmpwalk, but will call the passed-in function
 once per returned value.  The function is passed a reference to a hash,
-the hostname, the textual OID, the dotted-numeric OID, the instance, and
-the value.  That function can customize the result you want, in a hash of
-hashes, so you can extract the value later by hosts, by oid_names,
-by oid_numbers, by instances... like these:
+the hostname, the textual OID, the dotted-numeric OID, the instance, the
+value, and the textual OID you requested.  That function can customize the
+result you want, in a hash of hashes, so you can extract the value later by
+hosts, by oid_names, by oid_numbers, by instances... like these:
 
    $hash{$host}{$name}{$inst} = $value;
    $hash{$host}{$oid}{$inst} = $value;
@@ -237,7 +239,7 @@ sub printfun {
 }
 
 sub my_hash_with_host {
-    my($h_ref, $host, $name, $oid, $inst, $value) = @_;
+    my($h_ref, $host, $name, $oid, $inst, $value, $tree) = @_;
     $inst =~ s/^\.+//;
     if ($name =~ /ifPhysAddress/) {
 	my $mac = '';
