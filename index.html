@@ -40,6 +40,11 @@ Leinen</A>  &lt;<A HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</H3>
 
 <ul>
 
+<li> SNMP_util.pm 0.58: Check for errors from <tt>encode_oid</tt>, so
+that illegal OIDs generate error messages.  Allow for suppression of
+warnings by setting <tt>$SNMP_Session::suppress_warnings</tt> to a
+value greater than one.
+
 <li> SNMP_Session.pm 0.68: Added methods <tt>receive_request</tt> and
 <tt>decode_request</tt> to support SNMP agents.  Contributed by <a
 href="mailto:mikem@open.com.au">Mike McCauley</a>.
@@ -542,7 +547,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-19990221
+19990222
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
