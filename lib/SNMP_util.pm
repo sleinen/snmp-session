@@ -37,7 +37,7 @@ use BER "0.82";
 use SNMP_Session "0.83";
 use Socket;
 
-$VERSION = '0.92';
+$VERSION = '0.93';
 
 @ISA = qw(Exporter);
 
@@ -539,7 +539,6 @@ sub snmpwalk_flg ($$@) {
   my($value, $upoid, $oid, @retvals);
   my($got, @nnoid, $noid, $ok);
   my $session;
-  my(%soid);
   my(%done, %rethash);
 	
   $session = &snmpopen($host, 0, \@vars);
@@ -600,7 +599,16 @@ sub snmpwalk_flg ($$@) {
 	  #
 	  # extract name of the oid, if possible, the rest becomes the instance
 	  #
-	  my $inst = '';
+	  my $inst;
+	  my $upo = $upoid;
+	  while (!exists($revOIDS{$upo}) && length($upo)) {
+	    $upo =~ s/(\.\d+?)$//;
+	    $inst = $1.$inst;
+	  }	
+	  $upo = $revOIDS{$upo};
+	  $upo .= $inst if (defined($inst));
+
+	  undef($inst);
 	  while (!exists($revOIDS{$tempo}) && length($tempo)) {
 	    $tempo =~ s/(\.\d+?)$//;
 	    $inst = $1.$inst;
@@ -608,9 +616,10 @@ sub snmpwalk_flg ($$@) {
 	  #
 	  # call hash_sub
 	  #
-	  &$hash_sub(\%rethash, $host, $revOIDS{$tempo}, $tempo, $inst, $tempv);
+	  &$hash_sub(\%rethash, $host, $revOIDS{$tempo}, $tempo, $inst,
+			$tempv, $upo);
 	} else {
-	  $tempo=~s/^$upoid\.//;
+	  $tempo=~s/^$upoid\.// if ($#enoid <= 0);
 	  push @retvals, "$tempo:$tempv";
 	}
 	$done{$tmp} = 1;	# GIL
