@@ -1,4 +1,4 @@
-#!/usr/drwho/local/bin/perl
+#!/usr/local/bin/perl
 # -*- mode: Perl -*-
 ##################################################################
 # Config file creator
@@ -10,7 +10,7 @@
 #
 # Distributed under the GNU copyleft
 #
-# $Id: snmpspeed.pl,v 1.1 1998-12-13 10:52:22 leinen Exp $
+# $Id: snmpspeed.pl,v 1.2 1998-12-13 20:41:55 leinen Exp $
 #
 use SNMP_Session "0.54";
 $SNMP_Session::default_timeout = 0.2;
@@ -68,8 +68,8 @@ sub main {
 $|=1;
 for (my $i=0;$ i < 100; $i++){
     print "$i, ";# if $i % 10 ==0; 
-    my($ifinoct) = snmpget('ezci1','public','ifInOctets.1');
-    $ifinoct = snmpget('ezci1','public','ifInOctets.2');
+    my($ifinoct) = snmpget('ezci1.ethz.ch','public','ifInOctets.1');
+    $ifinoct = snmpget('ezci1.ethz.ch','public','ifInOctets.2');
 }
 }  
 main;
