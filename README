@@ -261,28 +261,9 @@ contained in the bindings.
 
 The code could first be restructured to follow the modularization
 proposed in RFC 2271 (An Architecture for Describing SNMP Management
-Frameworks).  Later, one could add support for SNMPv2c and SNMPv3
-encodings, and support for user-based security.  An interface to
-getBulk requests should be provided.
-
-			     MIB parsing
-
-Currently, users of the module must provide numeric object IDs, and
-should know the types of the variables they request.  It would be nice
-if we could read MIBs in some form, and provide the possibility to use
-symbolic variable names and do automatic decoding according to the
-variable types specified in the MIB.
-
-However, parsing MIBs in their full ASN.1 syntax looks like overkill
-for such a small package.  As a compromise, we could use the output of
-an existing MIB compiler as input.  I have done this in another
-project (see http://www.switch.ch/misc/leinen/snmp/lisp/) with files
-from ISODE SNMP's MIB compiler.  A problem with ISODE SNMP is that it
-is itself part of a rather huge package, and I would prefer to use a
-small standalone MIB parser.  Ideally this MIB parser would handle all
-kinds of MIBs, also SNMPv2 ones, and be able to generate easily
-readable files with the information we need (name-to-oid and
-name-to-type or oid-to-type mappings).
+Frameworks).  The existing SNMPv1 and SNMPv2c support must somehow be
+retrofitted to this framework.  Later, one could add support for
+SNMPv3 PDU formats and for user-based security.
 
 			  Higher-Level APIs
 
