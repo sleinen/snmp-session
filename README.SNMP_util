@@ -13,6 +13,7 @@ This program is free software; you can redistribute it under the
 	    Simon Leinen	<simon@switch.ch>
 	    Jeff Allen		<jeff.allen@acm.org>
 	    Johannes Demel	<demel@zid.tuwien.ac.at>
+	    Laurent Girod	<girod.laurent@pmintl.ch>
 
 
 I was using Simon Leinen's SNMP tools in various perl scripts, and I
@@ -44,6 +45,8 @@ The SNMP_utils.pm module contains the functions
 	    agent, generalID, specificID, OID, type, value,
 	    [OID, type, value ...])
   snmpmaptable(community@host:port:timeout:retries:backoff:version,
+		function, OID, [OID...])
+  snmpwalkhash(community@host:port:timeout:retries:backoff:version,
 		function, OID, [OID...])
 
 
@@ -166,6 +169,22 @@ function is called once per row.  The passed-in function will be given
 the row index as a partial OID in dotted notation, e.g. "1.3", or
 "10.0.1.34", and values of the requested table columns in that row.
 
+The snmpwalkhash acts like snmpwalk, but will call the passed-in function
+once per returned value.  The function is passed a reference to a hash,
+the hostname, the textual OID, the dotted-numeric OID, the instance, and
+the value.  That function can customize the result you want, in a hash of
+hashes, so you can extract the value later by hosts, by oid_names,
+by oid_numbers, by instances... like these:
+
+   $hash{$host}{$name}{$inst} = $value;
+   $hash{$host}{$oid}{$inst} = $value;
+   $hash{$name}{$inst} = $value;
+   $hash{$oid}{$inst} = $value;
+   $hash{$oid . '.' . $ints} = $value;
+   $hash{$inst} = $value;
+   ...
+The snmpwalkhash routine returns the hash.
+
 Here is a simple example of using the functions:
 
 #! /usr/local/bin/perl5
@@ -181,7 +200,7 @@ BEGIN {
 # large integers ... 
 require 5.004;
 
-use SNMP_util "0.86";
+use SNMP_util "0.89";
 }
 
 use strict;
@@ -192,6 +211,17 @@ sub printfun {
     ($a, $b, $c, $d, $e, $f) = unpack("C6", $phy);
     $mac = sprintf("%02x-%02x-%02x-%02x-%02x-%02x", $a, $b, $c, $d, $e, $f);
     print "interface $ind: MAC $mac   $desc\n";
+}
+
+sub my_hash_with_host {
+    my($h_ref, $host, $name, $oid, $inst, $value) = @_;
+    $inst =~ s/^\.+//;
+    if ($name =~ /ifPhysAddress/) {
+	my $mac = '';
+	map { $mac .= sprintf("%02X", $_) } unpack "CCCCCC", $value;
+	$value = $mac;
+    }
+    $h_ref->{$host}->{$name}->{$inst} = $value;
 }
 
 sub main {
@@ -208,29 +238,33 @@ sub main {
 
   print "Trying 'getnext' on $host\n";
   @ret = &snmpgetnext($host, "ifDescr");
-  foreach $desc (@ret)
-  {
+  foreach $desc (@ret) {
     ($oid, $desc) = split(':', $desc, 2);
     print "$oid = $desc\n";
   }
 
   print "Trying 'walk' on $host\n";
   @ret = &snmpwalk($host, "ifDescr");
-  foreach $desc (@ret)
-  {
+  foreach $desc (@ret) {
     ($oid, $desc) = split(':', $desc, 2);
     print "$oid = $desc\n";
+  }
+
+  print "Trying 'walkhash' on $host\n";
+  my %ret_hash = &snmpwalkhash($host, \&my_hash_with_host, "ifEntry");
+  foreach $oid (sort keys %{$ret_hash{$host}}) {
+    foreach my $inst (sort { $a <=> $b } keys %{$ret_hash{$host}{$oid}}) {
+      printf("%20s\t: %-15s %3s = %s\n", $host, $oid, $inst,
+		$ret_hash{$host}{$oid}{$inst});
+    }
   }
 
   print "Before set:\n";
   $oid = "sysContact";
   ($response) = &snmpget($host, $oid);
-  if ($response)
-  {
+  if ($response) {
     print "GET $oid : $response\n";
-  }
-  else
-  {
+  } else {
     warn "$host did not respond to SNMP query\n";
   }
 
@@ -239,23 +273,17 @@ sub main {
   print "setting contact to $cont\n";
   ($response) = &snmpset("security\@$host", $oid, 'string', $cont);
 
-  if ($response)
-  {
+  if ($response) {
     print "SET: $oid : $response\n";
-  }
-  else
-  {
+  } else {
     die "$host did not respond to SNMP set\n";
   }
 
   print "After set:\n";
   ($response) = &snmpget($host, $oid);
-  if ($response)
-  {
+  if ($response) {
     print "GET $oid : $response\n";
-  }
-  else
-  {
+  } else {
     die "$host did not respond to SNMP query\n";
   }
 
@@ -264,9 +292,7 @@ sub main {
 
   if ($response) {
     print "SET: $oid : $response\n";
-  }
-  else
-  {
+  } else {
     die "$host did not respond to SNMP set\n";
   }
 
@@ -274,9 +300,7 @@ sub main {
   ($response) = &snmpget($host, $oid);
   if ($response) {
     print "GET $oid : $response\n";
-  }
-  else
-  {
+  } else {
     die "$host did not respond to SNMP query\n";
   }
 
