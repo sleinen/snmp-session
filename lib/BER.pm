@@ -196,7 +196,7 @@ sub decode_by_template
 		$pdu = substr ($pdu,1);
 		(($length,$pdu) = decode_length ($pdu))
 		    || die "cannot read length";
-		die "Expected length $length" unless length $pdu == $length;
+		die "Expected length $length, got ".length $pdu unless length $pdu == $length;
 	    } elsif (/^\*s(.*)/) {
 		$_ = $1;
 		$expected = shift @_;
@@ -295,8 +295,11 @@ sub decode_length
     my(@result);
     $result = ord (substr ($pdu, 0, 1));
     if ($result & long_length) {
-	if ($result == long_length | 1) {
+	if ($result == (long_length | 1)) {
 	    @result = (ord (substr ($pdu, 1, 1)), substr ($pdu, 2));
+	} elsif ($result == (long_length | 2)) {
+	    @result = ((ord (substr ($pdu, 1, 1)) << 8)
+		       + ord (substr ($pdu, 2, 1)), substr ($pdu, 3));
 	} else {
 	    die "Unsupported length";
 	}
