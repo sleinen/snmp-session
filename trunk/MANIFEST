@@ -28,3 +28,4 @@ test/sun-find-process
 test/cisco-cpus
 test/cisco-memory
 test/SNMPAgent.pm
+test/snmpwalkh.pl
