@@ -5,12 +5,6 @@ use SNMP_Session "0.58";
 use BER;
 use Socket;
 
-#my $work_dir = '/home/noc/stat';
-my $work_dir = '/var/tmp/mrtg';
-my $icon_dir = '/lan/stat';
-my $directory = 'ten-34/ipmcast';
-my $abs_max = '100000000';
-
 my $mrouters =
 [
  'public@it-ws.ten-34.net:9161',
@@ -19,6 +13,25 @@ my $mrouters =
  'public@at-ws.ten-34.net',
  'public@uk-ws.ten-34.net',
  ];
+
+## Define this if you want WorkDir set in the generated configuration
+## file.
+##
+#my $work_dir = '/var/tmp/mrtg';
+
+## Define this if you want IconDir set in the generated configuration
+## file.
+##
+#my $icon_dir = '/lan/stat';
+
+## Define this if you want Directory[] set in each target.
+##
+#my $directory = 'ten-34/ipmcast';
+
+## An absolute maximum for traffic rates over tunnels, in Bytes per
+## second.  You probably don't need to change this.
+##
+my $abs_max = '100000000';
 
 my $dvmrpInterfaceType = [1,3,6,1,3,62,1,1,3,1,2];
 my $dvmrpInterfaceRemoteAddress = [1,3,6,1,3,62,1,1,3,1,5];
@@ -51,10 +64,11 @@ foreach my $target (@{$mrouters}) {
     my $snmp_target = $community.'@'.$mrouter;
     $snmp_target .= ":".$port
 	unless $port == 161;
-    print <<EOM;
-
-Target[$mrouter-mroutes]: 1.3.6.1.3.62.1.1.9.0&1.3.6.1.3.62.1.1.10.0:$snmp_target
-Directory[$mrouter-mroutes]: $directory
+    print "\n\nTarget[$mrouter-mroutes]:
+    1.3.6.1.3.62.1.1.9.0&1.3.6.1.3.62.1.1.10.0:$snmp_target\n";
+    print "Directory[$mrouter-mroutes]: $directory\n"
+	if defined $directory;
+    print <<EOM
 MaxBytes[$mrouter-mroutes]: 8000
 AbsMax[$mrouter-mroutes]: 100000
 Options[$mrouter-mroutes]: growright,gauge,nopercent
