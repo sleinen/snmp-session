@@ -9,9 +9,14 @@ use Socket;
 my $version = '1';
 my $port = 161;
 my $debug = 0;
+my $css_stylesheet = 'http://www.switch.ch/lan/css/tf-ten.css';
 
 ### Prototypes
 sub msdp_list_duplicate_sas ($ );
+sub msdp_collect_sas ($ );
+sub msdp_report_duplicate_sas ($$);
+sub msdp_duplicate_report_header ($$$ );
+sub msdp_duplicate_report_trailer ($ );
 sub msdp_map_group ($$$ );
 sub msdp_list_group ($$);
 sub pretty_ip ($ );
@@ -77,29 +82,70 @@ msdp_list_duplicate_sas ($session);
 
 sub msdp_list_duplicate_sas ($ ) {
     my ($session) = @_;
-    my @oids = ($msdpSACachePeerLearnedFrom,
-		$msdpSACacheRPFPeer,
-		$msdpSACacheStatus);
+    my ($announcements, $nsas) = msdp_collect_sas ($session);
+    msdp_report_duplicate_sas ($announcements, $nsas);
+}
+
+sub msdp_collect_sas ($ ) {
+    my ($session) = @_;
+    my @oids = ($msdpSACacheStatus);
+    my $nsa = 0;
     my %announcements;
     $session->map_table
 	(\@oids,
 	 sub () {
-	     my ($index, $peer_learned_from, $rpf_peer, $status) = @_;
+	     my ($index, $sa_status) = @_;
 	     die "index: $index"
 		 unless $index =~ /^(\d+\.\d+\.\d+\.\d+)\.(\d+\.\d+\.\d+\.\d+)\.(\d+\.\d+\.\d+\.\d+)$/;
 	     my ($group, $source, $rp) = ($1, $2, $3);
-	     push @{$announcements{$group,$source}}, {rp => $rp};
+	     return 0 unless pretty_print ($sa_status) == 1; # active(1)
+	     ++$nsa;
+	     push @{$announcements{$source,$group}}, {rp => $rp};
 	 });
-    foreach my $key (sort keys %announcements) {
-	my ($group, $source) = split ($;,$key);
-	my $announcements = $announcements{$key};
-	if ($#{$announcements} > 0) {
-	    printf "multiple announcements for (%s,%s)\n", pretty_ip ($source), pretty_ip ($group);
-	    foreach my $announcement (@{$announcements}) {
-		printf "  RP %s\n", pretty_ip ($announcement->{rp});
-	    }
+    (\%announcements, $nsa);
+}
+
+sub msdp_report_duplicate_sas ($$) {
+    my ($announcements, $nsas) = @_;
+    my $dupannouncements = 0;
+    foreach my $key (keys %{$announcements}) {
+	my $anns = $announcements->{$key};
+	if ($#{$anns} > 0) {
+	    ++$dupannouncements;
+	} else {
+	    undef $announcements->{$key};
 	}
     }
+    msdp_duplicate_report_header ($announcements, $nsas, $dupannouncements);
+    foreach my $key (sort keys %{$announcements}) {
+	my ($source, $group) = split ($;,$key);
+	my $announcements = $announcements->{$key};
+	if ($#{$announcements} > 0) {
+	    printf STDOUT "<h4> (%s,%s) </h4>\n<pre>\n", pretty_ip ($source), pretty_ip ($group);
+	    foreach my $announcement (@{$announcements}) {
+		printf STDOUT "  RP %s\n", pretty_ip ($announcement->{rp});
+	    }
+	    printf STDOUT "</pre>\n";
+	}
+    }
+    msdp_duplicate_report_trailer ($announcements);
+}
+
+sub msdp_duplicate_report_header ($$$ ) {
+    my ($announcements, $nsas, $dupannouncements) = @_;
+    my $nsgs = keys %{$announcements};
+    print STDOUT "<html><head><title>MSDP Duplicate SA Report</title></head>\n";
+    printf STDOUT "<LINK REL=STYLESHEET HREF=\"%s\" TYPE=\"text/css\">\n",
+    $css_stylesheet
+	if defined $css_stylesheet;
+    print STDOUT "<body><h1>MSDP Duplicate SA Report</h1>\n";
+    printf STDOUT "<p> %d (S,G) pairs found in %d SAs in %s's cache. \n", $nsgs, $nsas, $host;
+    printf STDOUT "Total number of (S,G) pairs with multiple RPs: %d </p>\n", $dupannouncements;
+}
+
+sub msdp_duplicate_report_trailer ($ ) {
+    my ($announcements) = @_;
+    print STDOUT "</body></html>\n";
 }
 
 sub msdp_map_group ($$$) {
