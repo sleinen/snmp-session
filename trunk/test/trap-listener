@@ -14,9 +14,13 @@ use SNMP_Session "0.60";
 use BER;
 use Socket;
 
+### Forward declarations
+sub print_trap ($$);
+
 my $port = 162;
 
-my $session = SNMPv1_Session->open_trap_session ($port);
+my $session = SNMPv1_Session->open_trap_session ($port)
+    or die "couldn't open trap session";
 my ($trap, $sender, $sender_port);
 
 while (($trap, $sender, $sender_port) = $session->receive_trap ()) {
