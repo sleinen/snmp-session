@@ -27,6 +27,7 @@
 ### Lorenzo Colitti <lorenzo@colitti.com>: IPv6 support
 ### Joerg Kummer <JOERG.KUMMER@Roche.COM>: TimeTicks support in snmpset()
 ### Christopher J. Tengi <tengi@CS.Princeton.EDU>: Gauge32 support in snmpset()
+### Nicolai Petri <nicolai@catpipe.net>: hashref passing for snmpwalkhash()
 ######################################################################
 
 package SNMP_util;
@@ -42,7 +43,7 @@ use BER "0.95";
 use SNMP_Session "0.97";
 use Socket;
 
-$VERSION = '0.99';
+$VERSION = '1.02';
 
 @ISA = qw(Exporter);
 
@@ -340,6 +341,7 @@ $SNMP_util::Debug = 0;
 $SNMP_util::CacheFile = "OID_cache.txt";
 $SNMP_util::CacheLoaded = 0;
 $SNMP_util::Return_array_refs = 0;
+$SNMP_util::Return_hash_refs = 0;
 
 srand(time + $$);
 
@@ -436,8 +438,9 @@ sub snmpopen ($$$) {
       foreach $type (keys %$opts) {
 	if ($type eq 'return_array_refs') {
 	  $SNMP_util::Return_array_refs = $opts->{$type};
-	}
-	else {
+	} elsif ($type eq 'return_hash_refs') {
+	  $SNMP_util::Return_hash_refs = $opts->{$type};
+	} else {
 	  if (exists $SNMP_util::Session->{$type}) {
 	    if ($type eq 'timeout') {
 	      $SNMP_util::Session->set_timeout($opts->{$type});
@@ -569,7 +572,7 @@ sub snmpwalk_flg ($$@) {
   my($got, @nnoid, $noid, $ok, $ix, @avars);
   my $session;
   my(%soid);
-  my(%done, %rethash);
+  my(%done, %rethash, $h_ref);
 
   $session = &snmpopen($host, 0, \@vars);
   if (!defined($session)) {
@@ -585,9 +588,9 @@ sub snmpwalk_flg ($$@) {
   #
   # Create/Refresh a reversed hash with oid -> name
   #
-  if (defined($hash_sub) && $RevNeeded) {
-    %revOIDS = reverse %SNMP_util::OIDS;
-    $RevNeeded = 0;
+  if (defined($hash_sub) && ($RevNeeded)) {
+      %revOIDS = reverse %SNMP_util::OIDS;
+      $RevNeeded = 0;
   }
 
   $got = 0;
@@ -698,7 +701,7 @@ sub snmpwalk_flg ($$@) {
 	  #
 	  # call hash_sub
 	  #
-	  &$hash_sub(\%rethash, $host, $revOIDS{$tempo}, $tempo, $inst,
+	  &$hash_sub($h_ref, $host, $revOIDS{$tempo}, $tempo, $inst,
 			$tempv, $upo);
 	} else {
 	  if ($SNMP_util::Return_array_refs) {
@@ -729,7 +732,8 @@ sub snmpwalk_flg ($$@) {
   }
   if ($got) {
     if (defined($hash_sub)) {
-    	return (%rethash)
+	return ($h_ref) if ($SNMP_util::Return_hash_refs);
+    	return (%$h_ref);
     } else {
     	return (@retvals);
     }
