@@ -4,9 +4,9 @@ use strict;
 use BER '0.58';
 use SNMP_Session '0.58';
 
-my $trap_receiver = "etna";
+my $trap_receiver = "130.59.10.30";
 my $trap_community = "hctiws";
-my $trap_session = SNMP_Session->open ($trap_receiver, $trap_community, 162);
+my $trap_session = SNMPv1_Session->open ($trap_receiver, $trap_community, 162);
 my $myIpAddress = pack ("CCCC", 208, 151, 198, 211);	# the sender's IP Address
 my $start_time = time ;
 
