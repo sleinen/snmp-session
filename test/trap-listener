@@ -14,7 +14,9 @@ use SNMP_Session "0.60";
 use BER;
 use Socket;
 
-my $session = SNMPv1_Session->open_trap_session ();
+my $port = 162;
+
+my $session = SNMPv1_Session->open_trap_session ($port);
 my ($trap, $sender, $sender_port);
 
 while (($trap, $sender, $sender_port) = $session->receive_trap ()) {
