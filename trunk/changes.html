@@ -33,8 +33,9 @@ done.  Also, <samp>OBJECT-GROUP</samp> entries are now
 recognized. </li>
 
 <li> SNMP_util.pm 0.92: The string-to-OID conversion routines now
-transparently convert strings to instance indexes.  For example,
-<samp>"var"</samp> would be converted to <samp>4.47.118.97.114</samp>.
+transparently convert quoted strings to instance indexes.  For
+example, <samp>"/usr"</samp> (including the quotes) would be converted
+to <samp>4.47.118.97.114</samp>.
 
 <li> SNMP_Session.pm 0.91: Fixed a bug in <tt>map_table_start_end</tt>
 for <tt>SNMPv2_Session</tt> (which uses <tt>get-bulk</tt>) which had
