@@ -58,7 +58,7 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '1.05';
+$VERSION = '1.06';
 
 @ISA = qw(Exporter);
 
@@ -277,14 +277,18 @@ sub decode_trap_request ($$) {
      $bindings)
 	= decode_by_template ($trap, "%{%i%s%*{%O%A%i%i%u%{%@",
 			    trap_request);
-    if (! defined ($snmp_version)) {
+    if (!defined $snmp_version) {
 	($snmp_version, $community,
 	 $request_id, $error_status, $error_index,
 	 $bindings)
 	    = decode_by_template ($trap, "%{%i%s%*{%i%i%i%{%@",
 				  trap2_request);
-	return $this->error_return ("v2 trap request contained errorStatus/errorIndex "
-		      .$error_status."/".$error_index)
+	if (!defined $snmp_version) {
+	    ($snmp_version, $community,$request_id, $error_status, $error_index, $bindings)
+		= decode_by_template ($trap, "%{%i%s%*{%i%i%i%{%@", inform_request);
+	}
+	return $this->error_return ("v2 trap/inform request contained errorStatus/errorIndex "
+				    .$error_status."/".$error_index)
 	    if defined $error_status && defined $error_index
 	    && ($error_status != 0 || $error_index != 0);
     }
