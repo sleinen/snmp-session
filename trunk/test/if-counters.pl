@@ -1,6 +1,49 @@
 #!/usr/local/bin/perl -w
 ###
-### Demonstration code for table walking
+### Author:       Simon Leinen  <simon@switch.ch>
+### Date Created: 21-Feb-1999
+###
+### Real-time full-screen display of the octet and CRC error counters
+### on interfaces of an SNMP-capable node
+###
+### Description: 
+###
+### Call this script with "-h" to learn about command usage.
+###
+### The script will poll the RFC 1213 ifTable at specified intervals
+### (default is every five seconds).
+###
+### For each interface except for those that are down, a line is
+### written to the terminal which lists the interfaces name (ifDescr),
+### well as the input and output transfer rates, as computed from the
+### deltas of the respective octet counts since the last sample.
+###
+### "Alarms"
+###
+### When an interface is found to have had CRC errors in the last
+### sampling interval, or only output, but no input traffic, it is
+### shown in inverse video.  In addition, when a link changes state
+### (from normal to inverse or vice versa), a bell character is sent
+### to the terminal.
+###
+### Miscellaneous
+###
+### Note that on the very first display, the actual SNMP counter
+### values are displayed.  THOSE ABSOLUTE COUNTER VALUES HAVE NO
+### DEFINED SEMANTICS WHATSOEVER.  However, in some versions of
+### Cisco's software, the values seem to correspond to the total
+### number of counted items since system boot (modulo 2^32).  This can
+### be useful for certain kinds of slowly advancing counters (such as
+### CRC errors, hopefully).
+###
+### The topmost screen line shows the name of the managed node, as
+### well as a few hard-to-explain items I found useful while debugging
+### the script.
+###
+### Please send any patches and suggestions for improvement to the
+### author (see e-mail address above).  Hope you find this useful!
+###
+### Original Purpose:
 ###
 ### This script should serve as an example of how to "correctly"
 ### traverse the rows of a table.  This functionality is implemented in
@@ -8,7 +51,7 @@
 ### columns of the RFC 1213 interface table and Cisco's locIfTable.  The
 ### tables share the same index, so they can be handled by a single
 ### invocation of map_table().
-
+###
 require 5.003;
 
 use strict;
