@@ -1,0 +1,68 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html> <head>
+<title>Frequently Asked Questions (FAQ) on SNMP_Session.pm</title>
+</head>
+
+<body bgcolor="#ffffff">
+<h1>Frequently Asked Questions (FAQ) on <tt>SNMP_Session.pm</tt></h1>
+
+<hr>
+
+<h2> <a name="snmpv3"></a>When will <tt>SNMP_Session.pm</tt> support SNMPv3? </h2>
+
+<pre>
+&gt; 	I came to know from Mr. Tobias Oetikar, that you are working
+&gt; on the SNMP library used in the MRTG. I would like to know, if there
+&gt; is any work going on to support the SNMP V3 in the future releases
+&gt; of MRTG. We would like to use the security features which SNMP V3
+&gt; supports.
+</pre>
+
+<p> <tt>SNMP_Session.pm</tt> would have to be modified to understand
+SNMPv3.  Personally I think this would be stretching the current code
+too much, and that it would be better to start with a fresh code
+base. </p>
+
+<p> <a
+href="http://search.cpan.org/dist/Net-SNMP/"><tt>Net::SNMP</tt></a> is
+an alternative library that started out looking a lot like
+<tt>SNMP_Session.pm</tt>, but is written in a much cleaner way and it
+already supports SNMPv3.  Like <tt>SNMP_Session.pm</tt>, it is
+stand-alone in that it doesn't require an additional SNMP toolkit like
+UCD-SNMP/Net-SNMP. </p>
+
+<p> It might be a useful exercise to modify MRTG to use
+<tt>Net::SNMP</tt> instead of my <tt>SNMP_Session.pm</tt> (and Mike
+Mitchell's <tt>SNMP_util.pm</tt> which comes with it).  However, it
+might require some work to do this in a compatible way. </p>
+
+<pre>
+&gt; Do we have any 3rd party tools which can be integrated
+&gt; with MRTG for the SNMP V3 support ?
+</pre>
+
+<p> I often use <a
+href="http://net-snmp.sourceforge.net/">Net-SNMP</a> (the former
+UCD-SNMP) as a command-line tool to access router information using
+SNMPv3.  I have my SNMPv3 USM credentials configured in my
+<samp>${HOME}/.snmp/snmp.conf</samp> file, so I can simply call
+<samp>snmptable ROUTERNAME TABLENAME</samp> without giving a
+community/user name. </p>
+
+<p> It used to be the case that MRTG allowed the usage of external
+SNMP command-line tools, including the CMU ones, which later became
+UCD-SNMP.  Maybe this code still works? </p>
+
+
+<hr>
+<!-- hhmts start -->
+2003/05/16 11:00:09
+<!-- hhmts end -->
+<address>
+
+ <a href="http://www.switch.ch/misc/leinen/">
+  Simon Leinen &lt;simon@switch.ch&gt;
+ </a>
+</address>
+
+</body> </html>
