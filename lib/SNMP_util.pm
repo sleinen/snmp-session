@@ -6,15 +6,15 @@ use strict;
 use vars qw(@ISA @EXPORT $VERSION);
 use Exporter;
 
-use BER "0.54";
-use SNMP_Session "0.56";
+use BER "0.58";
+use SNMP_Session "0.59";
 use Socket;
 
-$VERSION = '0.55';
+$VERSION = '0.56';
 
 @ISA = qw(Exporter);
 
-@EXPORT = qw(snmpget snmpgetnext snmpwalk snmpset snmptrap);
+@EXPORT = qw(snmpget snmpgetnext snmpwalk snmpset snmptrap snmpmapOID);
 
 %SNMP_util::OIDS = 
   ('sysDescr' => '1.3.6.1.2.1.1.1.0',
@@ -56,6 +56,7 @@ my $agent_start_time = time;
 
 undef $SNMP_util::Host;
 undef $SNMP_util::Session;
+$SNMP_util::Debug = 0;
 
 srand(time|$$);
 
@@ -67,6 +68,7 @@ sub snmpwalk (@);
 sub snmpset (@);
 sub snmptrap (@);
 sub toOID (@);
+sub snmpmapOID (@);
 
 sub version () { $VERSION; }
 
@@ -75,13 +77,15 @@ sub version () { $VERSION; }
 #
 sub snmpopen (@) {
   my($host) = @_;
-  my($nhost,$port,$community);
+  my($nhost, $port, $community);
+  my($timeout, $retries, $backoff);
 
   $community = "public";
   $port = 161;
 
   ($community, $host) = split('@', $host, 2) if ($host =~ /\@/);
-  ($host, $port) = split(':', $host, 2) if ($host =~ /:/);
+  ($host, $port, $timeout, $retries, $backoff) = split(':', $host, 5)
+	if ($host =~ /:/);
   $nhost = "$community\@$host:$port";
 
   if ((!defined($SNMP_util::Session))
@@ -89,12 +93,19 @@ sub snmpopen (@) {
   {
     if (defined($SNMP_util::Session))
     {
-      $SNMP_util::Session->close ();    
+      $SNMP_util::Session->close();    
       undef $SNMP_util::Session;
       undef $SNMP_util::Host;
     }
-    $SNMP_util::Session = SNMP_Session->open($host,$community,$port);
+    $SNMP_util::Session = SNMP_Session->open($host, $community, $port);
     $SNMP_util::Host = $nhost if defined($SNMP_util::Session);
+  }
+
+  if (defined($SNMP_util::Session))
+  {
+    $SNMP_util::Session->set_timeout($timeout) if (length($timeout) > 0);
+    $SNMP_util::Session->set_retries($retries) if (length($retries) > 0);
+    $SNMP_util::Session->set_backoff($backoff) if (length($backoff) > 0);
   }
   return $SNMP_util::Session;
 }
@@ -104,28 +115,28 @@ sub snmpopen (@) {
 # A restricted snmpget.
 #
 sub snmpget (@) {
-  my($host,@vars) = @_;
-  my(@enoid, $var,$response, $bindings, $binding, $value,$oid,@retvals);
-
-  @enoid = &toOID(@vars);
-
+  my($host, @vars) = @_;
+  my(@enoid, $var, $response, $bindings, $binding, $value, $oid, @retvals);
   my $session;
+
   $session = &snmpopen($host);
-  if (! defined($session)) {
+  if (!defined($session)) {
     warn "SNMPGET Problem for $host\n";
     return undef;
   }
 
+  @enoid = &toOID(@vars);
+
   if ($session->get_request_response(@enoid)) {
     $response = $session->pdu_buffer;
-    ($bindings) = $session->decode_get_response ($response);
+    ($bindings) = $session->decode_get_response($response);
     while ($bindings) {
-      ($binding,$bindings) = decode_sequence ($bindings);
-      ($oid,$value) = decode_by_template ($binding, "%O%@");
+      ($binding, $bindings) = decode_sequence($bindings);
+      ($oid, $value) = decode_by_template($binding, "%O%@");
       my $tempo = pretty_print($value);
-      push @retvals,  $tempo;
+      push @retvals, $tempo;
     }
-    return (@retvals);
+    return(@retvals);
   }
   $var = join(' ', @vars);
   warn "SNMPGET Problem for $var on $host\n";
@@ -136,18 +147,19 @@ sub snmpget (@) {
 # A restricted snmpgetnext.
 #
 sub snmpgetnext (@) {
-  my($host,@vars) = @_;
-  my(@enoid, $var,$response, $bindings, $binding, $value,$upoid,$oid,@retvals);
+  my($host, @vars) = @_;
+  my(@enoid, $var, $response, $bindings, $binding);
+  my($value, $upoid, $oid, @retvals);
   my($noid, $ok);
-
-  @enoid = &toOID(@vars);
-
   my $session;
+
   $session = &snmpopen($host);
-  if (! defined($session)) {
+  if (!defined($session)) {
     warn "SNMPGETNEXT Problem for $host\n";
     return undef;
   }
+
+  @enoid = &toOID(@vars);
 
   undef @vars;
   undef @retvals;
@@ -159,10 +171,10 @@ sub snmpgetnext (@) {
   if ($session->getnext_request_response(@enoid))
   {
     $response = $session->pdu_buffer;
-    ($bindings) = $session->decode_get_response ($response);
+    ($bindings) = $session->decode_get_response($response);
     while ($bindings) {
-      ($binding,$bindings) = decode_sequence ($bindings);
-      ($oid,$value) = decode_by_template ($binding, "%O%@");
+      ($binding, $bindings) = decode_sequence($bindings);
+      ($oid, $value) = decode_by_template($binding, "%O%@");
       $ok = 0;
       my $tempo = pretty_print($oid);
       foreach $noid (@vars)
@@ -184,7 +196,7 @@ sub snmpgetnext (@) {
 ####
 ####	$tempo=~s/^$upoid\.//;
 ##################################################################
-	push @retvals,  "$tempo:$tempv";
+	push @retvals, "$tempo:$tempv";
       }
     }
     return (@retvals);
@@ -201,18 +213,19 @@ sub snmpgetnext (@) {
 # A restricted snmpwalk.
 #
 sub snmpwalk (@) {
-  my($host,@vars) = @_;
-  my(@enoid, $var,$response, $bindings, $binding, $value,$upoid,$oid,@retvals);
+  my($host, @vars) = @_;
+  my(@enoid, $var, $response, $bindings, $binding);
+  my($value, $upoid, $oid, @retvals);
   my($got, @nnoid, $noid, $ok);
-
-  @enoid = toOID(@vars);
-
   my $session;
+
   $session = &snmpopen($host);
-  if (! defined($session)) {
+  if (!defined($session)) {
     warn "SNMPWALK Problem for $host\n";
     return undef;
   }
+
+  @enoid = toOID(@vars);
 
   $got = 0;
   @nnoid = @enoid;
@@ -226,11 +239,11 @@ sub snmpwalk (@) {
   {
     $got = 1;
     $response = $session->pdu_buffer;
-    ($bindings) = $session->decode_get_response ($response);
+    ($bindings) = $session->decode_get_response($response);
     undef @nnoid;
     while ($bindings) {
-      ($binding,$bindings) = decode_sequence ($bindings);
-      ($oid,$value) = decode_by_template ($binding, "%O%@");
+      ($binding, $bindings) = decode_sequence($bindings);
+      ($oid, $value) = decode_by_template($binding, "%O%@");
       $ok = 0;
       my $tempo = pretty_print($oid);
       foreach $noid (@vars)
@@ -244,10 +257,10 @@ sub snmpwalk (@) {
       }
       if ($ok)
       {
-	push @nnoid,  encode_oid(split(/\./, $tempo));
+	push @nnoid, encode_oid(split(/\./, $tempo));
 	my $tempv = pretty_print($value);
 	$tempo=~s/^$upoid\.//;
-	push @retvals,  "$tempo:$tempv";
+	push @retvals, "$tempo:$tempv";
       }
     }
     last if ($#nnoid < 0);
@@ -268,9 +281,17 @@ sub snmpwalk (@) {
 # A restricted snmpset.
 #
 sub snmpset(@) {
-    my($host,@vars) = @_;
+    my($host, @vars) = @_;
     my(@enoid, $response, $bindings, $binding);
     my($oid, @retvals, $type, $value);
+    my $session;
+
+    $session = &snmpopen($host);
+    if (!defined($session))
+    {
+	warn "SNMPSET Problem for $host\n";
+	return undef;
+    }
 
     while(@vars)
     {
@@ -298,23 +319,16 @@ sub snmpset(@) {
 	    return undef;
 	}
     }
-    my $session;
-    $session = &snmpopen($host);
-    if (! defined($session))
-    {
-	warn "SNMPSET Problem for $host\n";
-	return undef;
-    }
     if ($session->set_request_response(@enoid))
     {
 	$response = $session->pdu_buffer;
-	($bindings) = $session->decode_get_response ($response);
+	($bindings) = $session->decode_get_response($response);
 	while ($bindings)
 	{
-	    ($binding,$bindings) = decode_sequence ($bindings);
-	    ($oid,$value) = decode_by_template ($binding, "%O%@");
+	    ($binding, $bindings) = decode_sequence($bindings);
+	    ($oid, $value) = decode_by_template($binding, "%O%@");
 	    my $tempo = pretty_print($value);
-	    push @retvals,  $tempo;
+	    push @retvals, $tempo;
 	}
 	return (@retvals);
     }
@@ -325,9 +339,18 @@ sub snmpset(@) {
 # Send an SNMP trap
 #
 sub snmptrap(@) {
-    my($host,$ent,$agent,$gen,$spec,@vars) = @_;
+    my($host, $ent, $agent, $gen, $spec, @vars) = @_;
     my($oid, @retvals, $type, $value);
     my(@enoid);
+    my $session;
+
+    $host = $host . ':162' if !($host =~ /:/);
+    $session = &snmpopen($host);
+    if (!defined($session))
+    {
+	warn "SNMPTRAP Problem for $host\n";
+	return undef;
+    }
 
     if ($agent =~ /^\d+\.\d+\.\d+\.\d+(.*)/ )
     {
@@ -368,14 +391,6 @@ sub snmptrap(@) {
 	    return undef;
 	}
     }
-    my $session;
-    $host = $host . ':162' if !($host =~ /:/);
-    $session = &snmpopen($host);
-    if (! defined($session))
-    {
-	warn "SNMPTRAP Problem for $host\n";
-	return undef;
-    }
     return($session->trap_request_send(@enoid));
 }
 
@@ -386,25 +401,49 @@ sub snmptrap(@) {
 sub toOID(@)
 {
     my(@vars) = @_;
-    my($oid, $var, @retvar);
+    my($oid, $var, $tmp, @retvar);
 
     undef @retvar;
     foreach $var (@vars)
     {
-	if ($var =~ /^([a-z]+[^\.]*)/i)
+	if ($var =~ /^(([a-z][a-z\d\-]*\.)*([a-z][a-z\d\-]*))/i)
 	{
-	    $oid = $SNMP_util::OIDS{$1};
+	    $tmp = $&;
+	    $oid = $SNMP_util::OIDS{$tmp};
 	    if ($oid) {
-		$var =~ s/$1/$oid/;
+		$var =~ s/^$tmp/$oid/;
 	    } else {
 		warn "Unknown SNMP var $var\n";
 		next;
 	    }
 	}
-	print "toOID: $var\n" if $main::DEBUG >5;
+	print "toOID: $var\n" if $SNMP_util::Debug;
 	push(@retvar, encode_oid(split(/\./, $var)));
     }
     return @retvar;
+}
+
+#
+#  Add passed-in text, OID pairs to the OID mapping table.
+#
+sub snmpmapOID(@)
+{
+    my(@vars) = @_;
+    my($oid, $txt, $ind);
+
+    $ind = 0;
+    while($ind <= $#vars)
+    {
+	$txt = $vars[$ind++];
+	next unless($txt =~ /^(([a-z][a-z\d\-]*\.)*([a-z][a-z\d\-]*))$/i);
+
+	$oid = $vars[$ind++];
+	next unless($oid =~ /^((\d+.)*\d+)$/);
+
+	$SNMP_util::OIDS{$txt} = $oid;
+	print "snmpmapOID: $txt => $oid\n" if $SNMP_util::Debug;
+    }
+    return undef;
 }
 
 1;
