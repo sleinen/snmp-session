@@ -31,7 +31,7 @@ use BER "0.82";
 use SNMP_Session "0.83";
 use Socket;
 
-$VERSION = '0.83';
+$VERSION = '0.84';
 
 @ISA = qw(Exporter);
 
@@ -636,8 +636,6 @@ sub snmptrap(@) {
     my($oid, @retvals, $type, $value);
     my(@enoid);
     my $session;
-
-    undef $ent; undef $gen; undef $spec;
 
     $session = &snmpopen($host, 1);
     if (!defined($session))
