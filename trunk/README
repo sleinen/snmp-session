@@ -12,6 +12,9 @@ you can neither set values, nor read tables using these routines.
 Hopefully I will get around to implementing these other operations one
 day.
 
+				Usage
+				.....
+
 The basic usage of these routines works like this:
 
 	use BER;
@@ -28,8 +31,8 @@ The basic usage of these routines works like this:
 	# variables you want to get.
 
 	if ($session->get_request_response ($oid1, $oid2, ...)) {
-	    $response = $session->{pdu_buffer};
-	    ($bindings) = $session->decode_get_response ($response);
+	    $session->{pdu_buffer};
+	    ($bindings) = $session->decode_get_response ($session->{pdu_buffer});
 	
 	    while ($bindings ne '') {
 		($binding,$bindings) = &decode_sequence ($bindings);
@@ -40,3 +43,32 @@ The basic usage of these routines works like this:
 	} else {
 	    die "No response from agent on $host";
 	}
+
+			    Encoding OIDs
+			    .............
+
+In order to BER-encode OIDs, you can use the function BER::encode_oid.
+It takes (a vector of) numeric subids as an argument.  For example,
+
+	use BER;
+	encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
+
+will return the BER-encoded OID for the sysDescr.0 (1.3.6.1.2.1.1.1.0)
+instance of MIB-2.
+
+			 Decoding the results
+			 ....................
+
+When get_request_response returns success, you must decode the
+response PDU from the remote agent.  The function
+`decode_get_response' can be used to do this.  It takes a get-response
+PDU, checks its syntax and returns the "bindings" part of the PDU.
+This is where the remote agent actually returns the values of the
+variables in your query.
+
+You should iterate over the individual bindings in this "bindings"
+part and extract the value for each variable.  In the example above,
+the returned bindings are simply printed using the BER::pretty_print
+function.  The hash %pretty_oids in the example contains a mapping
+from BER-encoded OIDs to "readable" instance names.  Look at the
+source of the real example programs to see how this is constructed.
