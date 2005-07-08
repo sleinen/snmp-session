@@ -2,7 +2,7 @@
 ######################################################################
 ### SNMP_util -- SNMP utilities using SNMP_Session.pm and BER.pm
 ######################################################################
-### Copyright (c) 1998-2002, Mike Mitchell.
+### Copyright (c) 1998-2005, Mike Mitchell.
 ###
 ### This program is free software; you can redistribute it under the
 ### "Artistic License" included in this distribution (file "Artistic").
@@ -20,7 +20,7 @@
 ### Tobias Oetiker <oetiker@ee.ethz.ch>: HASH as first OID to set SNMP options
 ### Simon Leinen <simon@switch.ch>: 'undefined port' bug
 ### Daniel McDonald <dmcdonald@digicontech.com>: request for getbulk support
-### Laurent Girod <girod.laurent@pmintl.ch>: code for snmpwalkhash
+### Laurent Girod <it.fb@net2000.ch>: code for snmpwalkhash
 ### Ian Duplisse <i.duplisse@cablelabs.com>: MIB parsing suggestions
 ### Jakob Ilves <jakob.ilves@oracle.com>: return_array_refs for snmpwalk()
 ### Valerio Bontempi <v.bontempi@inwind.it>: IPv6 support
@@ -43,7 +43,7 @@ use BER "1.02";
 use SNMP_Session "1.00";
 use Socket;
 
-$VERSION = '1.04';
+$VERSION = '1.05';
 
 @ISA = qw(Exporter);
 
@@ -650,7 +650,7 @@ sub snmpwalk_flg ($$@) {
       } else {
 	# IlvJa
 	#
-	# The walk for variable $var[$ix] has been finished as
+	# The walk for variable $vars[$ix] has been finished as
 	# $nnoid[$ix] no longer is in the $avar[$ix] OID tree.
 	# So we exclude this variable from further requests.
 
@@ -696,14 +696,14 @@ sub snmpwalk_flg ($$@) {
 	    }
 	  }	
 	  if (length($tempo) && exists($revOIDS{$tempo})) {
-	    $tempo = $revOIDS{$tempo} . $inst;
+	    $var = $revOIDS{$tempo} . $inst;
 	  } else {
-	    $tempo = pretty_print($oid);
+	    $var = pretty_print($oid);
 	  }
 	  #
 	  # call hash_sub
 	  #
-	  &$hash_sub($h_ref, $host, $revOIDS{$tempo}, $tempo, $inst,
+	  &$hash_sub($h_ref, $host, $var, $tempo, $inst,
 			$tempv, $upo);
 	} else {
 	  if ($SNMP_util::Return_array_refs) {
