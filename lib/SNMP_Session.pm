@@ -1085,7 +1085,7 @@ sub map_table_start_end ($$$$$$) {
 		}
 		($base_index = undef), last
 		    if !defined $min_index;
-		last if defined $end && index_compare ($min_index, $end) >= 0;
+		last if defined $end && SNMP_Session::index_compare ($min_index, $end) >= 0;
 		&$mapfn ($min_index, @collected_values);
 		++$call_counter;
 		$base_index = $min_index;
@@ -1094,7 +1094,7 @@ sub map_table_start_end ($$$$$$) {
 	    return undef;
 	}
 	last if !defined $base_index;
-	last if defined $end and index_compare ($base_index, $end) >= 0;
+	last if defined $end and SNMP_Session::index_compare ($base_index, $end) >= 0;
     }
     $call_counter;
 }
