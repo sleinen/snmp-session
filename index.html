@@ -361,7 +361,7 @@ my ($trap, $sender_addr, $sender_port) = $trap_session-&gt;receive_trap ()
   or die "cannot receive trap";
 my ($community, $enterprise, $agent,
     $generic, $specific, $sysUptime, $bindings)
-  = $session-&gt;decode_trap_request ($trap)
+  = $trap_session-&gt;decode_trap_request ($trap)
     or die "cannot decode trap received"
 ...
 my ($binding, $oid, $value);
@@ -393,7 +393,7 @@ while ($bindings ne '') {
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20050712
+20060115
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
