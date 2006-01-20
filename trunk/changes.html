@@ -24,6 +24,11 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_Session.pm 1.08: Fixed a bug in the SNMPv2c version of
+<tt>map_table_start_end</tt> that would cause errors when the
+<samp>$end</samp> argument is actually being used.  Thanks to Jan van
+Keulen for submitting the patch. </li>
+
 <li> SNMP_Session.pm 1.07: Fixed <tt>strict&nbsp;subs</tt> error with
 newer versions of Perl.  Thanks to Gerry Dalton for spotting
 this. </li>
@@ -31,6 +36,9 @@ this. </li>
 <li> SNMP_Session.pm 1.06: <tt>decode_trap_request</tt> now
 understands SNMPv2 inform requests in addition to SNMPv1 traps and
 SNMPv2 traps.  Contributed by Andrew Cornford-Matheson. </li>
+
+<li> SNMP_util.pm 1.06: <tt>snmpwalkhash</tt> fix by Laurent
+Girod. </li>
 
 <li> <tt>index.html</tt>: The code is no longer available from
 <tt>ftp.switch.ch</tt>, but via HTTP from
@@ -644,7 +652,7 @@ use SNMP_Session "0.52";
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20050712
+20051210
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
