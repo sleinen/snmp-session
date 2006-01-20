@@ -43,7 +43,7 @@ use BER "1.02";
 use SNMP_Session "1.00";
 use Socket;
 
-$VERSION = '1.05';
+$VERSION = '1.06';
 
 @ISA = qw(Exporter);
 
@@ -696,7 +696,7 @@ sub snmpwalk_flg ($$@) {
 	    }
 	  }	
 	  if (length($tempo) && exists($revOIDS{$tempo})) {
-	    $var = $revOIDS{$tempo} . $inst;
+	    $var = $revOIDS{$tempo};
 	  } else {
 	    $var = pretty_print($oid);
 	  }
@@ -1102,7 +1102,7 @@ sub Check_OID ($) {
     $tmp = $&;
     $tmpv = $tmp;
     for (;;) {
-      last if defined($SNMP_util::OIDS{$tmpv});
+      last if exists($SNMP_util::OIDS{$tmpv});
       last if !($tmpv =~ s/^[^\.]*\.//);
     }
     $oid = $SNMP_util::OIDS{$tmpv};
@@ -1237,9 +1237,13 @@ sub snmpMIB_to_OID ($) {
 	    ($tmp, $val) = split(' ', $val, 2);
 	    if ($tmp =~ /([\w\-]+)\((\d+)\)/) {
 	      $tmp = $1;
-	      $tmpv = "$SNMP_util::OIDS{$strt}.$2";
+	      if (exists($SNMP_util::OIDS{$strt})) {
+		$tmpv = "$SNMP_util::OIDS{$strt}.$2";
+	      } else {
+		$tmpv = $2;
+	      }
 	      $Link{$tmp} = $strt;
-	      if (!defined($prev{$tmp}) && defined($SNMP_util::OIDS{$tmp})) {
+	      if (!exists($prev{$tmp}) && exists($SNMP_util::OIDS{$tmp})) {
 		if ($tmpv ne $SNMP_util::OIDS{$tmp}) {
 		  $strt = "$strt.$tmp";
 		  $SNMP_util::OIDS{$strt} = $tmpv;
@@ -1254,7 +1258,7 @@ sub snmpMIB_to_OID ($) {
 	    }
 	  }
 
-	  if (!defined($SNMP_util::OIDS{$strt})) {
+	  if (!exists($SNMP_util::OIDS{$strt})) {
 	    if ($pass) {
 	      carp "snmpMIB_to_OID: $arg: \"$strt\" prefix unknown, load the parent MIB first.\n"
 		unless ($SNMP_Session::suppress_warnings > 1);
@@ -1263,8 +1267,10 @@ sub snmpMIB_to_OID ($) {
 	    }
 	  }
 	  $Link{$var} = $strt;
-	  $val = "$SNMP_util::OIDS{$strt}.$val";
-	  if (!defined($prev{$var}) && defined($SNMP_util::OIDS{$var})) {
+	  if (exists($SNMP_util::OIDS{$strt})) {
+	    $val = "$SNMP_util::OIDS{$strt}.$val";
+	  }
+	  if (!exists($prev{$var}) && exists($SNMP_util::OIDS{$var})) {
 	    if ($val ne $SNMP_util::OIDS{$var}) {
 	      $var = "$strt.$var";
 	    }
