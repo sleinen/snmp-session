@@ -59,6 +59,7 @@ sub collect_qos_information ($ ) {
 
 sub print_service_policies ($$) {
     my ($service_policies, $if_entry) = @_;
+    print "Service Policies\n\n";
     foreach my $installed_index (sort keys %{$service_policies}) {
 	my $service_policy = $service_policies->{$installed_index};
 	printf STDOUT
@@ -72,14 +73,16 @@ sub print_service_policies ($$) {
 
 sub print_qos_objects ($ ) {
     my ($qos_objects) = @_;
+    print "QoS objects\n\n";
     foreach my $policy_index (sort keys %{$qos_objects}) {
 	foreach my $object_index (sort keys %{$qos_objects->{$policy_index}}) {
 	    my $qos_object = $qos_objects->{$policy_index}->{$object_index};
 	    printf STDOUT
-		("%4d %4d [%4d] %-10s\n",
+		("%4d %4d [%4d] %d %-10s\n",
 		 $policy_index,
 		 $object_index,
 		 $qos_object->{parentObjectsIndex},
+		 $qos_object->{configIndex},
 		 pretty_config_type $qos_object->{objectsType});
 	}
     }
@@ -88,6 +91,7 @@ sub print_qos_objects ($ ) {
 
 sub print_qos_config ($ ) {
     my ($configs) = @_;
+    print "QoS Configuration\n\n";
     foreach my $config_index (sort keys %{$configs}) {
 	my $config = $configs->{$config_index};
 	printf STDOUT
