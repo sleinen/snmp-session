@@ -1,0 +1,129 @@
+#!/usr/bin/perl -w
+###
+### entls - list ENTITY-MIB
+###
+### Author:       Simon Leinen <simon@switch.ch>
+### Date created: 03-May-2005
+
+use strict;
+use SNMP_util;
+use SNMP_Table;
+
+## Prototypes
+sub init_mibs ();
+sub collect_entity_information ($ );
+sub print_physical ($ );
+sub print_phys_tree ($$);
+sub get_physical ($ );
+sub decode_truth_value ($ );
+sub snmp_decode_value ($@);
+
+my $target = shift @ARGV || 'hctiws@swiLST76.switch.ch:::::2:v4only';
+
+my $phys_tree;
+
+init_mibs ();
+collect_entity_information ($target);
+print_physical ($phys_tree);
+1;
+
+sub collect_entity_information ($ ) {
+    $phys_tree = get_physical ($target);
+}
+
+sub print_physical ($ ) {
+    my ($phys_tree) = @_;
+    print "Physical Entities\n\n";
+    print_phys_tree ($phys_tree, "");
+}
+
+sub print_phys_tree ($$) {
+    my ($node, $prefix) = @_;
+    printf STDOUT
+	("%s%s\n",
+	 $prefix,
+	 $node->tostring ());
+    foreach my $class (sort keys %{$node->{_children}}) {
+	my $class_children = $node->{_children}->{$class};
+	foreach my $child_index (sort { $a <=> $b } keys %{$class_children}) {
+	    print_phys_tree ($class_children->{$child_index},
+			     (' 'x length $prefix).sprintf ("%d. ", $child_index));
+	}
+    }
+}
+
+### get_if_entries TARGET
+###
+### Read the MIB-II interface table, and construct a hash mapping the
+### interface indices to hashes containing important slots.
+### Currently, only ifDescr and ifAlias are recorded.
+###
+sub get_if_entries ($ ) {
+    my ($target) = @_;
+    return snmp_rows_to_objects
+      ($target, 'MIBII::Interface', 'if', qw(descr alias));
+}
+
+sub get_physical ($ ) {
+    my ($target) = @_;
+    my ($phys, $root);
+    $phys = snmp_rows_to_objects
+	($target, 'Entity::PhysicalEntry', 'entPhysical',
+	 qw(descr vendorType containedIn class parentRelPos name
+	    hardwareRev firmwareRev softwareRev serialNum mfgName
+	    modelName alias assetID isFRU));
+    foreach my $i1 (keys %{$phys}) {
+	my $e1 = $phys->{$i1};
+	if ($e1->{containedIn} == 0) {
+	    die "multiple roots" if defined $root;
+	    $root = $e1;
+	}
+	foreach my $i2 (keys %{$phys}) {
+	    my $e2 = $phys->{$i2};
+	    next if $e2->{_visited};
+	    if ($i1 == $e2->{containedIn}) {
+		$e1->{_children}->{$e2->{class}}->{$e2->{parentRelPos}} = $e2;
+		$e2->{parent} = $e1;
+	    }
+	}
+    }
+    return $root;
+}
+
+sub decode_truth_value ($ ) {return snmp_decode_value ($_[0], qw(1 0));}
+
+sub snmp_decode_value ($@) {
+    my ($index, @mapvec) = @_;
+    return $index if $index < 1 or $index > $#mapvec+1;
+    return $mapvec[$index-1];
+}
+
+sub init_mibs () {
+    snmpmapOID
+	(qw(
+entPhysicalDescr	1.3.6.1.2.1.47.1.1.1.1.2
+entPhysicalVendorType	1.3.6.1.2.1.47.1.1.1.1.3
+entPhysicalContainedIn	1.3.6.1.2.1.47.1.1.1.1.4
+entPhysicalClass	1.3.6.1.2.1.47.1.1.1.1.5
+entPhysicalParentRelPos	1.3.6.1.2.1.47.1.1.1.1.6
+entPhysicalName		1.3.6.1.2.1.47.1.1.1.1.7
+entPhysicalHardwareRev	1.3.6.1.2.1.47.1.1.1.1.8
+entPhysicalFirmwareRev	1.3.6.1.2.1.47.1.1.1.1.9
+entPhysicalSoftwareRev	1.3.6.1.2.1.47.1.1.1.1.10
+entPhysicalSerialNum	1.3.6.1.2.1.47.1.1.1.1.11
+entPhysicalMfgName	1.3.6.1.2.1.47.1.1.1.1.12
+entPhysicalModelName	1.3.6.1.2.1.47.1.1.1.1.13
+entPhysicalAlias	1.3.6.1.2.1.47.1.1.1.1.14
+entPhysicalAssetID	1.3.6.1.2.1.47.1.1.1.1.15
+entPhysicalIsFRU	1.3.6.1.2.1.47.1.1.1.1.16
+));
+}
+
+package MIBII::Interface;
+package Entity::PhysicalEntry;
+
+sub tostring ($ ) {
+    my $result = sprintf ("%s", $_[0]->{name});
+    $result .= " (".$_[0]->{alias}.")" if $_[0]->{alias};
+    return $result;
+}
