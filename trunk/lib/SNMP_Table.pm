@@ -31,7 +31,7 @@ use SNMP_util;
 
 @ISA = qw(Exporter);
 
-@EXPORT = qw(snmp_rows_to_objects snmp_map_row_objects);
+@EXPORT = qw(snmp_rows_to_objects snmp_row_to_object snmp_map_row_objects);
 
 ### snmp_rows_to_objects TARGET, CLASS, PREFIX, COLUMNS...
 ###
@@ -105,6 +105,28 @@ sub snmp_map_row_objects ($$$$@) {
 		      &$mapfn ($index, $object);
 		  },
 		  @coloids);
+}
+
+### snmp_row_to_object TARGET, CLASS, INDEX, PREFIX, COLUMNS...
+###
+### This can be used if one is only interested in a single row,
+### defined by INDEX.  This function uses a large SNMP get request to
+### retrieve all columns of interest, and assembles the result into a
+### hash blessed to CLASS.  This hash directly represents the row
+### object.  Note that this function returns just a single hash, as
+### opposed to snmp_rows_to_objects, which returns a hash that maps
+### index values to such hashes.
+###
+sub snmp_row_to_object ($$$$@ ) {
+    my ($target, $class, $index, $prefix, @cols) = @_;
+    my @coloids = map ($prefix.ucfirst $_.".".$index,@cols);
+    my @result = snmpget ($target, @coloids);
+    my %result = ();
+    foreach my $col (@cols) {
+	$result{$col} = shift @result;
+    }
+    bless \%result, $class;
+    return \%result;
 }
 
 1;
