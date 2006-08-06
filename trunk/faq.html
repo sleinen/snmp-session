@@ -11,6 +11,15 @@
 <h2> <a name="snmpv3"></a>When will MRTG/<tt>SNMP_Session.pm</tt>
 support SNMPv3? </h2>
 
+<p> MRTG 2.13 and higher includes support for SNMPv3, using the
+<tt>Net::SNMP</tt> library.  See the sections about <a
+href="http://oss.oetiker.ch/mrtg/doc/mrtg-reference.en.html#enablesnmpv3"><tt>EnableSnmpV3</tt></a>,
+<a
+href="http://oss.oetiker.ch/mrtg/doc/mrtg-reference.en.html#target"><tt>Target</tt></a>,
+and <a
+href="http://oss.oetiker.ch/mrtg/doc/mrtg-reference.en.html#snmpoptions"><tt>SnmpOptions</tt></a>,
+in the MRTG Reference Manual. </p>
+
 <p> <tt>SNMP_Session.pm</tt> only supports SNMPv1 and
 (community-based) SNMPv2 ("SNMPv2c").  There are no plans to add
 SNMPv3 support to <tt>SNMP_Session.pm</tt>.  I'd recommend looking at
@@ -49,25 +58,9 @@ be written to disk between runs.  I'm not sure whether Net::SNMP
 already supports this.  If MRTG is run as a long-running "daemon"
 process, making the cache persistent might not be necessary. </p>
 
-<h2> Can I integrate 3rd party tools with MRTG to get SNMPv3 support? </h2>
-
-<p> From the command line, I often use <a
-href="http://net-snmp.sourceforge.net/">Net-SNMP</a> (the former
-UCD-SNMP) to access router information using SNMPv3.  I have my SNMPv3
-USM credentials configured in my <samp>${HOME}/.snmp/snmp.conf</samp>
-file, so I can simply call <samp>snmptable ROUTERNAME TABLENAME</samp>
-without giving a community/user name. </p>
-
-<p> It used to be the case that MRTG allowed the usage of external
-SNMP command-line tools, including the CMU ones, which later became
-UCD-SNMP.  Maybe this code still works? Otherwise you can use MRTG's
-`script' target syntax, with a small shell script that calls Net-SNMP
-and outputs the obtained values in the format in which MRTG expects
-them. </p>
-
 <hr>
 <!-- hhmts start -->
-2005/06/07  9:00:44
+2006/08/06 20:25:22
 <!-- hhmts end -->
 <address>
 
