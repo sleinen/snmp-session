@@ -12,13 +12,16 @@ use SNMP_Table;
 ## Prototypes
 sub init_mibs ();
 sub collect_entity_information ($ );
-sub print_physical ($ );
+sub print_physical ($$);
 sub print_phys_tree ($$);
+sub print_phys_tree_1 ($$@);
 sub get_physical ($ );
 sub decode_truth_value ($ );
 sub snmp_decode_value ($@);
+sub node_is_transceiver_sensor ($ );
+sub usage ();
 
-my $target = shift @ARGV || 'hctiws@swiLST76.switch.ch:::::2:v4only';
+my @targets = ();
 
 my $phys_tree;
 
@@ -30,36 +33,96 @@ my $print_vendor_type = 0;
 ##
 my $print_ent_physical_index = 0;
 
+## Set to 1 if you want transceiver sensors listed.
+##
+my $transceiver_sensors = 0;
+
+my $print_relative_index = 1;
+my $print_hierarchy_indentation = 1;
+
+my $current_router;
+my $current_transceiver;
+
+while (@ARGV) {
+    if ($ARGV[0] eq '-V') {
+	$print_vendor_type = 1;
+    } elsif ($ARGV[0] eq '-i') {
+	$print_ent_physical_index = 1;
+    } elsif ($ARGV[0] eq '-t') {
+	$transceiver_sensors = 1;
+	$print_ent_physical_index = 1;
+	$print_relative_index = 0;
+	$print_hierarchy_indentation = 0;
+    } elsif ($ARGV[0] eq '-h') {
+	usage ();
+	exit (0);
+    } elsif ($ARGV[0] =~ /^-/) {
+	warn ("Unknown option ",$ARGV[0]);
+	usage ();
+	exit (1);
+    } else {
+	push @targets, $ARGV[0];
+    }
+    shift @ARGV;
+}
+usage (), exit 1 unless @targets;
+
 init_mibs ();
-collect_entity_information ($target);
-print_physical ($phys_tree);
+foreach my $target (@targets) {
+    $current_router = $target;
+    $current_router =~ s/.*@//;
+    $current_router =~ s/:.*//;
+    collect_entity_information ($target);
+    print_physical ($current_router, $phys_tree);
+}
 1;
 
 sub collect_entity_information ($ ) {
+    my ($target) = @_;
     $phys_tree = get_physical ($target);
 }
 
-sub print_physical ($ ) {
-    my ($phys_tree) = @_;
-    print "Physical Entities\n\n";
+sub print_physical ($$) {
+    my ($current_router, $phys_tree) = @_;
+    if ($transceiver_sensors) {
+	print "target --default--\n\trouter\t= ",$current_router,"\n";
+	print "\tdisplay-name\t= \"Router ",$current_router," transceiver monitoring\"\n";
+	print "\tlong-desc\t= \"<H3>%short-desc%</H3>\"\n";
+    } else {
+	print "Physical Entities\n\n";
+    }
     print_phys_tree ($phys_tree, "");
 }
 
 sub print_phys_tree ($$) {
-    my ($node, $prefix) = @_;
-    printf STDOUT
-	("%s%s\n",
-	 $prefix,
-	 $node->tostring ());
+    print_phys_tree_1 ($_[0], $_[1], ());
+}
+
+sub print_phys_tree_1 ($$@) {
+    my ($node, $prefix, @stack) = @_;
+    $node->{parent_stack} = \@stack;
+    printf STDOUT ("%s%s\n", $prefix, $node->tostring ())
+	if !$transceiver_sensors or node_is_transceiver_sensor ($node);
     foreach my $class (sort keys %{$node->{_children}}) {
 	my $class_children = $node->{_children}->{$class};
 	foreach my $child_index (sort { $a <=> $b } keys %{$class_children}) {
-	    print_phys_tree ($class_children->{$child_index},
-			     (' 'x length $prefix).sprintf ("%d. ", $child_index));
+	    print_phys_tree_1 ($class_children->{$child_index},
+			       ($print_hierarchy_indentation
+				? (' 'x length $prefix)
+				: '')
+			       .($print_relative_index
+				 ? sprintf ("%d. ", $child_index)
+				 : ''),
+			       ($node, @stack));
 	}
     }
 }
 
+sub node_is_transceiver_sensor ($ ) {
+    my ($node) = @_;
+    ($node->{vendorType} =~ /1\.3\.6\.1\.4\.1\.9\.12\.3\.1\.8\.(4[6789]|50)$/)
+	? 1 : 0;
+}
 ### get_if_entries TARGET
 ###
 ### Read the MIB-II interface table, and construct a hash mapping the
@@ -127,16 +190,48 @@ entPhysicalIsFRU	1.3.6.1.2.1.47.1.1.1.1.16
 ));
 }
 
+sub usage () {
+    print "Usage: $0 -h\n";
+    print "Usage: $0 [-V] [-i] [-t] TARGET...\n";
+    print "  -V      print entities' vendorTypes\n";
+    print "  -i      print indexes from entPhysicalTable\n";
+    print "  -t      list transceiver sensors\n";
+}
+
 package MIBII::Interface;
 package Entity::PhysicalEntry;
 
+my $last_transceiver;
+
 sub tostring ($ ) {
+    my ($node) = @_;
     my $result = '';
-    $result .= sprintf ("%5d: ", $_[0]->{index})
-	if $print_ent_physical_index;
-    $result .= sprintf ("%s", $_[0]->{name});
-    $result .= " (".$_[0]->{alias}.")" if $_[0]->{alias};
-    $result .= " (".$_[0]->{vendorType}.")"
-	if $print_vendor_type and $_[0]->{vendorType};
+    my $parent = $node->{parent_stack}->[0];
+    my $current_transceiver = $parent->{name};
+    if (defined $current_transceiver
+	&& (!defined $last_transceiver || $current_transceiver ne $last_transceiver)) {
+	my $target = "$current_transceiver";
+	$target = lc $target;
+	$target =~ s/[ \/.]/_/g;
+	$target =~ s/^gi/gigabitethernet/g;
+	$target =~ s/^te/tengigabitethernet/g;
+	print "\ntarget $target\n";
+	print "\tshort-desc\t= \"",$current_transceiver,"\"\n";
+	print "\ttarget-type\t= \"monitored-transceiver\"\n";
+	$last_transceiver = $current_transceiver;
+    }
+    if ($transceiver_sensors) {
+	my ($interface, $sensor_type) = split (/ /, $node->{name}, 2);
+	$sensor_type =~ s/[ \/]/-/g;
+	$result = "\t".lc $sensor_type;
+	$result .= sprintf (" = \"%d\"", $node->{index});
+    } else {
+	$result .= sprintf ("%d:", $node->{index})
+	    if $print_ent_physical_index;
+	$result .= sprintf ("%s", $node->{name});
+	$result .= " (".$node->{alias}.")" if $node->{alias};
+	$result .= " (".$node->{vendorType}.")"
+	    if $print_vendor_type and $node->{vendorType};
+    }
     return $result;
 }
