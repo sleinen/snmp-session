@@ -22,6 +22,14 @@ my $target = shift @ARGV || 'hctiws@swiLST76.switch.ch:::::2:v4only';
 
 my $phys_tree;
 
+## Set to 1 if you want entPhysicalVendorType to be printed.
+##
+my $print_vendor_type = 0;
+
+## Set to 1 if you want the entPhysical index to be printed.
+##
+my $print_ent_physical_index = 0;
+
 init_mibs ();
 collect_entity_information ($target);
 print_physical ($phys_tree);
@@ -123,7 +131,12 @@ package MIBII::Interface;
 package Entity::PhysicalEntry;
 
 sub tostring ($ ) {
-    my $result = sprintf ("%s", $_[0]->{name});
+    my $result = '';
+    $result .= sprintf ("%5d: ", $_[0]->{index})
+	if $print_ent_physical_index;
+    $result .= sprintf ("%s", $_[0]->{name});
     $result .= " (".$_[0]->{alias}.")" if $_[0]->{alias};
+    $result .= " (".$_[0]->{vendorType}.")"
+	if $print_vendor_type and $_[0]->{vendorType};
     return $result;
 }
