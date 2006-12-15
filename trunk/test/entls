@@ -19,6 +19,8 @@ sub get_physical ($ );
 sub decode_truth_value ($ );
 sub snmp_decode_value ($@);
 sub node_is_transceiver_sensor ($ );
+sub router_pretty_name ($ );
+sub router_pretty_name_1 ($ );
 sub usage ();
 
 my @targets = ();
@@ -36,6 +38,13 @@ my $print_ent_physical_index = 0;
 ## Set to 1 if you want transceiver sensors listed.
 ##
 my $transceiver_sensors = 0;
+
+## Directory in which to find router configurations.
+## Currently, this is only used to find the "canonical" names
+## of routers, using the `hostname' command from the router
+## configuration file.
+##
+my $rancid_base = '/usr/local/rancid/backbone/configs';
 
 my $print_relative_index = 1;
 my $print_hierarchy_indentation = 1;
@@ -85,8 +94,10 @@ sub collect_entity_information ($ ) {
 sub print_physical ($$) {
     my ($current_router, $phys_tree) = @_;
     if ($transceiver_sensors) {
-	print "target --default--\n\trouter\t= ",$current_router,"\n";
-	print "\tdisplay-name\t= \"Router ",$current_router," transceiver monitoring\"\n";
+	print "target --default--\n\trouter\t= ",
+	router_pretty_name ($current_router), "\n";
+	print "\tdirectory-desc\t= \"Router %router% transceiver monitoring\"\n";
+	print "\tdisplay-name\t= \"%router% - %short-desc%\"\n";
 	print "\tlong-desc\t= \"<H3>%short-desc%</H3>\"\n";
     } else {
 	print "Physical Entities\n\n";
@@ -196,6 +207,26 @@ sub usage () {
     print "  -V      print entities' vendorTypes\n";
     print "  -i      print indexes from entPhysicalTable\n";
     print "  -t      list transceiver sensors\n";
+}
+
+my %router_pretty_name = ();
+
+sub router_pretty_name ($ ) {
+    my ($router_name) = @_;
+    return $router_pretty_name{$router_name}
+	if exists $router_pretty_name{$router_name};
+    return ($router_pretty_name{$router_name}
+	    = router_pretty_name_1 ($router_name));
+}
+
+sub router_pretty_name_1 ($ ) {
+    my ($router_name) = @_;
+    open (CONFIG, $rancid_base.'/'.$router_name)
+	or return $router_name;
+    while (<CONFIG>) {
+	return $1 if /^hostname (.*)$/;
+    }
+    close CONFIG;
 }
 
 package MIBII::Interface;
