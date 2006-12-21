@@ -1,4 +1,25 @@
 #!/usr/local/bin/perl -w
+##
+## cricket-genconf-sensor
+##
+## Generate Cricket configuration for sensor monitoring
+##
+## Author:        Simon Leinen  <simon@limmat.switch.ch>
+## Date created:  21-Dec-2006
+##
+## This script generates Cricket configuration files for
+## SNMP-monitorable sensors in a set of routers.  It does this on the
+## basis of a RANCID configuration file repository.  For each router
+## in that directory that seems to have monitorable sensors, the
+## script calls the `entls' script to generate Cricket configuration.
+##
+## The result of the script is a configuration file tree in a
+## temporary directory.  The user should compare existing
+## configuration against this new tree using e.g. "diff -ur".
+##
+## In the future, the script should be enhanced to apply "safe"
+## configuration changes autonomically, and send a report on what was
+## changed and what differences remain.
 
 use strict;
 
