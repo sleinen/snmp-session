@@ -1,0 +1,54 @@
+#!/usr/local/bin/perl -w
+
+use strict;
+
+### Prototypes
+sub read_router_configurations ($ );
+sub has_sensors_p ($ );
+
+my $rancid_directory = '/usr/local/rancid/backbone/configs';
+
+my @routers = read_router_configurations ($rancid_directory);
+
+my $tmpdir = '/tmp'.'/foo/';
+-d $tmpdir or mkdir $tmpdir or die "Cannot create $tmpdir: $!";
+
+foreach my $router (@routers) {
+    next unless has_sensors_p ($router);
+    print "$router\n";
+    my $rdir = $tmpdir..$router;
+    -d $rdir or mkdir $rdir or die "cannot create directory $rdir: $!";
+    my $retval = system ('perl -Ilib test/entls -t hctiws@'
+			 .$router.':::::2:v4only > '
+			 .$rdir.'/'.$router);
+    if ($retval) {
+	warn "failed to generate configuration for $router";
+    }
+}
+
+sub read_router_configurations ($ ) {
+    my ($dir) = @_;
+    my @routers = ();
+    opendir CONFIG, $dir
+	or die "open directory $dir: $!";
+    foreach my $file (readdir CONFIG) {
+	next unless -f $dir.'/'.$file;
+	push @routers, $file;
+    }
+    closedir CONFIG
+	or die "close directory $dir: $!";
+    @routers;
+}
+
+sub has_sensors_p ($ ) {
+    my ($router) = @_;
+    my $have_sensor_p = 0;
+    open (CONFIG, $rancid_directory.'/'.$router)
+	or die "open configuration file for $router: $!";
+    while (<CONFIG>) {
+	$have_sensor_p = 1
+	    if /Receive Power Sensor/;
+    }
+    close CONFIG or die "close configuration file for $router: $!";
+    return $have_sensor_p;
+}
