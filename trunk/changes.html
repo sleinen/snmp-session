@@ -24,6 +24,16 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_Session.pm 1.10: Mike Fischer reported that on some systems,
+ notably Linux, <tt>recv()</tt> may block even though a
+ preceding <tt>select()</tt> for readability has returned
+ successfully.  Once condition where this can happen is when a UDP
+ checksum on an incoming datagram doesn't verify.  To avoid our
+ library from blocking in this case, we have to
+ pass <tt>MSG_DONTWAIT</tt> to <tt>recv()</tt>.  This behaviour is
+ selected by a new optional argument to <tt>receive_response_3</tt>,
+ and used by <tt>request_response_5</tt>. </li>
+
 <li> SNMP_Session.pm 1.08: Fixed a bug in the SNMPv2c version of
 <tt>map_table_start_end</tt> that would cause errors when the
 <samp>$end</samp> argument is actually being used.  Thanks to Jan van
@@ -652,7 +662,7 @@ use SNMP_Session "0.52";
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20051210
+20070503
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
