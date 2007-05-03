@@ -38,6 +38,7 @@
 ### Luc Pauwels <Luc.Pauwels@xalasys.com>: use_16bit_request_ids
 ### Andrew Cornford-Matheson <andrew.matheson@corenetworks.com>: inform
 ### Gerry Dalton <gerry.dalton@consolidated.com>: strict subs bug
+### Mike Fischer <mlf2@tampabay.rr.com>: pass MSG_DONTWAIT to recv()
 ######################################################################
 
 package SNMP_Session;		
@@ -60,7 +61,7 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '1.09';
+$VERSION = '1.10';
 
 @ISA = qw(Exporter);
 
@@ -389,7 +390,7 @@ sub request_response_5 ($$$$$) {
 	    my($response_length);
 
 	    $response_length
-		= $this->receive_response_3 ($response_tag, $oids, $errorp);
+		= $this->receive_response_3 ($response_tag, $oids, $errorp, 1);
 	    if ($response_length) {
 		# IlvJa
 		# Add response pdu to capture_buffer
@@ -827,9 +828,11 @@ sub sa_equal_p ($$$) {
 }
 
 sub receive_response_3 {
-    my ($this, $response_tag, $oids, $errorp) = @_;
+    my ($this, $response_tag, $oids, $errorp, $dont_block_p) = @_;
     my ($remote_addr);
-    $remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,0);
+    my $flags = 0;
+    eval '$flags = MSG_DONTWAIT;' if defined $dont_block_p and $dont_block_p;
+    $remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,$flags);
     return $this->error ("receiving response PDU: $!")
 	unless defined $remote_addr;
     return $this->error ("short (".length $this->{'pdu_buffer'}
