@@ -34,6 +34,9 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
  selected by a new optional argument to <tt>receive_response_3</tt>,
  and used by <tt>request_response_5</tt>. </li>
 
+<li> SNMP_util.pm 1.09: Fix from Mike Mitchell for parsing qualified
+ symbolic OIDs. </li>
+
 <li> SNMP_Session.pm 1.08: Fixed a bug in the SNMPv2c version of
 <tt>map_table_start_end</tt> that would cause errors when the
 <samp>$end</samp> argument is actually being used.  Thanks to Jan van
@@ -662,7 +665,7 @@ use SNMP_Session "0.52";
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20070503
+20070518
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
