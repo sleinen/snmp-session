@@ -9,7 +9,7 @@ This program is free software; you can redistribute it under the
 
 	       Author: Simon Leinen  <simon@switch.ch>
 			    Contributors:
-		 Tobias Oetiker	 <oetiker@ee.ethz.ch>
+		 Tobias Oetiker	 <tobi@oetiker.ch>
 	       Matthew Trunnell	 <matter@media.mit.edu>
 		 Andrzej Tobola	 <san@iem.pw.edu.pl>
 		      Dave Rand	 <dlr@Bungi.com>
@@ -60,7 +60,7 @@ The SNMP operations currently supported are "get", "get-next", and
 
 For an excellent example of the type of application this is useful
 for, see Tobias Oetiker's ``mrtg'' (Multi Router Traffic Grapher)
-tool: <URL:http://www.ee.ethz.ch/~oetiker/webtools/mrtg/mrtg.html>
+tool: <URL:http://oss.oetiker.ch/mrtg/>
 
 				Usage
 				.....
