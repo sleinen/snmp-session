@@ -24,6 +24,9 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_util.pm 1.11: Fix from Mike Mitchell loop detection in
+  snmpwalk.  Should cope with more broken agents. </li>
+
 <li> SNMP_Session.pm 1.10: Mike Fischer reported that on some systems,
  notably Linux, <tt>recv()</tt> may block even though a
  preceding <tt>select()</tt> for readability has returned
@@ -665,7 +668,7 @@ use SNMP_Session "0.52";
 <HR>
 <ADDRESS>
 <!-- hhmts start -->
-20070518
+20071013
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
