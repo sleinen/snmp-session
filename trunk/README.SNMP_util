@@ -9,7 +9,7 @@ This program is free software; you can redistribute it under the
 
 	Author: Mike Mitchell	<Mike.Mitchell@.sas.com>
 			Contributors:
-	    Tobias Oetiker	<oetiker@ee.ethz.ch>
+	    Tobias Oetiker	<tobi@oetiker.ch>
 	    Simon Leinen	<simon@switch.ch>
 	    Jeff Allen		<jeff.allen@acm.org>
 	    Johannes Demel	<demel@zid.tuwien.ac.at>
@@ -24,8 +24,8 @@ have to make changes in one place, rather than track down all the
 different perl scripts that included the code.  The result is the
 'SNMP_utils.pm' module.
 
-Thanks goes to Tobias Oetiker (oetiker@ee.ethz.ch) of MRTG fame
-for the basic layout of the functions.
+Thanks goes to Tobias Oetiker (tobi@oetiker.ch) of MRTG fame for the
+basic layout of the functions.
 
 The SNMP_utils.pm module contains the functions
 
