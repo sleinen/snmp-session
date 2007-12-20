@@ -2,7 +2,7 @@
 ###
 ### bgpls
 ###
-### Simon Leinen  <simon@limmat.switch.ch>
+### Simon Leinen  <simon.leinen@switch.ch>
 ###
 ### Show the table of the BGP-4 peers of a router.
 ###
