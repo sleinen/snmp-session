@@ -5,7 +5,8 @@
 ### Copyright (c) 1995-2007, Simon Leinen.
 ###
 ### This program is free software; you can redistribute it under the
-### "Artistic License" included in this distribution (file "Artistic").
+### "Artistic License 2.0" included in this distribution
+### (file "Artistic").
 ######################################################################
 ### This module implements encoding and decoding of ASN.1-based data
 ### structures using the Basic Encoding Rules (BER).  Only the subset
