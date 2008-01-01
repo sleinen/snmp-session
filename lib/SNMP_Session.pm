@@ -2,7 +2,7 @@
 ######################################################################
 ### SNMP Request/Response Handling
 ######################################################################
-### Copyright (c) 1995-2007, Simon Leinen.
+### Copyright (c) 1995-2008, Simon Leinen.
 ###
 ### This program is free software; you can redistribute it under the
 ### "Artistic License 2.0" included in this distribution
