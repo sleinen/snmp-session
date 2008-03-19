@@ -1,12 +1,20 @@
-2007-12-22  Simon Leinen  <simon.leinen@switch.ch>
+2008-03-19  Simon Leinen  <simon.leinen@switch.ch>
 
-	* Artistic: Upgraded to Artistic License 2.0, from
-	http://svn.perl.org/viewcvs/parrot/trunk/LICENSE?view=markup&rev=19096
+	* lib/SNMP_Session.pm: Improved initialization of the flags for
+	non-blocking behavior in receive_response_3().  The __DIE__ and
+	__WARN__ signal handlers should be bound to the defaults, because
+	the caller might be binding those and get in our way.  Also, we
+	only want to compute the flags once, on initialization.
+
+2007-12-22  Simon Leinen  <simon.leinen@switch.ch>
 
 	* lib/SNMP_util.pm, lib/SNMP_Session.pm, lib/BER.pm:
 	Upgraded to Artistic License 2.0.
 
-	* lib/SNMP_Session.pm, lib/BER.pm: Extended copyright.
+	Copyright notice updated for 2008.
+
+	* Artistic: Upgraded to Artistic License 2.0, from
+	http://svn.perl.org/viewcvs/parrot/trunk/LICENSE?view=markup&rev=19096
 
 2007-11-01  Simon Leinen  <simon.leinen@switch.ch>
 
