@@ -19,10 +19,16 @@
 ## presented with "diff" output and has to decide how to apply them.
 
 use strict;
+use warnings;
+
+use Cisco::Abbrev;
+
+my $testing = 0;
 
 ### Prototypes
 sub read_router_configurations ($ );
 sub has_sensors_p ($ );
+sub postprocess_router_config ($$);
 sub maybe_install_new_configuration ($ );
 sub install_new_configuration ($ );
 
@@ -42,22 +48,61 @@ my $new_config_dir = '/tmp'.'/foo/';
 
 my (@unchanged, @installed, @unresolved);
 foreach my $router (@routers) {
+    my $routername = $router->{name};
+    ## For testing, only look at one router
+    next if $testing and $routername ne 'swiix2';
     next unless has_sensors_p ($router);
-    my $rdir = $new_config_dir.'/'.$router;
+    my $rdir = $new_config_dir.'/'.$routername;
     -d $rdir or mkdir $rdir or die "cannot create directory $rdir: $!";
     my $retval = system ('perl -Ilib test/entls -t hctiws@'
-			 .$router.':::::2:v4only > '
-			 .$rdir.'/'.$router);
+			 .$routername.':::::2:v4only > '
+			 .$rdir.'/'.$routername);
     if ($retval) {
-	warn "failed to generate configuration for $router";
+	warn "failed to generate configuration for $routername";
     } else {
+	postprocess_router_config ($rdir.'/'.$routername, $router);
 	maybe_install_new_configuration ($router);
     }
 }
-print "Unchanged: ",join (", ", @unchanged),"\n";
-print "Installed: ",join (", ", @installed),"\n";
-print "Unresolved: ",join (", ", @unresolved),"\n";
+print "Unchanged: ",join (", ", map { $_->{name} } @unchanged),"\n";
+print "Installed: ",join (", ", map { $_->{name} } @installed),"\n";
+print "Unresolved: ",join (", ", map { $_->{name} } @unresolved),"\n";
 1;
+
+sub postprocess_router_config ($$) {
+    my ($file, $router) = @_;
+    my ($pre, $sd, $post, $long, $desc);
+    open IN, $file or die "Cannot open configuration file $file: $!";
+    open OUT, ">$file.post" or die "Cannot open configuration file $file.post: $!";
+    while (<IN>) {
+	if (/^(\s*display-name\s*=\s*")(.*)("\s*)$/) {
+	} elsif (/^(\s*long-desc\s*=\s*")(.*)("\s*)$/) {
+	} elsif (/^(\s*short-desc\s*=\s*")(.*)("\s*)$/) {
+	    ($pre, $sd, $post) = ($1, $2, $3);
+	    $long = cisco_long_int ($sd);
+	    $sd = $long if defined $long;
+	    if (defined $long) {
+		$desc = $long;
+		$sd = $desc = $router->{ifdesc}->{$long}
+		if exists $router->{ifdesc}->{$long};
+	    } else {
+		$long = $desc = $sd;
+	    }
+	    chomp $post;
+	    print OUT "$pre$sd$post\n";
+	    print OUT "\tlong-desc\t = \"<h3>$long - $desc</h3>\"\n";
+	    print OUT "\tdisplay-name\t = \"%router% - $long\"\n";
+	} else {
+	    print OUT $_;
+	}
+    }
+    close IN or die "Cannot close configuration file $file: $!";
+    close OUT or die "Cannot close configuration file $file.post: $!";
+    rename $file, "$file.pre" or unlink $file;
+    rename "$file.post", $file or rename "$file.pre", $file;
+    unlink "$file.pre";
+    return 1;
+}
 
 sub read_router_configurations ($ ) {
     my ($dir) = @_;
@@ -65,8 +110,9 @@ sub read_router_configurations ($ ) {
     opendir CONFIG, $dir
 	or die "open directory $dir: $!";
     foreach my $file (readdir CONFIG) {
+	next if $testing and $file ne 'swiix2';
 	next unless -f $dir.'/'.$file;
-	push @routers, $file;
+	push @routers, { name => $file };
     }
     closedir CONFIG
 	or die "close directory $dir: $!";
@@ -75,14 +121,29 @@ sub read_router_configurations ($ ) {
 
 sub has_sensors_p ($ ) {
     my ($router) = @_;
+    my $routername = $router->{name};
     my $have_sensor_p = 0;
-    open (CONFIG, $rancid_directory.'/'.$router)
-	or die "open configuration file for $router: $!";
+    my ($ifname, %ifdesc);
+    open (CONFIG, $rancid_directory.'/'.$routername)
+	or die "open configuration file for $routername: $!";
     while (<CONFIG>) {
-	$have_sensor_p = 1
-	    if /Receive Power Sensor/;
+	if (/Receive Power Sensor/) {
+	    $have_sensor_p = 1;
+	} elsif (/^interface (.*)/) {
+	    $ifname = $1;
+	} elsif (/^ description (.*)$/
+		 and defined $ifname) {
+	    $ifdesc{$ifname} = $1;
+	} elsif (/^ /) {
+	} else {
+	    $ifname = undef;
+	}
     }
-    close CONFIG or die "close configuration file for $router: $!";
+    close CONFIG or die "close configuration file for $routername: $!";
+    ## foreach my $ifname (sort keys %ifdesc) {
+    ## 	printf "%-20s %s\n", $ifname, $ifdesc{$ifname};
+    ## }
+    $router->{ifdesc} = \%ifdesc;
     return $have_sensor_p;
 }
 
@@ -119,11 +180,12 @@ sub has_sensors_p ($ ) {
 ##
 sub maybe_install_new_configuration ($ ) {
     my ($router) = @_;
-    my $old_file = $old_config_dir.'/'.$router.'/'.$router;
-    my $new_file = $new_config_dir.'/'.$router.'/'.$router;
+    my $routername = $router->{name};
+    my $old_file = $old_config_dir.'/'.$routername.'/'.$routername;
+    my $new_file = $new_config_dir.'/'.$routername.'/'.$routername;
 
     if (! -f $old_file) {
-	print "NEW: $router\n";
+	print "NEW: $routername\n";
 	if (install_new_configuration ($router)) {
 	    push @installed, $router;
 	} else {
@@ -135,7 +197,7 @@ sub maybe_install_new_configuration ($ ) {
 	    ##warn "TESTING:\n";
 	    ##$retval = system "diff -w $old_file $new_file | egrep -v '\^>'";
 	    ##warn "TESTING END: $retval\n";
-	    print "DIFFER: $router\n";
+	    print "DIFFER: $routername\n";
 	    push @unresolved, $router;
 	} else {
 	    push @unchanged, $router;
@@ -152,9 +214,10 @@ sub maybe_install_new_configuration ($ ) {
 ##
 sub install_new_configuration ($ ) {
     my ($router) = @_;
-    my $old_file = $old_config_dir.'/'.$router.'/'.$router;
-    my $new_file = $new_config_dir.'/'.$router.'/'.$router;
-    my $old_dir = $old_config_dir.'/'.$router;
+    my $routername = $router->{name};
+    my $old_file = $old_config_dir.'/'.$routername.'/'.$routername;
+    my $new_file = $new_config_dir.'/'.$routername.'/'.$routername;
+    my $old_dir = $old_config_dir.'/'.$routername;
 
     unless (-d $old_dir || mkdir $old_dir) {
 	warn "Cannot create $old_dir: $!";
