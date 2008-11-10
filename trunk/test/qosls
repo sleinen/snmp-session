@@ -40,7 +40,7 @@ sub snmp_decode_value ($@);
 sub snmp_rows_to_objects ($$$@ );
 sub snmp_map_row_objects ($$$$@ );
 
-my $target = shift @ARGV || 'hctiws@swiCE2.switch.ch:::::2:v4only';
+my $target = shift @ARGV || die "Usage: $0 target\n";
 
 init_mibs ();
 collect_qos_information ($target);

@@ -44,7 +44,7 @@ TEXT
 for ($currouter=0; $currouter < $#routers; $currouter++) {
 
 $host=@routers[$currouter];
-$community = "hctiws";
+$community = "public";
 $port = "161";
 $path = 'test/stats/';
 
