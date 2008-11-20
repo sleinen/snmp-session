@@ -2,7 +2,7 @@
 ######################################################################
 ### Net_SNMP_util -- SNMP utilities using Net::SNMP
 ######################################################################
-### Copyright (c) 2005-2007 Mike Mitchell.
+### Copyright (c) 2005-2008 Mike Mitchell.
 ###
 ### This program is free software; you can redistribute it under the
 ### "Artistic License" included in this distribution (file "Artistic").
@@ -69,7 +69,7 @@ our @EXPORT = qw(
 
 ## Version of the Net_SNMP_util module
 
-our $VERSION = v1.0.15;
+our $VERSION = v1.0.16;
 
 use Carp;
 
@@ -1316,6 +1316,7 @@ sub snmpMIB_to_OID ($) {
     $buf =~ s/OBJECT-IDENTITY/OBJECT IDENTIFIER/;
     $buf =~ s/OBJECT-GROUP/OBJECT IDENTIFIER/;
     $buf =~ s/MODULE-IDENTITY/OBJECT IDENTIFIER/;
+    $buf =~ s/NOTIFICATION-TYPE/OBJECT IDENTIFIER/;
     $buf =~ s/ IMPORTS .*\;//;
     $buf =~ s/ SEQUENCE *{.*}//;
     $buf =~ s/ SYNTAX .*//;
@@ -1908,7 +1909,7 @@ sub MIB_fill_OID($)
 	}
       }
       if ($val =~ /^[\d\.]+$/) {
-	$val =~ s/^\.//;
+	$val =~ s/^\.+//;
 	if (!exists($Net_SNMP_util::OIDS{$var})
 	|| (length($val) > length($Net_SNMP_util::OIDS{$var}))) {
 	  $Net_SNMP_util::OIDS{$var} = $val;
