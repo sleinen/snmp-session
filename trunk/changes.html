@@ -24,6 +24,12 @@ HREF="mailto:simon@switch.ch">simon@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_util.pm 1.13: Parse OIDs in NOTIFICATION-TYPE names.  Change
+ by Mike Mitchell/jaccobs. </li>
+
+<li> SNMP_Session.pm 1.13: Fixed the optional socket-reuse code to
+ handle IPv4 and IPv6 sockets separately. </li>
+
 <li> SNMP_Session.pm 1.12: Upgraded to Artistic License 2.0 upon a
   suggestion from Tom Callaway. </li>
 
@@ -673,8 +679,7 @@ use SNMP_Session "0.52";
 
 <HR>
 <ADDRESS>
-<!-- hhmts start -->
-20080319
+<!-- hhmts start -->20081120
 <!-- hhmts end -->
 <A HREF="http://www.switch.ch/misc/leinen/">
  Simon Leinen &lt;simon.leinen@switch.ch&gt;</A>
