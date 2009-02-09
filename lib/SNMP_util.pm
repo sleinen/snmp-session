@@ -29,6 +29,8 @@
 ### Joerg Kummer <JOERG.KUMMER@Roche.COM>: TimeTicks support in snmpset()
 ### Christopher J. Tengi <tengi@CS.Princeton.EDU>: Gauge32 support in snmpset()
 ### Nicolai Petri <nicolai@catpipe.net>: hashref passing for snmpwalkhash()
+### <jaccobs@online.nl>: parse NOTIFICATION-TYPE in MIB
+### Dan Thorson <Dan.Thorson@seagate.com>: handle quotes in MIB comments better
 ######################################################################
 
 package SNMP_util;
@@ -44,7 +46,7 @@ use BER "1.02";
 use SNMP_Session "1.00";
 use Socket;
 
-$VERSION = '1.13';
+$VERSION = '1.14';
 
 @ISA = qw(Exporter);
 
@@ -1086,7 +1088,7 @@ sub snmpLoad_OID_Cache ($) {
 
   while(<CACHE>) {
     s/#.*//;				# '#' starts a comment
-    s/--.*--//g;			# comment delimited by '--', like MIBs
+    s/--.*?--/ /g;			# comment delimited by '--', like MIBs
     s/--.*//;				# comment started by '--'
     next if (/^$/);
     next unless (/\s/);			# must have whitespace as separator
@@ -1172,22 +1174,20 @@ sub snmpMIB_to_OID ($) {
     if ($quote) {
       next unless /"/;
       $quote = 0;
-    } else {
-	s/--.*--//g;		# throw away comments (-- anything --)
-	s/^\s*--.*//;		# throw away comments at start of line
     }
     chomp;
-
     $buf .= ' ' . $_;
 
-    $buf =~ s/"[^"]*"//g;
-    if ($buf =~ /"/) {
+    $buf =~ s/"[^"]*"//g;	# throw away quoted strings
+    $buf =~ s/--.*?--/ /g;	# throw away comments (-- anything --)
+    $buf =~ s/--.*//;		# throw away comments (-- anything to EOL)
+    $buf =~ s/\s+/ /g;		# clean up multiple spaces
+
+    if ($buf =~ /"/) {		# look for quoted string
       $quote = 1;
       next;
     }
-    $buf =~ s/--.*--//g;	# throw away comments (-- anything --)
-    $buf =~ s/--.*//;		# throw away comments (-- anything EOL)
-    $buf =~ s/\s+/ /g;
+
     if ($buf =~ /DEFINITIONS *::= *BEGIN/) {
 	$cnt += MIB_fill_OID(\%tOIDs) if ($tgot);
 	$buf = '';
