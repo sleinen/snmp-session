@@ -19,6 +19,12 @@
 ###
 ### Alexander Kozlov <avk@post.eao.ru>
 ###	Leave snmpwalk_flg early if no OIDs are returned
+###
+### <jaccobs@online.nl>
+###	parse NOTIFICATION-TYPE in MIB
+###
+### Dan Thorson <Dan.Thorson@seagate.com>
+###	Handle quotes in MIB comments better
 ######################################################################
 
 package Net_SNMP_util;
@@ -69,7 +75,7 @@ our @EXPORT = qw(
 
 ## Version of the Net_SNMP_util module
 
-our $VERSION = v1.0.16;
+our $VERSION = v1.0.17;
 
 use Carp;
 
@@ -1227,7 +1233,7 @@ sub snmpLoad_OID_Cache ($) {
 
   while(<CACHE>) {
     s/#.*//;				# '#' starts a comment
-    s/--.*--//g;			# comment delimited by '--', like MIBs
+    s/--.*?--/ /g;			# comment delimited by '--', like MIBs
     s/--.*//;				# comment started by '--'
     next if (/^$/);
     next unless (/\s/);			# must have whitespace as separator
@@ -1289,22 +1295,20 @@ sub snmpMIB_to_OID ($) {
     if ($quote) {
       next unless /"/;
       $quote = 0;
-    } else {
-	s/--.*--//g;		# throw away comments (-- anything --)
-	s/^\s*--.*//;		# throw away comments at start of line
     }
     chomp;
-
     $buf .= ' ' . $_;
 
-    $buf =~ s/"[^"]*"//g;
+    $buf =~ s/"[^"]*"//g;	# throw away quoted strings
+    $buf =~ s/--.*?--/ /g;	# throw away comments (-- anything --)
+    $buf =~ s/--.*//;		# throw away comments (-- anything to EOL)
+    $buf =~ s/\s+/ /g;		# clean up multiple spaces
+
     if ($buf =~ /"/) {
       $quote = 1;
       next;
     }
-    $buf =~ s/--.*--//g;	# throw away comments (-- anything --)
-    $buf =~ s/--.*//;		# throw away comments (-- anything EOL)
-    $buf =~ s/\s+/ /g;
+
     if ($buf =~ /DEFINITIONS *::= *BEGIN/) {
 	$cnt += MIB_fill_OID(\%tOIDs) if ($tgot);
 	$buf = '';
