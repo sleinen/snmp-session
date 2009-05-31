@@ -243,6 +243,7 @@ sub tostring ($ ) {
 	&& (!defined $last_transceiver || $current_transceiver ne $last_transceiver)) {
 	my $target = "$current_transceiver";
 	$target = lc $target;
+	$target =~ s/^transceiver //;
 	$target =~ s/[ \/.]/_/g;
 	$target =~ s/^gi/gigabitethernet/g;
 	$target =~ s/^te/tengigabitethernet/g;
