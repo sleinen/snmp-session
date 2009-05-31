@@ -79,6 +79,7 @@ sub postprocess_router_config ($$) {
 	} elsif (/^(\s*long-desc\s*=\s*")(.*)("\s*)$/) {
 	} elsif (/^(\s*short-desc\s*=\s*")(.*)("\s*)$/) {
 	    ($pre, $sd, $post) = ($1, $2, $3);
+	    $sd =~ s/^transceiver //i;
 	    $long = cisco_long_int ($sd);
 	    $sd = $long if defined $long;
 	    if (defined $long) {
