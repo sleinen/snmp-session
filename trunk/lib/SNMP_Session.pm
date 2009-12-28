@@ -2,47 +2,38 @@
 ######################################################################
 ### SNMP Request/Response Handling
 ######################################################################
-### Copyright (c) 1995-2008, Simon Leinen.
+### Copyright (c) 1995-2009, Simon Leinen.
 ###
 ### This program is free software; you can redistribute it under the
 ### "Artistic License 2.0" included in this distribution
 ### (file "Artistic").
 ######################################################################
-### The abstract class SNMP_Session defines objects that can be used
-### to communicate with SNMP entities.  It has methods to send
-### requests to and receive responses from an agent.
-###
-### Two instantiable subclasses are defined:
-### SNMPv1_Session implements SNMPv1 (RFC 1157) functionality
-### SNMPv2c_Session implements community-based SNMPv2.
-######################################################################
-### Created by:  Simon Leinen  <simon@switch.ch>
-###
-### Contributions and fixes by:
-###
-### Matthew Trunnell <matter@media.mit.edu>
-### Tobias Oetiker <tobi@oetiker.ch>
-### Heine Peters <peters@dkrz.de>
-### Daniel L. Needles <dan_needles@INS.COM>
-### Mike Mitchell <mcm@unx.sas.com>
-### Clinton Wong <clintdw@netcom.com>
-### Alan Nichols <Alan.Nichols@Ebay.Sun.COM>
-### Mike McCauley <mikem@open.com.au>
-### Andrew W. Elble <elble@icculus.nsg.nwu.edu>
-### Brett T Warden <wardenb@eluminant.com>: pretty UInteger32
-### Michael Deegan <michael@cnspc18.murdoch.edu.au>
-### Sergio Macedo <macedo@tmp.com.br>
-### Jakob Ilves (/IlvJa) <jakob.ilves@oracle.com>: PDU capture
-### Valerio Bontempi <v.bontempi@inwind.it>: IPv6 support
-### Lorenzo Colitti <lorenzo@colitti.com>: IPv6 support
-### Philippe Simonet <Philippe.Simonet@swisscom.com>: Export avoid...
-### Luc Pauwels <Luc.Pauwels@xalasys.com>: use_16bit_request_ids
-### Andrew Cornford-Matheson <andrew.matheson@corenetworks.com>: inform
-### Gerry Dalton <gerry.dalton@consolidated.com>: strict subs bug
-### Mike Fischer <mlf2@tampabay.rr.com>: pass MSG_DONTWAIT to recv()
+### Created by: See AUTHORS below
 ######################################################################
 
-package SNMP_Session;		
+package SNMP_Session;
+
+=head1 NAME
+
+SNMP_Session - SNMPv1/v2 Protocol Handling
+
+=head1 SYNOPSIS
+
+    use SNMP_Session;
+    $session = SNMP_Session->open ($host, $community, $port)
+	or die "couldn't open SNMP session to $host";
+    if ($session->get_request_response ($oid1, $oid2, ...)) {
+	($bindings) = $session->decode_get_response ($session->{pdu_buffer});
+	while ($bindings ne '') {
+	    ($binding,$bindings) = decode_sequence ($bindings);
+	    ($oid,$value) = decode_by_template ($binding, "%O%@");
+	    print pretty_print ($oid)," => ", pretty_print ($value), "\n";
+	}
+    } else {
+	die "No response from agent on $host";
+    }
+
+=cut
 
 require 5.002;
 
@@ -62,62 +53,65 @@ sub map_table_start_end ($$$$$$);
 sub index_compare ($$);
 sub oid_diff ($$);
 
-$VERSION = '1.13';
+$VERSION = '1.14';
 
 @ISA = qw(Exporter);
 
 @EXPORT = qw(errmsg suppress_warnings index_compare oid_diff recycle_socket ipv6available);
 
+=head1 VARIABLES
+
+The C<default_...> variables all specify default values that are used
+for C<SNMP_Session> objects when no other value is specified.  These
+values can be overridden on a per-session basis, for example by
+passing additional arguments to the constructor.
+
+=cut
+
 my $default_debug = 0;
 
-### Default initial timeout (in seconds) waiting for a response PDU
-### after a request is sent.  Note that when a request is retried, the
-### timeout is increased by BACKOFF (see below).
+### Default values for the TIMEOUT, RETRIES, and BACKOFF slots of
+### SNMP_Session objects - see their documentation below.
 ###
 my $default_timeout = 2.0;
-
-### Default number of attempts to get a reply for an SNMP request.  If
-### no response is received after TIMEOUT seconds, the request is
-### resent and a new response awaited with a longer timeout (see the
-### documentation on BACKOFF below).  The "retries" value should be at
-### least 1, because the first attempt counts, too (the name "retries"
-### is confusing, sorry for that).
-###
 my $default_retries = 5;
-
-### Default backoff factor for SNMP_Session objects.  This factor is
-### used to increase the TIMEOUT every time an SNMP request is
-### retried.
-###
 my $default_backoff = 1.0;
 
-### Default value for maxRepetitions.  This specifies how many table
-### rows are requested in getBulk requests.  Used when walking tables
-### using getBulk (only available in SNMPv2(c) and later).  If this is
-### too small, then a table walk will need unnecessarily many
-### request/response exchanges.  If it is too big, the agent may
-### compute many variables after the end of the table.  It is
-### recommended to set this explicitly for each table walk by using
-### map_table_4().
-###
+=head2 $default_max_repetitions - default value for C<maxRepetitions>.
+
+This specifies how many table rows are requested in C<getBulk>
+requests.  Used when walking tables using C<getBulk> (only available
+in SNMPv2(c) and later).  If this is too small, then a table walk will
+need unnecessarily many request/response exchanges.  If it is too big,
+the agent may compute many variables after the end of the table.  It
+is recommended to set this explicitly for each table walk by using
+C<map_table_4()>.
+
+=cut
+
 my $default_max_repetitions = 12;
 
-### Default value for "avoid_negative_request_ids".
-###
-### Set this to non-zero if you have agents that have trouble with
-### negative request IDs, and don't forget to complain to your agent
-### vendor.  According to the spec (RFC 1905), the request-id is an
-### Integer32, i.e. its range is from -(2^31) to (2^31)-1.  However,
-### some agents erroneously encode the response ID as an unsigned,
-### which prevents this code from matching such responses to requests.
-###
+=head2 $default avoid_negative_request_ids - default value for
+    C<avoid_negative_request_ids>.
+
+Set this to non-zero if you have agents that have trouble with
+negative request IDs, and don't forget to complain to your agent
+vendor.  According to the spec (RFC 1905), the request-id is an
+C<Integer32>, i.e. its range is from -(2^31) to (2^31)-1.  However,
+some agents erroneously encode the response ID as an unsigned, which
+prevents this code from matching such responses to requests.
+
+=cut
+
 $SNMP_Session::default_avoid_negative_request_ids = 0;
 
-### Default value for "use_16bit_request_ids".
-###
-### Set this to non-zero if you have agents that use 16bit request IDs,
-### and don't forget to complain to your agent vendor.
-###
+=head2 $default_use_16bit_request_ids - default value for C<use_16bit_request_ids>.
+
+Set this to non-zero if you have agents that use 16bit request IDs,
+and don't forget to complain to your agent vendor.
+
+=cut
+
 $SNMP_Session::default_use_16bit_request_ids = 0;
 
 ### Whether all SNMP_Session objects should share a single UDP socket.
@@ -159,8 +153,37 @@ BEGIN {
 ###
 my %the_socket = ();
 
+=head2 $errmsg - error message from last failed operation.
+
+When they encounter errors, the routines in this module will generally
+return C<undef>) and leave an informative error message in C<$errmsg>).
+
+=cut
+
 $SNMP_Session::errmsg = '';
+
+=head2 $suppress_warnings - whether warnings should be suppressed.
+
+If this variable is zero, as is the default, this code will output
+informative error messages whenever it encounters an error.  Set this
+to a non-zero value if you want to suppress these messages.  In any
+case, the last error message can be found in C<$errmsg>.
+
+=cut
+
 $SNMP_Session::suppress_warnings = 0;
+
+=head1 METHODS in package SNMP_Session
+
+The abstract class C<SNMP_Session> defines objects that can be used to
+communicate with SNMP entities.  It has methods to send requests to
+and receive responses from an agent.
+
+Two instantiable subclasses are defined: C<SNMPv1_Session> implements
+SNMPv1 (RFC 1157) functionality C<SNMPv2c_Session> implements
+community-based SNMPv2 (RFC 3410-3417).
+
+=cut
 
 sub get_request      { 0 | context_flag () };
 sub getnext_request  { 1 | context_flag () };
@@ -173,14 +196,60 @@ sub trap2_request    { 7 | context_flag () };
 
 sub standard_udp_port { 161 };
 
+=cut
+
 sub open
 {
     return SNMPv1_Session::open (@_);
 }
 
+=head2 timeout() - return timeout value.
+
+Initial timeout, in seconds, to wait for a response PDU after a
+request is sent.  Note that when a request is retried, the timeout is
+increased by B<backoff> (see below).  The standard value is 2.0
+(seconds).
+
+=cut
+
 sub timeout { $_[0]->{timeout} }
+
+=head2 retries() - number of attempts to get a reply.
+
+Maximum number of attempts to get a reply for an SNMP request.  If no
+response is received after B<timeout> seconds, the request is resent
+and a new response awaited with a longer timeout, see the
+documentation on B<backoff> below.  The B<retries> value should be at
+least 1, because the first attempt counts, too (the name "retries" is
+confusing, sorry for that).
+
+=cut
+
 sub retries { $_[0]->{retries} }
+
+=head2 backoff() - backoff factor.for timeout on successive retries.
+
+Default backoff factor for C<SNMP_Session> objects.  This factor is
+used to increase the TIMEOUT every time an SNMP request is retried.
+The standard value is 1.0, which means the same timeout is used for
+all attempts.
+
+=cut
+
 sub backoff { $_[0]->{backoff} }
+
+=head2 set_timeout() - set initial timeout for session
+
+=head2 set_retries() - set maximum number of attempts for session
+
+=head2 set_backoff() - set backoff factor for session
+
+Example usage:
+
+    $session->set_backoff (1.5);
+
+=cut
+
 sub set_timeout {
     my ($session, $timeout) = @_;
     croak ("timeout ($timeout) must be a positive number") unless $timeout > 0.0;
@@ -282,38 +351,6 @@ sub decode_get_response {
     @{$this->{'unwrapped'}};
 }
 
-sub decode_trap_request ($$) {
-    my ($this, $trap) = @_;
-    my ($snmp_version, $community, $ent, $agent, $gen, $spec, $dt,
-	$request_id, $error_status, $error_index,
-	$bindings);
-    ($snmp_version, $community,
-     $ent, $agent,
-     $gen, $spec, $dt,
-     $bindings)
-	= decode_by_template ($trap, "%{%i%s%*{%O%A%i%i%u%{%@",
-			    trap_request);
-    if (!defined $snmp_version) {
-	($snmp_version, $community,
-	 $request_id, $error_status, $error_index,
-	 $bindings)
-	    = decode_by_template ($trap, "%{%i%s%*{%i%i%i%{%@",
-				  trap2_request);
-	if (!defined $snmp_version) {
-	    ($snmp_version, $community,$request_id, $error_status, $error_index, $bindings)
-		= decode_by_template ($trap, "%{%i%s%*{%i%i%i%{%@", inform_request);
-	}
-	return $this->error_return ("v2 trap/inform request contained errorStatus/errorIndex "
-				    .$error_status."/".$error_index)
-	    if defined $error_status && defined $error_index
-	    && ($error_status != 0 || $error_index != 0);
-    }
-    if (!defined $snmp_version) {
-	return $this->error_return ("BER error decoding trap:\n  ".$BER::errmsg);
-    }
-    return ($community, $ent, $agent, $gen, $spec, $dt, $bindings);
-}
-
 sub wait_for_response {
     my($this) = shift;
     my($timeout) = shift || 10.0;
@@ -323,16 +360,32 @@ sub wait_for_response {
     select($rout=$rin,$wout=$win,$eout=$ein,$timeout);
 }
 
+=head2 ..._request_response() - Send some request and receive response.
+
+Encodes a specific SNMP request, sends it to the destination address
+of the session, and waits for a matching response.  If such a response
+is received, this function will return the size of the response, which
+is necessarily greater than zero.
+
+An undefined value is returned if some error happens during encoding
+or sending, or if no matching response is received after the
+wait/retry schedule is exhausted.  See the documentation on the
+C<timeout()>, C<retries()>, and C<backoff()> methods on how the
+wait/retry logic works.
+
+=head2 get_request_response() - Send C<get> request and receive response.
+
+=head2 getnext_request_response() - Send C<get-next> request and receive response.
+
+    $result = $session->get_request_response (@encoded_oids);
+    $result = $session->getnext_request_response (@encoded_oids);
+
+=cut
+
 sub get_request_response ($@) {
     my($this, @oids) = @_;
     return $this->request_response_5 ($this->encode_get_request (@oids),
 				      get_response, \@oids, 1);
-}
-
-sub set_request_response ($@) {
-    my($this, @pairs) = @_;
-    return $this->request_response_5 ($this->encode_set_request (@pairs),
-				      get_response, \@pairs, 1);
 }
 
 sub getnext_request_response ($@) {
@@ -341,12 +394,38 @@ sub getnext_request_response ($@) {
 				      get_response, \@oids, 1);
 }
 
+=head2 set_request_response() - Send C<set> request and receive response.
+
+    $result = $session->set_request_response (@encoded_pair_list);
+
+This method takes its arguments in a different form; they are a list
+of pairs - references to two-element arrays - which respresent the
+variables to be set and the intended values, e.g.
+
+    ([$encoded_oid_0, $encoded_value_0],
+     [$encoded_oid_1, $encoded_value_1],
+     [$encoded_oid_2, $encoded_value_2], ...)
+
+=cut
+
+sub set_request_response ($@) {
+    my($this, @pairs) = @_;
+    return $this->request_response_5 ($this->encode_set_request (@pairs),
+				      get_response, \@pairs, 1);
+}
+
 sub getbulk_request_response ($$$@) {
     my($this,$non_repeaters,$max_repetitions,@oids) = @_;
     return $this->request_response_5
 	($this->encode_getbulk_request ($non_repeaters,$max_repetitions,@oids),
 	 get_response, \@oids, 1);
 }
+
+=head2 trap_request_send() - send SNMPv1 Trap.
+
+    $result = $session->trap_request_send ($ent, $gent, $gen, $spec, $dt, @pairs);
+
+=cut
 
 sub trap_request_send ($$$$$$@) {
     my($this, $ent, $agent, $gen, $spec, $dt, @pairs) = @_;
@@ -359,6 +438,12 @@ sub trap_request_send ($$$$$$@) {
 	|| return $this->error ("send_trap: $!");
     return 1;
 }
+
+=head2 v2_trap_request_send() - send SNMPv2 Trap.
+
+    $result = $session->v2_trap_request_send ($trap_oid, $dt, @pairs);
+
+=cut
 
 sub v2_trap_request_send ($$$@) {
     my($this, $trap_oid, $dt, @pairs) = @_;
@@ -434,8 +519,38 @@ sub request_response_5 ($$$$$) {
 	if (defined $this->{'capture_buffer'}
 	    and ref $this->{'capture_buffer'} eq 'ARRAY');
     #
-    $this->error ("no response received");
+    return $this->error ("no response received");
 }
+
+=head2 map_table() - traverse an SNMP table.
+
+    $result = $session->map_table ([$col0, $col1, ...], $mapfn);
+
+This will call the provided function (C<&$mapfn>) once for each row of
+the table defined by the column OIDs C<$col0>, C<$col1>...  If the
+session can handle SNMPv2 operations, C<get-bulk> will be used to
+traverse the table.  Otherwise, C<get-next> will be used.
+
+If the first argument is a list of I<n> columns, the mapping function
+will be called with I<n+1> arguments.  The first argument will be the
+row index, i.e. the list of sub-IDs that was appended to the provided
+column OIDs for this row.  Note that the row index will be represented
+as a string, using dot-separated numerical OID notation.
+
+The remaining arguments to the mapping function will be the values of
+each column at the current index.  It is possible that the table has
+"holes", i.e. that for a given row index, not all columns have a
+value.  For columns with no value at the current row index, C<undef>
+will be passed to the mapping function.
+
+If an error is encountered at any point during the table traversal,
+this method will return undef and leave an error message in C<$errmsg>
+(which is also written out unless C<$suppress_warnings> is non-zero).
+
+Otherwise, the function will return the number of rows traversed,
+i.e. the number of times that the mapping function has been called.
+
+=cut
 
 sub map_table ($$$) {
     my ($session, $columns, $mapfn) = @_;
@@ -443,12 +558,26 @@ sub map_table ($$$) {
 				  $session->default_max_repetitions ());
 }
 
+=head2 map_table_4() - traverse an SNMP table with more control.
+
+=cut
+
 sub map_table_4 ($$$$) {
     my ($session, $columns, $mapfn, $max_repetitions) = @_;
     return $session->map_table_start_end ($columns, $mapfn,
 					  "", undef,
 					  $max_repetitions);
 }
+
+=head2 map_table_start_end() - traverse an SNMP table with lower/upper index limits.
+
+    $result = $session->map_table_start_end ($columns, $mapfn,
+        $start, $end, $max_repetition);
+
+Similar to C<map_table_4()>, except that the start and end index can
+be specified.
+
+=cut
 
 sub map_table_start_end ($$$$$$) {
     my ($session, $columns, $mapfn, $start, $end, $max_repetitions) = @_;
@@ -477,7 +606,7 @@ sub map_table_start_end ($$$$$$) {
 
 		my $out_index;
 
-		$out_index = &oid_diff ($base, $oid);
+		$out_index = oid_diff ($base, $oid);
 		my $cmp;
 		if (!defined $smallest_index
 		    || ($cmp = index_compare ($out_index,$smallest_index)) == -1) {
@@ -592,6 +721,88 @@ sub ber_error ($$) {
   return $this->error ("$type:\n$errmsg");
 }
 
+=head2 receive_trap() - receive message on trap socket.
+
+This method waits until a message is received on the trap socket.  If
+successful, it returns three values: the undecoded trap message, the
+sending host's IP address, and the source port from which the message
+was sent.
+
+This method doesn't check whether the message actually encodes a trap
+or anything else - the caller should use C<decode_trap_request()> to
+find out.
+
+=cut
+
+sub receive_trap {
+    my ($this) = @_;
+    my ($remote_addr, $iaddr, $port, $trap);
+    $remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,0);
+    return undef unless $remote_addr;
+
+    if( (defined $ipv6_addr_len) && (length $remote_addr == $ipv6_addr_len)) {
+	($port,$iaddr) = unpack_sockaddr_in6($remote_addr);
+    } else {
+	($port,$iaddr) = unpack_sockaddr_in($remote_addr);
+    }
+
+    $trap = $this->{'pdu_buffer'};
+    return ($trap, $iaddr, $port);
+}
+
+=head2 decode_trap_request()
+
+    ($community, $ent, $agent, $gen, $spec, $dt, $bindings)
+      = $session->decode_trap_request ($trap);
+
+Given a message such as one returned as the first return value from
+C<receive_trap()>, try to decode it as some notification PDU.  The
+code can handle SNMPv1 and SNMPv2 traps as well as SNMPv2 INFORMs,
+although it fails to distinguish traps from informs, which makes it
+hard to handle informs correctly (they should be acknowledged).
+
+The C<$ent>, C<$agent>, C<$gen>, C<$spec>, and C<$dt> values will only
+be defined for SNMPv1 traps.  For SNMPv2 traps and informs, some of
+this information will be encoded as bindings.
+
+=cut
+
+sub decode_trap_request ($$) {
+    my ($this, $trap) = @_;
+    my ($snmp_version, $community, $ent, $agent, $gen, $spec, $dt,
+	$request_id, $error_status, $error_index,
+	$bindings);
+    ($snmp_version, $community,
+     $ent, $agent,
+     $gen, $spec, $dt,
+     $bindings)
+	= decode_by_template ($trap, "%{%i%s%*{%O%A%i%i%u%{%@",
+			    trap_request);
+    if (!defined $snmp_version) {
+	($snmp_version, $community,
+	 $request_id, $error_status, $error_index,
+	 $bindings)
+	    = decode_by_template ($trap, "%{%i%s%*{%i%i%i%{%@",
+				  trap2_request);
+	if (!defined $snmp_version) {
+	    ($snmp_version, $community,$request_id, $error_status, $error_index, $bindings)
+		= decode_by_template ($trap, "%{%i%s%*{%i%i%i%{%@", inform_request);
+	}
+	return $this->error_return ("v2 trap/inform request contained errorStatus/errorIndex "
+				    .$error_status."/".$error_index)
+	    if defined $error_status && defined $error_index
+	    && ($error_status != 0 || $error_index != 0);
+    }
+    if (!defined $snmp_version) {
+	return $this->error_return ("BER error decoding trap:\n  ".$BER::errmsg);
+    }
+    return ($community, $ent, $agent, $gen, $spec, $dt, $bindings);
+}
+
+=head1 METHODS in package SNMPv1_Session
+
+=cut
+
 package SNMPv1_Session;
 
 use strict qw(vars subs);	# see above
@@ -613,8 +824,43 @@ BEGIN {
 
 sub snmp_version { 0 }
 
-# Supports both IPv4 and IPv6.
-# Numeric IPv6 addresses must be passed between square brackets []
+=head2 open() - create an SNMPv1 session object
+
+    $session = SNMPv1_Session->open
+      ($host, $community, $port,
+       $max_pdu_len, $local_port, $max_repetitions,
+       $local_host, $ipv4only);
+
+Note that all arguments except for C<$host> are optional.  The
+C<$host> can be specified either as a hostname or as a numeric
+address.  Numeric IPv6 addresses must be enclosed in square brackets
+[]
+
+C<$community> defaults to C<public>.
+
+C<$port> defaults to 161, the standard UDP port to send SNMP requests
+to.
+
+C<$max_pdu_len> defaults to 8000.
+
+C<$local_port> can be specified if a specific local port is desired,
+for example because of firewall rules for the response packets.  If
+none is specified, the operating system will choose a random port.
+
+C<$max_repetitions> is the maximum number of repetitions requested in
+C<get-bulk> requests.  It is only relevant in SNMPv2(c) and later.
+
+C<$local_host> can be used to specify a specific address/interface.
+It is useful on hosts that have multiple addresses if a specific
+address should be used, for example because of firewall rules.
+
+If C<$ipv4only> is either not present or non-zero, then an IPv4-only
+socket will be used.  This is also the case if the system only
+supports IPv4.  Otherwise, an IPv6 socket is created.  IPv6 sockets
+support both IPv6 and IPv4 requests and responses.
+
+=cut
+
 sub open {
     my($this,
        $remote_hostname,$community,$port,
@@ -633,37 +879,40 @@ sub open {
 
     if ($ipv4only || ! $SNMP_Session::ipv6available) {
 	# IPv4-only code, uses only Socket and INET calls
-    if (defined $remote_hostname) {
-	$remote_addr = inet_aton ($remote_hostname)
-	    or return $this->error_return ("can't resolve \"$remote_hostname\" to IP address");
-    }
-    if ($SNMP_Session::recycle_socket && exists $the_socket{$sockfamily}) {
-	$socket = $the_socket{$sockfamily};
-    } else {
-	$socket = IO::Socket::INET->new(Proto => 17,
-					Type => SOCK_DGRAM,
-					LocalAddr => $local_hostname,
-					LocalPort => $local_port)
-	    || return $this->error_return ("creating socket: $!");
-	$the_socket{$sockfamily} = $socket
-	    if $SNMP_Session::recycle_socket;
-    }
-    $remote_addr = pack_sockaddr_in ($port, $remote_addr)
-	if defined $remote_addr;
+	if (defined $remote_hostname) {
+	    $remote_addr = inet_aton ($remote_hostname)
+		or return $this->error_return ("can't resolve \"$remote_hostname\" to IP address");
+	}
+	if ($SNMP_Session::recycle_socket && exists $the_socket{$sockfamily}) {
+	    $socket = $the_socket{$sockfamily};
+	} else {
+	    $socket = IO::Socket::INET->new(Proto => 17,
+					    Type => SOCK_DGRAM,
+					    LocalAddr => $local_hostname,
+					    LocalPort => $local_port)
+		|| return $this->error_return ("creating socket: $!");
+	    $the_socket{$sockfamily} = $socket
+		if $SNMP_Session::recycle_socket;
+	}
+	$remote_addr = pack_sockaddr_in ($port, $remote_addr)
+	    if defined $remote_addr;
     } else {
 	# IPv6-capable code. Will use IPv6 or IPv4 depending on the address.
 	# Uses Socket6 and INET6 calls.
 
-	# If it's a numeric IPv6 addresses, remove square brackets
-	if ($remote_hostname =~ /^\[(.*)\]$/) {
-	    $remote_hostname = $1;
-	}
-
-	my (@res, $socktype_tmp, $proto_tmp, $canonname_tmp);
-	@res = getaddrinfo($remote_hostname, $port, AF_UNSPEC, SOCK_DGRAM);
-	($sockfamily, $socktype_tmp, $proto_tmp, $remote_addr, $canonname_tmp) = @res;
-	if (scalar(@res) < 5) {
-	    return $this->error_return ("can't resolve \"$remote_hostname\" to IPv6 address");
+	if (defined $remote_hostname) {
+	    # If it's a numeric IPv6 addresses, remove square brackets
+	    if ($remote_hostname =~ /^\[(.*)\]$/) {
+		$remote_hostname = $1;
+	    }
+	    my (@res, $socktype_tmp, $proto_tmp, $canonname_tmp);
+	    @res = getaddrinfo($remote_hostname, $port, AF_UNSPEC, SOCK_DGRAM);
+	    ($sockfamily, $socktype_tmp, $proto_tmp, $remote_addr, $canonname_tmp) = @res;
+	    if (scalar(@res) < 5) {
+		return $this->error_return ("can't resolve \"$remote_hostname\" to IPv6 address");
+	    }
+	} else {
+	    $sockfamily = AF_INET6;
 	}
 
 	if ($SNMP_Session::recycle_socket && exists $the_socket{$sockfamily}) {
@@ -675,7 +924,8 @@ sub open {
 					    LocalPort => $local_port)
 	         || return $this->error_return ("creating socket: $!");
 	} else {
-	    $socket = IO::Socket::INET6->new(Proto => 17,
+	    $socket = IO::Socket::INET6->new(Domain => AF_INET6,
+					     Proto => 17,
 					     Type => SOCK_DGRAM,
 					     LocalAddr => $local_hostname,
 					     LocalPort => $local_port)
@@ -710,6 +960,15 @@ sub open {
 	   'capture_buffer' => undef,
 	  };
 }
+
+=head2 open_trap_session() - create a session for receiving SNMP traps.
+
+    $session = open_trap_session ($port);
+
+C<$port> defaults to 162, the standard UDP port that SNMP
+notifications are sent to.
+
+=cut
 
 sub open_trap_session (@) {
     my ($this, $port) = @_;
@@ -892,22 +1151,6 @@ sub receive_response_3 {
     return length $this->pdu_buffer;
 }
 
-sub receive_trap {
-    my ($this) = @_;
-    my ($remote_addr, $iaddr, $port, $trap);
-    $remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,0);
-    return undef unless $remote_addr;
-
-    if( (defined $ipv6_addr_len) && (length $remote_addr == $ipv6_addr_len)) {
-	($port,$iaddr) = unpack_sockaddr_in6($remote_addr);
-    } else {
-	($port,$iaddr) = unpack_sockaddr_in($remote_addr);
-    }
-
-    $trap = $this->{'pdu_buffer'};
-    return ($trap, $iaddr, $port);
-}
-
 sub describe {
     my($this) = shift;
     print $this->to_string (),"\n";
@@ -990,6 +1233,10 @@ sub decode_request {
     return undef;
 }
 
+=head1 METHODS in package SNMPv2c_Session
+
+=cut
+
 package SNMPv2c_Session;
 use strict qw(vars subs);	# see above
 use vars qw(@ISA);
@@ -1000,6 +1247,19 @@ use Carp;
 @ISA = qw(SNMPv1_Session);
 
 sub snmp_version { 1 }
+
+=head2 open() - create an SNMPv2(c) session object
+
+    $session = SNMPv2c_Session->open
+      ($host, $community, $port,
+       $max_pdu_len, $local_port, $max_repetitions,
+       $local_host, $ipv4only);
+
+The calling and return conventions are identical to
+C<SNMPv1_Session::open()>, except that this returns a session object
+that supports SNMPv2 operations.
+
+=cut
 
 sub open {
     my $session = SNMPv1_Session::open (@_);
@@ -1121,3 +1381,334 @@ sub map_table_start_end ($$$$$$) {
 }
 
 1;
+
+=head1 EXAMPLES
+
+The basic usage of these routines works like this:
+
+ use BER;
+ use SNMP_Session;
+ 
+ # Set $host to the name of the host whose SNMP agent you want
+ # to talk to.  Set $community to the community name under
+ # which you want to talk to the agent.	Set port to the UDP
+ # port on which the agent listens (usually 161).
+ 
+ $session = SNMP_Session->open ($host, $community, $port)
+     or die "couldn't open SNMP session to $host";
+ 
+ # Set $oid1, $oid2... to the BER-encoded OIDs of the MIB
+ # variables you want to get.
+ 
+ if ($session->get_request_response ($oid1, $oid2, ...)) {
+     ($bindings) = $session->decode_get_response ($session->{pdu_buffer});
+ 
+     while ($bindings ne '') {
+ 	($binding,$bindings) = decode_sequence ($bindings);
+ 	($oid,$value) = decode_by_template ($binding, "%O%@");
+ 	print pretty_print ($oid)," => ", pretty_print ($value), "\n";
+     }
+ } else {
+     die "No response from agent on $host";
+ }
+
+=head2 Encoding OIDs
+
+In order to BER-encode OIDs, you can use the function
+B<BER::encode_oid>. It takes (a vector of) numeric subids as an
+argument. For example,
+
+ use BER;
+ encode_oid (1, 3, 6, 1, 2, 1, 1, 1, 0)
+
+will return the BER-encoded OID for the B<sysDescr.0>
+(1.3.6.1.2.1.1.1.0) instance of MIB-2.
+
+=head2 Decoding the results
+
+When C<get_request_response()> returns success, you must decode the
+response PDU from the remote agent. The function
+C<decode_get_response()> can be used to do this. It takes a
+C<get-response> PDU, checks its syntax and returns the I<bindings>
+part of the PDU. This is where the remote agent actually returns the
+values of the variables in your query.
+
+You should iterate over the individual bindings in this I<bindings>
+part and extract the value for each variable. In the example above,
+the returned bindings are simply printed using the
+C<BER::pretty_print()> function.
+
+For better readability of the OIDs, you can also use the following
+idiom, where the C<%pretty_oids> hash maps BER-encoded numerical OIDs
+to symbolic OIDs. Note that this simple-minded mapping only works for
+response OIDs that exactly match known OIDs, so it's unsuitable for
+table walking (where the response OIDs include an additional row
+index).
+
+ %ugly_oids = qw(sysDescr.0	1.3.6.1.2.1.1.1.0
+ 		sysContact.0	1.3.6.1.2.1.1.4.0);
+ foreach (keys %ugly_oids) {
+     $ugly_oids{$_} = encode_oid (split (/\./, $ugly_oids{$_}));
+     $pretty_oids{$ugly_oids{$_}} = $_;
+ }
+ ...
+ if ($session->get_request_response ($ugly_oids{'sysDescr.0'},
+ 				    $ugly_oids{'sysContact.0'})) {
+     ($bindings) = $session->decode_get_response ($session->{pdu_buffer});
+     while ($bindings ne '') {
+ 	($binding,$bindings) = decode_sequence ($bindings);
+ 	($oid,$value) = decode_by_template ($binding, "%O%@");
+ 	print $pretty_oids{$oid}," => ",
+ 	      pretty_print ($value), "\n";
+     }
+ } ...
+
+=head2 Set Requests
+
+Set requests are generated much like C<get> or C<getNext> requests
+are, with the exception that you have to specify not just OIDs, but
+also the values the variables should be set to. Every binding is
+passed as a reference to a two-element array, the first element being
+the encoded OID and the second one the encoded value. See the
+C<test/set-test.pl> script for an example, in particular the
+subroutine C<snmpset>.
+
+=head2 Walking Tables
+
+Beginning with version 0.57 of C<SNMP_Session.pm>, there is API
+support for walking tables. The C<map_table()> method can be used for
+this as follows:
+
+ sub walk_function ($$$) {
+   my ($index, $val1, $val3) = @_;
+   ...
+ }
+ 
+ ...
+ $columns = [$base_oid1, $base_oid3];
+ $n_rows = $session->map_table ($columns, \&walk_function);
+
+The I<columns> argument must be a reference to a list of OIDs for table
+columns sharing the same index. The method will traverse the table and
+call the I<walk_function> for each row. The arguments for these calls
+will be:
+
+=over
+
+=item 1. the I<row index> as a partial OID in dotted notation, e.g.
+C<1.3>, or C<10.0.1.34>.
+
+=item 2. the values of the requested table columns in that row, in
+BER-encoded form. If you want to use the standard C<pretty_print()>
+subroutine to decode the values, you can use the following idiom:
+
+  grep (defined $_ && ($_=pretty_print $_), ($val1, $val3));
+
+=back
+
+=head2 Walking Tables With C<get-bulk>
+
+Since version 0.67, C<SNMP_Session> uses a different C<get_table>
+implementation for C<SNMPv2c_Session>s. This version uses the
+``powerful C<get-bulk> operator'' to retrieve many table rows with
+each request. In general, this will make table walking much faster
+under SNMPv2c, especially when round-trip times to the agent are long.
+
+There is one difficulty, however: With C<get-bulk>, a management
+application can specify the maximum number of rows to return in a
+single response. C<SNMP_Session.pm> provides a new function,
+C<map_table_4>, in which this C<maxRepetitions> value can be specified
+explicitly.
+
+For maximum efficiency, it should be set to a value that is one
+greater than the number of rows in the table. If it is smaller, then
+C<map_table()> will use more request/response cycles than necessary;
+if it is bigger, the agent will have to compute variable bindings
+beyond the end of the table (which C<map_table()> will throw away).
+
+Of course it is usually impossible to know the size of the table in
+advance. If you don't specify C<maxRepetitions> when walking a table,
+then C<map_table()> will use a per-session default
+(C<$session-E<gt>default_max_repetitions>). The default value for this
+default is 12.
+
+If you walk a table multiple times, and the size of the table is
+relatively stable, you should use the return value of C<map_table()>
+(which is the number of rows it has encountered) to compute the next
+value of C<maxRepetitions>. Remember to add one so that C<map_table()>
+notices when the table is finished!
+
+Note that for really big tables, this doesn't make a big difference,
+since the table won't fit in a single response packet anyway.
+
+=head2 Sending Traps
+
+To send a trap, you have to open an SNMP session to the trap receiver.
+Usually this is a process listening to UDP port 162 on a network
+management station. Then you can use the C<trap_request_send()> method
+to encode and send SNMPv1 traps. There is no way to find out whether
+the trap was actually received at the management station - SNMP traps
+are fundamentally unreliable.
+
+When constructing an SNMPv1 trap, you must provide
+
+=over
+
+=item * the "enterprise" Object Identifier for the entity that
+generates the trap
+
+=item * your IP address
+
+=item * the generic trap type
+
+=item * the specific trap type
+
+=item * the C<sysUpTime> at the time of trap generation
+
+=item * a sequence (may be empty) of variable bindings further
+describing the trap.
+
+=back
+
+For SNMPv2 traps, you need:
+
+=over
+
+=item * the trap's OID
+
+=item * the C<sysUpTime> at the time of trap generation
+
+=item * the bindings list as above
+
+=back
+
+For SNMPv2 traps, the uptime and trap OID are encoded as bindings which
+are added to the front of the other bindings you provide.
+
+Here is a short example:
+
+ my $trap_receiver = "netman.noc";
+ my $trap_community = "SNMP_Traps";
+ my $trap_session = $version eq '1'
+     ? SNMP_Session->open ($trap_receiver, $trap_community, 162)
+     : SNMPv2c_Session->open ($trap_receiver, $trap_community, 162);
+ my $myIpAddress = ...;
+ my $start_time = time;
+ 
+ ...
+ 
+ sub link_down_trap ($$) {
+   my ($if_index, $version) = @_;
+   my $genericTrap = 2;		# linkDown
+   my $specificTrap = 0;
+   my @ifIndexOID = ( 1,3,6,1,2,1,2,2,1,1 );
+   my $upTime = int ((time - $start_time) * 100.0);
+   my @myOID = ( 1,3,6,1,4,1,2946,0,8,15 );
+ 
+   warn "Sending trap failed"
+     unless ($version eq '1')
+ 	? $trap_session->trap_request_send (encode_oid (@myOID),
+ 					    encode_ip_address ($myIpAddress),
+ 					    encode_int ($genericTrap),
+ 					    encode_int ($specificTrap),
+ 					    encode_timeticks ($upTime),
+ 					    [encode_oid (@ifIndex_OID,$if_index),
+ 					     encode_int ($if_index)],
+ 					    [encode_oid (@ifDescr_OID,$if_index),
+ 					     encode_string ("foo")])
+ 	    : $trap_session->v2_trap_request_send (\@linkDown_OID, $upTime,
+ 						   [encode_oid (@ifIndex_OID,$if_index),
+ 						    encode_int ($if_index)],
+ 						   [encode_oid (@ifDescr_OID,$if_index),
+ 						    encode_string ("foo")]);
+ }
+
+=head2 Receiving Traps
+
+Since version 0.60, C<SNMP_Session.pm> supports the receipt and
+decoding of SNMPv1 trap requests. Since version 0.75, SNMPv2 Trap PDUs
+are also recognized.
+
+To receive traps, you have to create a special SNMP session that
+passively listens on the SNMP trap transport address, usually on UDP
+port 162.  Then you can receive traps - actually, SNMPv1 traps, SNMPv2
+traps, and SNMPv2 informs, using the C<receive_trap()> method and
+decode them using C<decode_trap_request()>. The I<enterprise>,
+I<agent>, I<generic>, I<specific> and I<sysUptime> return values are
+only defined for SNMPv1 traps. In SNMPv2 traps and informs, the
+equivalent information is contained in the bindings.
+
+ my $trap_session = SNMPv1_Session->open_trap_session (162)
+   or die "cannot open trap session";
+ my ($trap, $sender, $sport) = $trap_session->receive_trap ()
+   or die "cannot receive trap";
+ my ($community, $enterprise, $agent,
+     $generic, $specific, $sysUptime, $bindings)
+   = $trap_session->decode_trap_request ($trap)
+     or die "cannot decode trap received"
+ ...
+ my ($binding, $oid, $value);
+ while ($bindings ne '') {
+     ($binding,$bindings) = decode_sequence ($bindings);
+     ($oid, $value) = decode_by_template ($binding, "%O%@");
+     print BER::pretty_oid ($oid)," => ",pretty_print ($value),"\n";
+ }
+
+=head1 AUTHORS
+
+Created by:  Simon Leinen  E<lt>simon.leinen@switch.chE<gt>
+
+Contributions and fixes by:
+
+=over
+
+=item Matthew Trunnell E<lt>matter@media.mit.eduE<gt>
+
+=item Tobias Oetiker E<lt>tobi@oetiker.chE<gt>
+
+=item Heine Peters E<lt>peters@dkrz.deE<gt>
+
+=item Daniel L. Needles E<lt>dan_needles@INS.COME<gt>
+
+=item Mike Mitchell E<lt>mcm@unx.sas.comE<gt>
+
+=item Clinton Wong E<lt>clintdw@netcom.comE<gt>
+
+=item Alan Nichols E<lt>Alan.Nichols@Ebay.Sun.COME<gt>
+
+=item Mike McCauley E<lt>mikem@open.com.auE<gt>
+
+=item Andrew W. Elble E<lt>elble@icculus.nsg.nwu.eduE<gt>
+
+=item Brett T Warden E<lt>wardenb@eluminant.comE<gt>: pretty C<UInteger32>
+
+=item Michael Deegan E<lt>michael@cnspc18.murdoch.edu.auE<gt>
+
+=item Sergio Macedo E<lt>macedo@tmp.com.brE<gt>
+
+=item Jakob Ilves (/IlvJa) E<lt>jakob.ilves@oracle.comE<gt>: PDU capture
+
+=item Valerio Bontempi E<lt>v.bontempi@inwind.itE<gt>: IPv6 support
+
+=item Lorenzo Colitti E<lt>lorenzo@colitti.comE<gt>: IPv6 support
+
+=item Philippe Simonet E<lt>Philippe.Simonet@swisscom.comE<gt>: Export C<avoid...>
+
+=item Luc Pauwels E<lt>Luc.Pauwels@xalasys.comE<gt>: C<use_16bit_request_ids>
+
+=item Andrew Cornford-Matheson E<lt>andrew.matheson@corenetworks.comE<gt>: inform
+
+=item Gerry Dalton E<lt>gerry.dalton@consolidated.comE<gt>: C<strict subs> bug
+
+=item Mike Fischer E<lt>mlf2@tampabay.rr.comE<gt>: pass MSG_DONTWAIT to C<recv()>
+
+=back
+
+=head1 COPYRIGHT
+
+Copyright (c) 1995-2009, Simon Leinen.
+
+This program is free software; you can redistribute it under the
+"Artistic License 2.0" included in this distribution (file "Artistic").
+
+=cut
