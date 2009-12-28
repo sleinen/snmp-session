@@ -24,6 +24,16 @@ HREF="mailto:simon.leinen@switch.ch">simon.leinen@switch.ch</A>&gt;</p>
 
 <ul>
 
+<li> SNMP_Session.pm 1.14: <tt>open_trap_session</tt> now takes an
+  optional <tt>ipv4only</tt> argument.  It defaults to 1, but by
+  passing 0, you can create a session that accepts traps over IPv6 in
+  addition to IPv4.  The <tt>receive_trap</tt> method has been
+  enhanced by returning an additional value which is the address
+  family.  There is a new <tt>receive_trap_1</tt> method, which
+  differs from <tt>receive_trap</tt> in that it simply returns the
+  trap and a sockaddr structure, rather than the trap, the host
+  address, the port, and the address family. </li>
+
 <li> BER.pm 1.14: Added POD documentation.  Started adding automated
   unit tests. </li>
 

@@ -721,12 +721,12 @@ sub ber_error ($$) {
   return $this->error ("$type:\n$errmsg");
 }
 
-=head2 receive_trap() - receive message on trap socket.
+=head2 receive_trap_1() - receive message on trap socket.
 
 This method waits until a message is received on the trap socket.  If
-successful, it returns three values: the undecoded trap message, the
-sending host's IP address, and the source port from which the message
-was sent.
+successful, it returns two values: the message that was received, and
+the address of the sender as a C<sockaddr> structure.  This address
+can be passed to C<getnameinfo()> to convert it to readable output.
 
 This method doesn't check whether the message actually encodes a trap
 or anything else - the caller should use C<decode_trap_request()> to
@@ -734,20 +734,43 @@ find out.
 
 =cut
 
-sub receive_trap {
+sub receive_trap_1 ($ ) {
     my ($this) = @_;
-    my ($remote_addr, $iaddr, $port, $trap);
-    $remote_addr = recv ($this->sock,$this->{'pdu_buffer'},$this->max_pdu_len,0);
+    my ($remote_addr, $iaddr, $port, $trap, $af);
+    $remote_addr = recv ($this->sock,
+			 $this->{'pdu_buffer'},
+			 $this->max_pdu_len,0);
     return undef unless $remote_addr;
-
-    if( (defined $ipv6_addr_len) && (length $remote_addr == $ipv6_addr_len)) {
-	($port,$iaddr) = unpack_sockaddr_in6($remote_addr);
-    } else {
-	($port,$iaddr) = unpack_sockaddr_in($remote_addr);
-    }
-
     $trap = $this->{'pdu_buffer'};
-    return ($trap, $iaddr, $port);
+    return ($trap, $remote_addr);
+}
+
+=head2 receive_trap() - receive message on trap socket (deprecated version).
+
+This function is identical to C<receive_trap_1()>, except that it
+returns the sender address as three (formerly two) separate values:
+The host IP address, the port, and (since version 1.14) the address
+family.  If you use this, please consider moving to
+C<receive_trap_1()>, because it is easier to process the sender
+address in sockaddr format, in particular in a world where IPv4 and
+IPv6 coexist.
+
+=cut
+
+sub receive_trap ($ ) {
+    my ($this) = @_;
+    my ($trap, $remote_addr) = $this->receive_trap_1 ();
+    return undef unless defined $trap;
+
+    my ($iaddr, $port, $af);
+    if ((defined $ipv6_addr_len) && (length $remote_addr == $ipv6_addr_len)) {
+	($port, $iaddr) = unpack_sockaddr_in6 ($remote_addr);
+	$af = AF_INET6;
+    } else {
+	($port, $iaddr) = unpack_sockaddr_in ($remote_addr);
+	$af = AF_INET;
+    }
+    return ($trap, $iaddr, $port, $af);
 }
 
 =head2 decode_trap_request()
@@ -756,10 +779,11 @@ sub receive_trap {
       = $session->decode_trap_request ($trap);
 
 Given a message such as one returned as the first return value from
-C<receive_trap()>, try to decode it as some notification PDU.  The
-code can handle SNMPv1 and SNMPv2 traps as well as SNMPv2 INFORMs,
-although it fails to distinguish traps from informs, which makes it
-hard to handle informs correctly (they should be acknowledged).
+C<receive_trap_1()> or C<receive_trap()>, try to decode it as some
+notification PDU.  The code can handle SNMPv1 and SNMPv2 traps as well
+as SNMPv2 INFORMs, although it fails to distinguish traps from
+informs, which makes it hard to handle informs correctly (they should
+be acknowledged).
 
 The C<$ent>, C<$agent>, C<$gen>, C<$spec>, and C<$dt> values will only
 be defined for SNMPv1 traps.  For SNMPv2 traps and informs, some of
@@ -963,17 +987,24 @@ sub open {
 
 =head2 open_trap_session() - create a session for receiving SNMP traps.
 
-    $session = open_trap_session ($port);
+    $session = open_trap_session ($port, $ipv4only);
 
 C<$port> defaults to 162, the standard UDP port that SNMP
 notifications are sent to.
 
+If C<$ipv4only> is either not present or non-zero, then an IPv4-only
+socket will be used.  This is also the case if the system only
+supports IPv4.  Otherwise, an IPv6 socket is created.  IPv6 sockets
+can receive messages over both IPv6 and IPv4.
+
 =cut
 
 sub open_trap_session (@) {
-    my ($this, $port) = @_;
+    my ($this, $port, $ipv4only) = @_;
     $port = 162 unless defined $port;
-    return $this->open (undef, "", 161, undef, $port);
+    $ipv4only = 1 unless defined $ipv4only;
+    return $this->open (undef, "", 161, undef, $port,
+	undef, undef, $ipv4only);
 }
 
 sub sock { $_[0]->{sock} }
@@ -1632,15 +1663,15 @@ are also recognized.
 To receive traps, you have to create a special SNMP session that
 passively listens on the SNMP trap transport address, usually on UDP
 port 162.  Then you can receive traps - actually, SNMPv1 traps, SNMPv2
-traps, and SNMPv2 informs, using the C<receive_trap()> method and
+traps, and SNMPv2 informs, using the C<receive_trap_1()> method and
 decode them using C<decode_trap_request()>. The I<enterprise>,
 I<agent>, I<generic>, I<specific> and I<sysUptime> return values are
 only defined for SNMPv1 traps. In SNMPv2 traps and informs, the
 equivalent information is contained in the bindings.
 
- my $trap_session = SNMPv1_Session->open_trap_session (162)
+ my $trap_session = SNMPv1_Session->open_trap_session (162, 0)
    or die "cannot open trap session";
- my ($trap, $sender, $sport) = $trap_session->receive_trap ()
+ my ($trap, $sender_sockaddr) = $trap_session->receive_trap_1 ()
    or die "cannot receive trap";
  my ($community, $enterprise, $agent,
      $generic, $specific, $sysUptime, $bindings)
