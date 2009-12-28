@@ -2,7 +2,7 @@
 ######################################################################
 ### BER (Basic Encoding Rules) encoding and decoding.
 ######################################################################
-### Copyright (c) 1995-2008, Simon Leinen.
+### Copyright (c) 1995-2009, Simon Leinen.
 ###
 ### This program is free software; you can redistribute it under the
 ### "Artistic License 2.0" included in this distribution
@@ -12,7 +12,7 @@
 ### structures using the Basic Encoding Rules (BER).  Only the subset
 ### necessary for SNMP is implemented.
 ######################################################################
-### Created by:  Simon Leinen  <simon@switch.ch>
+### Created by:  Simon Leinen  <simon.leinen@switch.ch>
 ###
 ### Contributions and fixes by:
 ###
@@ -33,6 +33,27 @@
 
 package BER;
 
+=head1 NAME
+
+BER
+
+=head1 SYNOPSIS
+
+    use BER;
+    $encoded = encode_sequence (encode_int (123), encode_string ("foo"));
+    ($i, $s) = decode_by_template ($encoded, "%{%i%s");
+    # $i will now be 123, $s the string "foo".
+
+=head1 DESCRIPTION
+
+This is a simple library to encode and decode data using the Basic
+Encoding Rules (BER) of Abstract Syntax Notation One (ASN.1).  It does
+not claim to be a complete implementation of the standard, but
+implements enough of the BER standard to encode and decode SNMP
+messages.
+
+=cut
+
 require 5.002;
 
 use strict;
@@ -40,7 +61,7 @@ use vars qw(@ISA @EXPORT $VERSION $pretty_print_timeticks
 	    %pretty_printer %default_printer $errmsg);
 use Exporter;
 
-$VERSION = '1.05';
+$VERSION = '1.14';
 
 @ISA = qw(Exporter);
 
@@ -56,15 +77,21 @@ $VERSION = '1.05';
 	     encoded_oid_prefix_p errmsg
 	     register_pretty_printer unregister_pretty_printer);
 
-### Variables
+=head1 VARIABLES
 
-## Bind this to zero if you want to avoid that TimeTicks are converted
-## into "human readable" strings containing days, hours, minutes and
-## seconds.
-##
-## If the variable is zero, pretty_print will simply return an
-## unsigned integer representing hundredths of seconds.
-##
+=cut
+
+=head2 $pretty_print_timeticks (default: 1)
+
+If non-zero (the default), C<pretty_print> will convert TimeTicks to
+"human readable" strings containing days, hours, minutes and seconds.
+
+If the variable is zero, C<pretty_print> will simply return an
+unsigned integer representing hundredths of seconds.  If you prefer
+this, bind C<$pretty_print_timeticks> to zero.
+
+=cut
+
 $pretty_print_timeticks = 1;
 
 ### Prototypes
@@ -109,6 +136,9 @@ sub error (@);
 sub template_error ($$$);
 
 sub version () { $VERSION; }
+
+=head1 METHODS
+=cut
 
 ### Flags for different types of tags
 
@@ -173,36 +203,74 @@ BEGIN {
 
 sub encode_header ($$) {
     my ($type,$length) = @_;
-    return pack ("C C", $type, $length) if $length < 128;
-    return pack ("C C C", $type, long_length | 1, $length) if $length < 256;
-    return pack ("C C n", $type, long_length | 2, $length) if $length < 65536;
+    return pack ("CC", $type, $length) if $length < 128;
+    return pack ("CCC", $type, long_length | 1, $length) if $length < 256;
+    return pack ("CCn", $type, long_length | 2, $length) if $length < 65536;
     return error ("Cannot encode length $length yet");
 }
 
+=head2 encode_int_0() - encode the integer 0.
+
+This is functionally identical to C<encode_int(0)>.
+
+=cut
+
 sub encode_int_0 () {
-    return pack ("C C C", 2, 1, 0);
+    return pack ("CCC", 2, 1, 0);
 }
+
+=head2 encode_int() - encode an integer using the generic
+    "integer" type tag.
+
+=cut
 
 sub encode_int ($) {
     return encode_intlike ($_[0], int_tag);
 }
 
+=head2 encode_uinteger32() - encode an integer using the SNMP
+    UInteger32 tag.
+
+=cut
+
 sub encode_uinteger32 ($) {
     return encode_intlike ($_[0], snmp_uinteger32_tag);
 }
+
+=head2 encode_counter32() - encode an integer using the SNMP
+    Counter32 tag.
+
+=cut
 
 sub encode_counter32 ($) {
     return encode_intlike ($_[0], snmp_counter32_tag);
 }
 
+=head2 encode_counter64() - encode an integer using the SNMP
+    Counter64 tag.
+
+=cut
+
 sub encode_counter64 ($) {
     return encode_intlike ($_[0], snmp_counter64_tag);
 }
+
+=head2 encode_gauge32() - encode an integer using the SNMP Gauge32
+    tag.
+
+=cut
 
 sub encode_gauge32 ($) {
     return encode_intlike ($_[0], snmp_gauge32_tag);
 }
 
+### encode_intlike ($int, $tag)
+###
+### Generic function to BER-encode an arbitrary integer using a given
+### tag.  This function can handle large integers.  It doesn't check
+### whether the integer is in a suitable range for the given type tag
+### - that is expected to be done by the caller.
+###
 sub encode_intlike ($$) {
     my ($int, $tag)=@_;
     my ($sign, $val, @vals);
@@ -225,6 +293,12 @@ sub encode_intlike ($$) {
 	}
     }
 }
+
+=head2 encode_oid() - encode an object ID, passed as a list of
+    sub-IDs.
+
+    $encoded = encode_oid (1,3,6,1,...);
+=cut
 
 sub encode_oid (@) {
     my @oid = @_;
@@ -284,7 +358,27 @@ sub encode_oid (@) {
     encode_header (object_id_tag, length $result).$result;
 }
 
+=head2 encode_null() - encode a null object.
+
+This is used e.g. in binding lists for variables that don't have a
+value (yet)
+
+=cut
+
 sub encode_null () { encode_header (null_tag, 0); }
+
+=head2 encode_sequence()
+
+=head2 encode_tagged_sequence()
+
+    $encoded = encode_sequence (encoded1, encoded2, ...);
+    $encoded = encode_tagged_sequence (tag, encoded1, encoded2, ...);
+
+Take already encoded values, and extend them to an encoded sequence.
+C<encoded_sequence> uses the generic sequence tag, while with
+C<encode_tagged_sequence> you can specify your own tag.
+=cut
+
 sub encode_sequence (@) { encode_tagged_sequence (sequence_tag, @_); }
 
 sub encode_tagged_sequence ($@) {
@@ -295,10 +389,21 @@ sub encode_tagged_sequence ($@) {
     return encode_header ($tag | constructor_flag, length $result).$result;
 }
 
+=head2 encode_string() - encode a Perl string as an OCTET STRING.
+=cut
+
 sub encode_string ($) {
     my ($string)=@_;
     return encode_header (octet_string_tag, length $string).$string;
 }
+
+=head2 encode_ip_address() - encode an IPv4 address.
+
+This can either be passed as a four-octet sequence in B<network byte
+order>, or as a text string in dotted-quad notation,
+e.g. "192.0.2.234".
+
+=cut
 
 sub encode_ip_address ($) {
     my ($addr)=@_;
@@ -315,6 +420,14 @@ sub encode_ip_address ($) {
     }
 }
 
+=head2 encode_timeticks() - encode an integer as a C<TimeTicks>
+    object.
+
+The integer should count hundredths of a second since the epoch
+defined by C<sysUpTime.0>.
+
+=cut
+
 sub encode_timeticks ($) {
   my ($tt) = @_;
   return encode_intlike ($tt, snmp_timeticks_tag);
@@ -322,13 +435,22 @@ sub encode_timeticks ($) {
 
 #### Decoding
 
+=head2 pretty_print() - convert an encoded byte sequence into
+    human-readable form.
+
+This function can be extended by registering pretty-printing methods
+for specific type codes.  Most BER type codes used in SNMP already
+have such methods pre-registered by default.  See
+C<register_pretty_printer> for how new methods can be added.
+
+=cut
+
 sub pretty_print ($) {
     my ($packet) = @_;
     return undef unless defined $packet;
     my $result = ord (substr ($packet, 0, 1));
     if (exists ($pretty_printer{$result})) {
-	my $c_ref = $pretty_printer{$result};
-	return &$c_ref ($packet);
+	return &{$pretty_printer{$result}} ($packet);
     }
     return ($pretty_print_timeticks
 	    ? pretty_uptime ($packet)
@@ -524,11 +646,20 @@ sub pretty_generic_sequence ($) {
 	$first_elem = '' if $first_elem;
     }
     return $pretty_result;
-}    
+}
+
+=head2 hex_string() - convert OCTET STRING to hexadecimal notation.
+
+=cut
 
 sub hex_string ($) {
-    &hex_string_of_type ($_[0], octet_string_tag);
+    hex_string_of_type ($_[0], octet_string_tag);
 }
+
+=head2 hex_string_of_type() - convert octet string to hex, and check
+type against given tag.
+
+=cut
 
 sub hex_string_of_type ($$) {
     my ($pdu, $wanted_type) = @_;
@@ -582,6 +713,44 @@ sub decode_generic_tlv ($) {
     @result;
 }
 
+=head2 decode_by_template() - decode complex object according to a
+    template.
+
+    ($var1, ...) = decode_by_template ($pdu, $template, ...);
+
+The template can contain various %X directives.  Some directives
+consume additional arguments following the template itself.  Most
+directives will cause values to be returned.  The values are returned
+as a sequence in the order of the directives that generated them.
+
+=over 4
+
+=item %{ - decode sequence.
+
+This doesn't assign any return value, just checks and skips the
+tag/length fields of the sequence.  By default, the tag should be the
+generic sequence tag, but a tag can also be specified in the
+directive.  The directive can either specify the tag as a prefix,
+e.g. C<%99{> will require a sequence tag of 99, or if the directive is
+given as C<%*{>, the tag will be taken from the next argument.
+
+=item %s - decode string
+
+=item %i - decode integer
+
+=item %u - decode unsigned integer
+
+=item %O - decode Object ID (OID)
+
+=item %A - decode IPv4 address
+
+=item %@ - assigns the remaining undecoded part of the PDU to the next
+    return value.
+
+=back
+
+=cut
+
 sub decode_by_template {
     my ($pdu) = shift;
     local ($_) = shift;
@@ -606,7 +775,7 @@ sub decode_by_template_2 {
 		if $template_debug;
 	    $_ = substr ($_,1);
 	    ++$template_index;
-	    if (($expected) = /^(\d*|\*)\{(.*)/) {
+	    if (($expected) = /^(\d+|\*|)\{(.*)/) {
 		## %{
 		$template_index += length ($expected) + 1;
 		print STDERR "%{\n" if $template_debug;
@@ -622,8 +791,8 @@ sub decode_by_template_2 {
 				      $template,
 				      $template_index)
 		    unless (ord (substr ($pdu, 0, 1)) == $expected);
-		(($length,$pdu) = decode_length ($pdu, 1))
-		    || return template_error ("cannot read length",
+		($length,$pdu) = decode_length ($pdu, 1)
+		    or return template_error ("cannot read length",
 					      $template, $template_index);
 		return template_error ("Expected length $length, got ".length $pdu ,
 				      $template, $template_index)
@@ -632,8 +801,8 @@ sub decode_by_template_2 {
 		## %s
 		$template_index += length ($expected) + 1;
 		($expected = shift) if $expected eq '*';
-		(($read,$pdu) = decode_string ($pdu))
-		    || return template_error ("cannot read string",
+		($read, $pdu) = decode_string ($pdu)
+		    or return template_error ("cannot read string",
 					      $template, $template_index);
 		print STDERR "%s => $read\n" if $template_debug;
 		if ($expected eq '') {
@@ -668,19 +837,19 @@ sub decode_by_template_2 {
 		## %O
 		$template_index += 1;
 		$_ = $1;
-		(($read,$pdu) = decode_oid ($pdu))
-		  || return template_error ("cannot read OID",
-					    $template, $template_index);
+		($read,$pdu) = decode_oid ($pdu)
+		    or return template_error ("cannot read OID",
+					      $template, $template_index);
 		print STDERR "%O => ".pretty_oid ($read)."\n"
 		    if $template_debug;
 		push @results, $read;
-	    } elsif (($expected,$rest) = /^(\d*|\*|)i(.*)/) {
+	    } elsif (($expected,$rest) = /^(\d+|\*|)i(.*)/) {
 		## %i
 		$template_index += length ($expected) + 1;
 		print STDERR "%i\n" if $template_debug;
 		$_ = $rest;
-		(($read,$pdu) = decode_int ($pdu))
-		  || return template_error ("cannot read int",
+		($read, $pdu) = decode_int ($pdu)
+		    or return template_error ("cannot read int",
 					    $template, $template_index);
 		if ($expected eq '') {
 		    push @results, $read;
@@ -696,8 +865,8 @@ sub decode_by_template_2 {
 		$template_index += 1;
 		print STDERR "%u\n" if $template_debug;
 		$_ = $rest;
-		(($read,$pdu) = decode_unsignedlike ($pdu))
-		  || return template_error ("cannot read uptime",
+		($read, $pdu) = decode_unsignedlike ($pdu)
+		    or return template_error ("cannot read uptime",
 					    $template, $template_index);
 		push @results, $read;
 	    } elsif (/^\@(.*)/) {
@@ -726,6 +895,16 @@ sub decode_by_template_2 {
       if length ($_) > 0;
     @results;
 }
+
+=head2 decode_sequence() - Split sequence into components.
+
+    ($first, $rest) = decode_sequence ($pdu);
+
+Checks whether the PDU has a sequence type tag and a plausible length
+field.  Splits the initial element off the list, and returns both this
+and the remainder of the PDU.
+
+=cut
 
 sub decode_sequence ($) {
     my ($pdu) = @_;
@@ -809,9 +988,13 @@ sub decode_length ($@) {
     @result;
 }
 
-# This takes a hashref that specifies functions to call when
-# the specified value type is being printed.  It returns the
-# number of functions that were registered.
+=head2 register_pretty_printer() - register pretty-printing methods for
+    typecodes.
+
+This function takes a hashref that specifies functions to call when
+the specified value type is being printed.  It returns the number of
+functions that were registered.
+=cut
 sub register_pretty_printer($)
 {
     my ($h_ref) = shift;
