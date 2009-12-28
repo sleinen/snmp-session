@@ -1,4 +1,6 @@
 #!/usr/bin/perl
+###
+### Test BER.pm encoding and decoding routines
 
 use strict;
 use warnings;
