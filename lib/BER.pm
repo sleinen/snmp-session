@@ -12,23 +12,7 @@
 ### structures using the Basic Encoding Rules (BER).  Only the subset
 ### necessary for SNMP is implemented.
 ######################################################################
-### Created by:  Simon Leinen  <simon.leinen@switch.ch>
-###
-### Contributions and fixes by:
-###
-### Andrzej Tobola <san@iem.pw.edu.pl>:  Added long String decode
-### Tobias Oetiker <tobi@oetiker.ch>:  Added 5 Byte Integer decode ...
-### Dave Rand <dlr@Bungi.com>:  Added SysUpTime decode
-### Philippe Simonet <sip00@vg.swissptt.ch>:  Support larger subids
-### Yufang HU <yhu@casc.com>:  Support even larger subids
-### Mike Mitchell <Mike.Mitchell@sas.com>: New generalized encode_int()
-### Mike Diehn <mdiehn@mindspring.net>: encode_ip_address()
-### Rik Hoorelbeke <rik.hoorelbeke@pandora.be>: encode_oid() fix
-### Brett T Warden <wardenb@eluminant.com>: pretty UInteger32
-### Bert Driehuis <driehuis@playbeing.org>: Handle SNMPv2 exception codes
-### Jakob Ilves (/IlvJa) <jakob.ilves@oracle.com>: PDU decoding
-### Jan Kasprzak <kas@informatics.muni.cz>: Fix for PDU syntax check
-### Milen Pavlov <milen@batmbg.com>: Recognize variant length for ints
+### Create by: See AUTHORS below
 ######################################################################
 
 package BER;
@@ -93,6 +77,14 @@ this, bind C<$pretty_print_timeticks> to zero.
 =cut
 
 $pretty_print_timeticks = 1;
+
+=head2 $errmsg - error message from last failed operation.
+
+When they encounter errors, the routines in this module will generally
+return C<undef>) and leave an informative error message in
+C<$errmsg>).
+
+=cut
 
 ### Prototypes
 sub encode_header ($$);
@@ -1094,3 +1086,48 @@ sub template_error ($$$) {
 }
 
 1;
+
+=head1 AUTHORS
+
+Created by:  Simon Leinen  E<lt>simon.leinen@switch.chE<gt>
+
+Contributions and fixes by:
+
+=over
+
+=item Andrzej Tobola E<lt>san@iem.pw.edu.plE<gt>:  Added long String decode
+
+=item Tobias Oetiker E<lt>tobi@oetiker.chE<gt>:  Added 5 Byte Integer decode ...
+
+=item Dave Rand E<lt>dlr@Bungi.comE<gt>:  Added C<SysUpTime> decode
+
+=item Philippe Simonet E<lt>sip00@vg.swissptt.chE<gt>:  Support larger subids
+
+=item Yufang HU E<lt>yhu@casc.comE<gt>:  Support even larger subids
+
+=item Mike Mitchell E<lt>Mike.Mitchell@sas.comE<gt>: New generalized C<encode_int()>
+
+=item Mike Diehn E<lt>mdiehn@mindspring.netE<gt>: C<encode_ip_address()>
+
+=item Rik Hoorelbeke E<lt>rik.hoorelbeke@pandora.beE<gt>: C<encode_oid()> fix
+
+=item Brett T Warden E<lt>wardenb@eluminant.comE<gt>: pretty C<UInteger32>
+
+=item Bert Driehuis E<lt>driehuis@playbeing.orgE<gt>: Handle SNMPv2 exception codes
+
+=item Jakob Ilves (/IlvJa) E<lt>jakob.ilves@oracle.comE<gt>: PDU decoding
+
+=item Jan Kasprzak E<lt>kas@informatics.muni.czE<gt>: Fix for PDU syntax check
+
+=item Milen Pavlov E<lt>milen@batmbg.comE<gt>: Recognize variant length for ints
+
+=back
+
+=head1 COPYRIGHT
+
+Copyright (c) 1995-2009, Simon Leinen.
+
+This program is free software; you can redistribute it under the
+"Artistic License 2.0" included in this distribution (file "Artistic").
+
+=cut
