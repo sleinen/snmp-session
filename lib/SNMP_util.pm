@@ -2,7 +2,7 @@
 ######################################################################
 ### SNMP_util -- SNMP utilities using SNMP_Session.pm and BER.pm
 ######################################################################
-### Copyright (c) 1998-2008, Mike Mitchell.
+### Copyright (c) 1998-2010, Mike Mitchell.
 ###
 ### This program is free software; you can redistribute it under the
 ### "Artistic License 2.0" included in this distribution
@@ -46,7 +46,7 @@ use BER "1.02";
 use SNMP_Session "1.00";
 use Socket;
 
-$VERSION = '1.14';
+$VERSION = '1.15';
 
 @ISA = qw(Exporter);
 
@@ -481,15 +481,18 @@ sub snmpget ($@) {
   my(@enoid, $var, $response, $bindings, $binding, $value, $oid, @retvals);
   my $session;
 
+  @retvals = ();
   $session = &snmpopen($host, 0, \@vars);
   if (!defined($session)) {
     carp "SNMPGET Problem for $host\n"
       unless ($SNMP_Session::suppress_warnings > 1);
-    return undef;
+    return wantarray ? @retvals : undef;
   }
 
   @enoid = &toOID(@vars);
-  return undef unless defined $enoid[0];
+  if ($#enoid < 0) {
+    return wantarray ? @retvals : undef;
+  }
 
   if ($session->get_request_response(@enoid)) {
     $response = $session->pdu_buffer;
@@ -505,7 +508,7 @@ sub snmpget ($@) {
   $var = join(' ', @vars);
   carp "SNMPGET Problem for $var on $host\n"
     unless ($SNMP_Session::suppress_warnings > 1);
-  return undef;
+  return wantarray ? @retvals : undef;
 }
 
 #
@@ -518,15 +521,18 @@ sub snmpgetnext ($@) {
   my($noid);
   my $session;
 
+  @retvals = ();
   $session = &snmpopen($host, 0, \@vars);
   if (!defined($session)) {
     carp "SNMPGETNEXT Problem for $host\n"
       unless ($SNMP_Session::suppress_warnings > 1);
-    return undef;
+    return wantarray ? @retvals : undef;
   }
 
   @enoid = &toOID(@vars);
-  return undef unless defined $enoid[0];
+  if ($#enoid < 0) {
+    return wantarray ? @retvals : undef;
+  }
 
   undef @vars;
   undef @retvals;
@@ -549,7 +555,7 @@ sub snmpgetnext ($@) {
     $var = join(' ', @vars);
     carp "SNMPGETNEXT Problem for $var on $host\n"
       unless ($SNMP_Session::suppress_warnings > 1);
-    return undef;
+    return wantarray ? @retvals : undef;
   }
 }
 
@@ -578,17 +584,31 @@ sub snmpwalk_flg ($$@) {
   my(%soid);
   my(%done, %rethash, $h_ref);
 
+  $h_ref = (ref $vars[$#vars] eq "HASH") ? pop(@vars) : \%rethash;
+
   $session = &snmpopen($host, 0, \@vars);
   if (!defined($session)) {
     carp "SNMPWALK Problem for $host\n"
       unless ($SNMP_Session::suppress_warnings > 1);
-    return undef;
+    if (defined($hash_sub)) {
+      return ($h_ref) if ($SNMP_util::Return_hash_refs);
+      return (%$h_ref);
+    } else {
+      @retvals = ();
+      return (@retvals);
+    }
   }
 
-  $h_ref = (ref $vars[$#vars] eq "HASH") ? pop(@vars) : \%rethash;
-
   @enoid = toOID(@vars);
-  return undef unless defined $enoid[0];
+  if ($#enoid < 0) {
+    if (defined($hash_sub)) {
+      return ($h_ref) if ($SNMP_util::Return_hash_refs);
+      return (%$h_ref);
+    } else {
+      @retvals = ();
+      return (@retvals);
+    }
+  }
 
   # GIL
   #
@@ -664,7 +684,15 @@ sub snmpwalk_flg ($$@) {
       }
       if ($ok) {
 	my $tmp = encode_oid_with_errmsg ($tempo);
-	return undef unless defined $tmp;
+	if (!defined $tmp) {
+	  if (defined($hash_sub)) {
+	    return ($h_ref) if ($SNMP_util::Return_hash_refs);
+	    return (%$h_ref);
+	  } else {
+	    @retvals = ();
+	    return (@retvals);
+	  }
+	}
 	if (exists($done{$tmp})) {	# GIL, Ilvja
 	  #
 	  # We've detected a loop for $nnoid[$ix], so mark it as finished.
@@ -745,18 +773,17 @@ sub snmpwalk_flg ($$@) {
 
     last if ($#nnoid < 0);   # @nnoid empty means we are done walking.
   }
-  if ($got) {
-    if (defined($hash_sub)) {
-	return ($h_ref) if ($SNMP_util::Return_hash_refs);
-    	return (%$h_ref);
-    } else {
-    	return (@retvals);
-    }
-  } else {
+  if (!$got) {
     $var = join(' ', @vars);
     carp "SNMPWALK Problem for $var on $host\n"
       unless ($SNMP_Session::suppress_warnings > 1);
-    return undef;
+    @retvals = ();
+  }
+  if (defined($hash_sub)) {
+      return ($h_ref) if ($SNMP_util::Return_hash_refs);
+      return (%$h_ref);
+  } else {
+      return (@retvals);
   }
 }
 
@@ -769,11 +796,12 @@ sub snmpset($@) {
   my($oid, @retvals, $type, $value, $val);
   my $session;
 
+  @retvals = ();
   $session = &snmpopen($host, 0, \@vars);
   if (!defined($session)) {
     carp "SNMPSET Problem for $host\n"
       unless ($SNMP_Session::suppress_warnings > 1);
-    return undef;
+    return wantarray ? @retvals : undef;
   }
 
   while(@vars) {
@@ -828,16 +856,18 @@ sub snmpset($@) {
     } else {
       carp "unknown SNMP type: $type\n"
 	unless ($SNMP_Session::suppress_warnings > 1);
-      return undef;
+      return wantarray ? @retvals : undef;
     }
     if (!defined($val)) {
       carp "SNMP type $type value $value didn't encode properly\n"
 	unless ($SNMP_Session::suppress_warnings > 1);
-      return undef;
+      return wantarray ? @retvals : undef;
     }
     push @enoid, [$oid,$val];
   }
-  return undef unless defined $enoid[0];
+  if ($#enoid < 0) {
+    return wantarray ? @retvals : undef;
+  }
   if ($session->set_request_response(@enoid)) {
     $response = $session->pdu_buffer;
     ($bindings) = $session->decode_get_response($response);
@@ -849,7 +879,7 @@ sub snmpset($@) {
     }
     return wantarray ? @retvals : $retvals[0];
   }
-  return undef;
+  return wantarray ? @retvals : undef;
 }
 
 #
@@ -914,18 +944,18 @@ sub snmpgetbulk ($$$@) {
   my($noid);
   my $session;
 
+  @retvals = ();
   $session = &snmpopen($host, 0, \@vars);
   if (!defined($session)) {
     carp "SNMPGETBULK Problem for $host\n"
       unless ($SNMP_Session::suppress_warnings > 1);
-    return undef;
+    return @retvals;
   }
 
   @enoid = &toOID(@vars);
-  return undef unless defined $enoid[0];
+  return @retvals if ($#enoid < 0);
 
   undef @vars;
-  undef @retvals;
   foreach $noid (@enoid) {
     $upoid = pretty_print($noid);
     push(@vars, $upoid);
@@ -940,12 +970,12 @@ sub snmpgetbulk ($$$@) {
       my $tempv = pretty_print($value);
       push @retvals, "$tempo:$tempv";
     }
-    return (@retvals);
+    return @retvals;
   } else {
     $var = join(' ', @vars);
     carp "SNMPGETBULK Problem for $var on $host\n"
       unless ($SNMP_Session::suppress_warnings > 1);
-    return undef;
+    return @retvals;
   }
 }
 
@@ -1039,7 +1069,10 @@ sub toOID(@) {
     }
     print "toOID: $var\n" if $SNMP_util::Debug;
     $tmp = encode_oid_with_errmsg($var);
-    return undef unless defined $tmp;
+    if (!defined($tmp)) {
+      my @empty = ();
+      return @empty;
+    }
     push(@retvar, $tmp);
   }
   return @retvar;
@@ -1131,7 +1164,8 @@ sub Check_OID ($) {
     if ($oid) {
       return ($oid, $tmp);
     } else {
-      return undef;
+      my @empty = ();
+      return @empty;
     }
   }
   return ($var, $var);
