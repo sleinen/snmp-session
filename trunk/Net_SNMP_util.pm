@@ -2,7 +2,7 @@
 ######################################################################
 ### Net_SNMP_util -- SNMP utilities using Net::SNMP
 ######################################################################
-### Copyright (c) 2005-2008 Mike Mitchell.
+### Copyright (c) 2005-2010 Mike Mitchell.
 ###
 ### This program is free software; you can redistribute it under the
 ### "Artistic License" included in this distribution (file "Artistic").
@@ -25,6 +25,10 @@
 ###
 ### Dan Thorson <Dan.Thorson@seagate.com>
 ###	Handle quotes in MIB comments better
+###
+### Daniel J McDonald <dan.mcdonald@austinenergy.com>
+###	fix getbulk_request -> get_bulk_request typo
+###
 ######################################################################
 
 package Net_SNMP_util;
@@ -75,7 +79,7 @@ our @EXPORT = qw(
 
 ## Version of the Net_SNMP_util module
 
-our $VERSION = v1.0.17;
+our $VERSION = v1.0.19;
 
 use Carp;
 
@@ -554,15 +558,18 @@ sub snmpget ($@) {
   my($host, @vars) = @_;
   my($session, @enoid, %args, $ret, $oid, @retvals);
 
+  @retvals = ();
   $session = &snmpopen($host, 0, \@vars);
   if (!defined($session)) {
     carp "SNMPGET Problem for $host"
       unless ($Net_SNMP_util::SuppressWarnings > 1);
-    return undef;
+    return wantarray ? @retvals : undef;
   }
 
   @enoid = &toOID(@vars);
-  return undef unless defined $enoid[0];
+  if ($#enoid < 0) {
+    return wantarray ? @retvals : undef;
+  }
 
   $args{'-varbindlist'} = \@enoid;
   if ($Net_SNMP_util::Version > 2) {
@@ -582,7 +589,7 @@ sub snmpget ($@) {
   }
   $ret = join(' ', @vars);
   error_msg("SNMPGET Problem for $ret on ${host}: " . $session->error());
-  return undef;
+  return wantarray ? @retvals : undef;
 }
 
 =head2 snmpgetnext() - send a SNMP get-next-request to the remote agent
@@ -613,15 +620,18 @@ sub snmpgetnext ($@) {
   my($host, @vars) = @_;
   my($session, @enoid, %args, $ret, $oid, @retvals);
 
+  @retvals = ();
   $session = &snmpopen($host, 0, \@vars);
   if (!defined($session)) {
     carp "SNMPGETNEXT Problem for $host"
       unless ($Net_SNMP_util::SuppressWarnings > 1);
-    return undef;
+    return wantarray ? @retvals : undef;
   }
 
   @enoid = &toOID(@vars);
-  return undef unless defined $enoid[0];
+  if ($#enoid < 0) {
+    return wantarray ? @retvals : undef;
+  }
 
   $args{'-varbindlist'} = \@enoid;
   if ($Net_SNMP_util::Version > 2) {
@@ -634,14 +644,14 @@ sub snmpgetnext ($@) {
   $ret = $session->get_next_request(%args);
 
   if ($ret) {
-      foreach $oid (@enoid) {
+    foreach $oid (@enoid) {
       push @retvals, $oid . ':' . $ret->{$oid} if (exists($ret->{$oid}));
     }
     return wantarray ? @retvals : $retvals[0];
   }
   $ret = join(' ', @vars);
   error_msg("SNMPGETNEXT Problem for $ret on ${host}: " . $session->error());
-  return undef;
+  return wantarray ? @retvals : undef;
 }
 
 =head2 snmpgetbulk() - send a SNMP get-bulk-request to the remote agent
@@ -696,17 +706,18 @@ sub snmpgetbulk ($$$@) {
   my($session, %args, @enoid, $ret);
   my($oid, @retvals);
 
+  @retvals = ();
   $session = &snmpopen($host, 0, \@vars);
   if (!defined($session)) {
     carp "SNMPGETBULK Problem for $host"
       unless ($Net_SNMP_util::SuppressWarnings > 1);
-    return undef;
+    return @retvals;
   }
 
   if ($Net_SNMP_util::Version < 2) {
     carp "SNMPGETBULK Problem for $host : must use SNMP version > 1"
       unless ($Net_SNMP_util::SuppressWarnings > 1);
-    return undef;
+    return @retvals;
   }
 
   $args{'-nonrepeaters'} = $nr if ($nr > 0);
@@ -721,21 +732,21 @@ sub snmpgetbulk ($$$@) {
   }
 
   @enoid = &toOID(@vars);
-  return undef unless defined $enoid[0];
+  return @retvals if ($#enoid < 0);
 
   $args{'-varbindlist'} = \@enoid;
-  $ret = $session->getbulk_request(%args);
+  $ret = $session->get_bulk_request(%args);
 
   if ($ret) {
     @enoid = &Net::SNMP::oid_lex_sort(keys %$ret);
     foreach $oid (@enoid) {
       push @retvals, $oid . ":" . $ret->{$oid};
     }
-    return (@retvals);
+    return @retvals;
   } else {
     $ret = join(' ', @vars);
     error_msg("SNMPGETBULK Problem for $ret on ${host}: " . $session->error());
-    return undef;
+    return @retvals;
   }
 }
 
@@ -812,11 +823,12 @@ sub snmpset($@) {
   my($session, @vals, %args, $ret);
   my($oid, $type, $value, @enoid, @retvals);
 
+  @retvals = ();
   $session = &snmpopen($host, 0, \@vars);
   if (!defined($session)) {
     carp "SNMPSET Problem for $host"
       unless ($Net_SNMP_util::SuppressWarnings > 1);
-    return undef;
+    return wantarray ? @retvals : undef;
   }
 
   if ($Net_SNMP_util::Version > 2) {
@@ -838,20 +850,22 @@ sub snmpset($@) {
     push @vals, $oid, $type, $value;
     push @enoid, $oid;
   }
-  return undef unless defined $vals[0];
+  if ($#vals < 0) {
+    return wantarray ? @retvals : undef;
+  }
 
   $args{'-varbindlist'} = \@vals;
 
   $ret = $session->set_request(%args);
   if ($ret) {
       foreach $oid (@enoid) {
-      push @retvals, $ret->{$oid} if (exists($ret->{$oid}));
+	push @retvals, $ret->{$oid} if (exists($ret->{$oid}));
     }
     return wantarray ? @retvals : $retvals[0];
   }
   $ret = join(' ', @enoid);
   error_msg("SNMPSET Problem for $ret on ${host}: " . $session->error());
-  return undef;
+  return wantarray ? @retvals : undef;
 }
 
 =head2 snmptrap() - send a SNMP trap to the remote manager
@@ -1578,7 +1592,7 @@ sub toOID(@) {
   my(@vars) = @_;
   my($oid, $var, $tmp, $tmpv, @retvar);
 
-  undef @retvar;
+  @retvar = ();
   foreach $var (@vars) {
     ($oid, $tmp) = &Check_OID($var);
     if (!$oid and $Net_SNMP_util::CacheLoaded == 0) {
@@ -1633,8 +1647,7 @@ sub Check_OID ($) {
   my($var) = @_;
   my($tmp, $tmpv, $oid);
 
-  if ($var =~ /^[a-zA-Z][\w\-]*(\.[a-zA-Z][\w\-]*)*/)
-  {
+  if ($var =~ /^[a-zA-Z][\w\-]*(\.[a-zA-Z][\w\-]*)*/) {
     $tmp = $&;
     $tmpv = $tmp;
     for (;;) {
@@ -1645,7 +1658,8 @@ sub Check_OID ($) {
     if ($oid) {
       return ($oid, $tmp);
     } else {
-      return undef;
+      my @empty = ();
+      return @empty;
     }
   }
   return ($var, $var);
@@ -1658,17 +1672,31 @@ sub snmpwalk_flg ($$@) {
   my(%rethash, $h_ref, @tmprefs);
   my($stop);
 
+  $h_ref = (ref $vars[$#vars] eq "HASH") ? pop(@vars) : \%rethash;
+
   $session = &snmpopen($host, 0, \@vars);
   if (!defined($session)) {
     carp "SNMPWALK Problem for $host"
       unless ($Net_SNMP_util::SuppressWarnings > 1);
-    return undef;
+    if (defined($hash_sub)) {
+      return ($h_ref) if ($SNMP_util::Return_hash_refs);
+      return (%$h_ref);
+    } else {
+      @retvals = ();
+      return (@retvals);
+    }
   }
 
-  $h_ref = (ref $vars[$#vars] eq "HASH") ? pop(@vars) : \%rethash;
-
   @enoid = toOID(@vars);
-  return undef unless defined $enoid[0];
+  if ($#enoid < 0) {
+    if (defined($hash_sub)) {
+      return ($h_ref) if ($SNMP_util::Return_hash_refs);
+      return (%$h_ref);
+    } else {
+      @retvals = ();
+      return (@retvals);
+    }
+  }
 
   #
   # Create/Refresh a reversed hash with oid -> name
@@ -1808,7 +1836,13 @@ sub snmpwalk_flg ($$@) {
   } else {
     $ret = join(' ', @vars);
     error_msg("SNMPWALK Problem for $ret on ${host}: " . $session->error());
-    return undef;
+    if (defined($hash_sub)) {
+      return ($h_ref) if ($SNMP_util::Return_hash_refs);
+      return (%$h_ref);
+    } else {
+      @retvals = ();
+      return (@retvals);
+    }
   }
 }
 
