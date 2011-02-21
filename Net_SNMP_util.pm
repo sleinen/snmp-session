@@ -2,7 +2,7 @@
 ######################################################################
 ### Net_SNMP_util -- SNMP utilities using Net::SNMP
 ######################################################################
-### Copyright (c) 2005-2010 Mike Mitchell.
+### Copyright (c) 2005-2011 Mike Mitchell.
 ###
 ### This program is free software; you can redistribute it under the
 ### "Artistic License" included in this distribution (file "Artistic").
@@ -28,6 +28,9 @@
 ###
 ### Daniel J McDonald <dan.mcdonald@austinenergy.com>
 ###	fix getbulk_request -> get_bulk_request typo
+###
+### Tobias Oetiker <tobi@oetiker.ch>
+###	fix '-privpassword' error against snmpv2 hosts
 ###
 ######################################################################
 
@@ -79,7 +82,7 @@ our @EXPORT = qw(
 
 ## Version of the Net_SNMP_util module
 
-our $VERSION = v1.0.19;
+our $VERSION = v1.0.20;
 
 use Carp;
 
@@ -1553,7 +1556,17 @@ sub snmpopen ($$$) {
     $args{'-maxmsgsize'} = $maxmsgsize if (defined($maxmsgsize));
     $args{'-debug'} = $debug if (defined($debug));
     $args{'-community'} = $community unless ($community eq "public");
-    delete $args{'-community'} if ($version == 3);
+    if ($version == 3) {
+	delete $args{'-community'}
+    } else {
+	delete $args{'-username'};
+	delete $args{'-authkey'};
+	delete $args{'-authpassword'};
+	delete $args{'-authprotocol'};
+	delete $args{'-privkey'};
+	delete $args{'-privpassword'};
+	delete $args{'-privprotocol'};
+    }
 
     ($sess, $tmp) = Net::SNMP->session(%args);
 
@@ -1718,7 +1731,7 @@ sub snmpwalk_flg ($$@) {
   $got = 0;
   @poid = @enoid;
 
-  if ($Net_SNMP_util::Version > 1) {
+  if ($Net_SNMP_util::Version > 1 and $Net_SNMP_util::MaxRepetitions > 0) {
     $args{'-maxrepetitions'} = $Net_SNMP_util::MaxRepetitions;
   }
   if ($Net_SNMP_util::Version > 2) {
