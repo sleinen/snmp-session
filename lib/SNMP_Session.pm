@@ -196,6 +196,16 @@ sub trap2_request    { 7 | context_flag () };
 
 sub standard_udp_port { 161 };
 
+=head2 open() - create an SNMP session object
+
+    $session = SNMP_Session->open
+      ($host, $community, $port,
+       $max_pdu_len, $local_port, $max_repetitions,
+       $local_host, $ipv4only);
+
+The calling and return conventions are identical to
+C<SNMPv1_Session::open()>.
+
 =cut
 
 sub open
