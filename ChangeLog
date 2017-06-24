@@ -1,3 +1,6 @@
+2017-06-24  Allan Jude  <allanjude@freebsd.org>
+	* lib/SNMP_Session.pm: Apply Socket6 patch from FreeBSD ports
+
 2008-03-19  Simon Leinen  <simon.leinen@switch.ch>
 
 	* lib/SNMP_Session.pm: Improved initialization of the flags for
