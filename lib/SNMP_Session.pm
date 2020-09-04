@@ -91,7 +91,7 @@ C<map_table_4()>.
 
 my $default_max_repetitions = 12;
 
-=head2 $default avoid_negative_request_ids - default value for
+=head2 $default_avoid_negative_request_ids - default value for
     C<avoid_negative_request_ids>.
 
 Set this to non-zero if you have agents that have trouble with

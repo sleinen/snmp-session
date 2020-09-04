@@ -19,7 +19,7 @@ package BER;
 
 =head1 NAME
 
-BER
+BER - Basic Encoding Rules (BER) of Abstract Syntax Notation One (ASN.1)
 
 =head1 SYNOPSIS
 
