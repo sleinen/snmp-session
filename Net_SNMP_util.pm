@@ -1171,7 +1171,7 @@ sub snmpwalkhash($$@) {
 }
 
 
-=head2 snmpmapOID() - add texual OBJECT INDENTIFIER mapping
+=head2 snmpmapOID() - add textual OBJECT INDENTIFIER mapping
 
     snmpmapOID(
 	$text1, $oid1,
@@ -2104,7 +2104,7 @@ earlier than v5.6.0.
 =item *
 
 The Net_SNMP_util module uses the F<Net::SNMP> module, and as such may depend
-on other modules.  Please see the documentaion on F<Net::SNMP> for more
+on other modules.  Please see the documentation on F<Net::SNMP> for more
 information.
 
 =back
