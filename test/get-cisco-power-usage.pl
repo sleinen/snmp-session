@@ -7,6 +7,7 @@ use BER;
 use SNMP_Session "0.96";	# requires map_table_4() and ipv4only
 
 sub usage ($ );
+sub get_power_usage ($$);
 
 my $version = '2c';
 
@@ -19,7 +20,7 @@ my $ipv4_only_p = 0;
 
 my $debug = 0;
 
-my $host;
+my @hosts;
 
 my $community;
 
@@ -100,160 +101,177 @@ while (defined $ARGV[0]) {
 	$use_getbulk_p = 0;
     } elsif ($ARGV[0] eq '-4') {
 	$ipv4_only_p = 1;
+    } elsif ($ARGV[0] =~ /^-c/) {
+	if ($ARGV[0] eq '-c') {
+	    shift @ARGV;
+	    usage (1) unless defined $ARGV[0];
+	} else {
+	    $ARGV[0] = substr($ARGV[0], 2);
+	}
+        $community = $ARGV[0];
     } elsif ($ARGV[0] eq '-h') {
 	usage (0);
 	exit 0;
     } elsif ($ARGV[0] =~ /^-/) {
 	usage (1);
     } else {
-	if (!defined $host) {
-	    $host = $ARGV[0];
-	} elsif (!defined $community) {
-	    $community = $ARGV[0];
-	} else {
-	    usage (1);
-	}
+	push @hosts, $ARGV[0];
     }
     shift @ARGV;
 }
-defined $host or usage (1);
+# defined @hosts or usage (1);
 defined $community or $community = 'public';
 usage (1) if $#ARGV >= $[;
 
-my $session =
-    ($version eq '1' ? SNMPv1_Session->open ($host, $community, $port, undef, undef, undef, undef, $ipv4_only_p)
-     : $version eq '2c' ? SNMPv2c_Session->open ($host, $community, $port, undef, undef, undef, undef, $ipv4_only_p)
-     : die "Unknown SNMP version $version")
-  || die "Opening SNMP_Session";
-
-### max_repetitions:
-###
-### We try to be smart about the value of $max_repetitions.  Starting
-### with the session default, we use the number of rows in the table
-### (returned from map_table_4) to compute the next value.  It should
-### be one more than the number of rows in the table, because
-### map_table needs an extra set of bindings to detect the end of the
-### table.
-###
-$max_repetitions = $session->default_max_repetitions
-    unless $max_repetitions;
-
-my @entity_oids = (
-    $entPhysicalDescr,
-    $entPhysicalVendorType,
-    $entPhysicalContainedIn,
-    $entPhysicalClass,
-    $entPhysicalParentRelPos,
-    $entPhysicalName,
-    $entPhysicalHardwareRev,
-    $entPhysicalFirmwareRev,
-    $entPhysicalSoftwareRev,
-    $entPhysicalSerialNum,
-    $entPhysicalMfgName,
-    $entPhysicalModelName,
-    $entPhysicalAlias,
-    $entPhysicalAssetID,
-    $entPhysicalIsFRU,
-    $entPhysicalMfgDate,
-    $entPhysicalUris,
-    $entSensorType,
-    $entSensorScale,
-    $entSensorPrecision,
-    $entSensorValue,
-    $entSensorStatus,
-    $entSensorValueTimeStamp,
-    $entSensorValueUpdateRate,
-    $entSensorMeasuredEntity,
-);
-
-my %physical_entity = ();
-
-sub collect_physical_entity(@ ) {
-    my ($index, $descr, $vendor_type, $contained_in, $class, $parent_rel_pos,
-        $name, $hardware_rev, $firmare_rev, $software_rev, $serial_num,
-        $mfg_name, $model_name, $alias, $asset_id, $is_fru, $mfg_date, $uris,
-        $sensor_type, $sensor_scale, $sensor_precision,
-        $sensor_value, $sensor_status,
-        $sensor_value_time_stamp, $sensor_value_update_rate,
-        $sensor_measured_entity) = @_;
-
-    grep (defined $_ && ($_=pretty_print $_),
-	  ($descr, $class, $name, $alias, $contained_in,
-           $sensor_type, $sensor_scale, $sensor_precision,
-           $sensor_value, $sensor_status));
-
-    $physical_entity{$index} = {
-        'index' => $index,
-            'descr' => $descr,
-            'class' => $class,
-            'name' => $name,
-            'alias' => $alias,
-            'contained_in' => $contained_in,
-            'sensor_type' => $sensor_type,
-            'sensor_scale' => $sensor_scale,
-            'sensor_precision' => $sensor_precision,
-            'sensor_value' => $sensor_value,
-            'sensor_status' => $sensor_status,
-    };
-    # warn("index: $index descr $descr alias $alias class $class\n");
+my $total_watts = 0;
+foreach my $host (@hosts) {
+    $total_watts += get_power_usage ($host, $community);
 }
 
-my $calls = $session->map_table_4 (\@entity_oids, \&collect_physical_entity, $max_repetitions);
+my %physical_entity;
 
-my %power_supplies = ();
-foreach my $index (sort keys %physical_entity) {
-    my $ent = $physical_entity{$index};
-    next unless $ent->{class} == 6;
-    $power_supplies{$index} = 1;
-}
+sub get_power_usage ($$) {
+    my ($host, $community) = @_;
 
-my %power_supplies_modules_closure = %power_supplies;
+    my $session =
+        ($version eq '1' ? SNMPv1_Session->open ($host, $community, $port, undef, undef, undef, undef, $ipv4_only_p)
+         : $version eq '2c' ? SNMPv2c_Session->open ($host, $community, $port, undef, undef, undef, undef, $ipv4_only_p)
+         : die "Unknown SNMP version $version")
+        || die "Opening SNMP_Session";
 
-my $found_one = 0;
-do {
+    ### max_repetitions:
+    ###
+    ### We try to be smart about the value of $max_repetitions.  Starting
+    ### with the session default, we use the number of rows in the table
+    ### (returned from map_table_4) to compute the next value.  It should
+    ### be one more than the number of rows in the table, because
+    ### map_table needs an extra set of bindings to detect the end of the
+    ### table.
+    ###
+    $max_repetitions = $session->default_max_repetitions
+        unless $max_repetitions;
+
+    my @entity_oids = (
+        $entPhysicalDescr,
+        $entPhysicalVendorType,
+        $entPhysicalContainedIn,
+        $entPhysicalClass,
+        $entPhysicalParentRelPos,
+        $entPhysicalName,
+        $entPhysicalHardwareRev,
+        $entPhysicalFirmwareRev,
+        $entPhysicalSoftwareRev,
+        $entPhysicalSerialNum,
+        $entPhysicalMfgName,
+        $entPhysicalModelName,
+        $entPhysicalAlias,
+        $entPhysicalAssetID,
+        $entPhysicalIsFRU,
+        $entPhysicalMfgDate,
+        $entPhysicalUris,
+        $entSensorType,
+        $entSensorScale,
+        $entSensorPrecision,
+        $entSensorValue,
+        $entSensorStatus,
+        $entSensorValueTimeStamp,
+        $entSensorValueUpdateRate,
+        $entSensorMeasuredEntity,
+        );
+
+
+    sub collect_physical_entity(@ ) {
+        my ($index, $descr, $vendor_type, $contained_in, $class, $parent_rel_pos,
+            $name, $hardware_rev, $firmare_rev, $software_rev, $serial_num,
+            $mfg_name, $model_name, $alias, $asset_id, $is_fru, $mfg_date, $uris,
+            $sensor_type, $sensor_scale, $sensor_precision,
+            $sensor_value, $sensor_status,
+            $sensor_value_time_stamp, $sensor_value_update_rate,
+            $sensor_measured_entity) = @_;
+
+        grep (defined $_ && ($_=pretty_print $_),
+              ($descr, $class, $name, $alias, $contained_in,
+               $sensor_type, $sensor_scale, $sensor_precision,
+               $sensor_value, $sensor_status));
+
+        $physical_entity{$index} = {
+            'index' => $index,
+                'descr' => $descr,
+                'class' => $class,
+                'name' => $name,
+                'alias' => $alias,
+                'contained_in' => $contained_in,
+                'sensor_type' => $sensor_type,
+                'sensor_scale' => $sensor_scale,
+                'sensor_precision' => $sensor_precision,
+                'sensor_value' => $sensor_value,
+                'sensor_status' => $sensor_status,
+        };
+        # warn("index: $index descr $descr alias $alias class $class\n");
+    }
+
+    %physical_entity = ();
+    my $calls = $session->map_table_4 (\@entity_oids, \&collect_physical_entity, $max_repetitions);
+    $session->close();
+
+    # warn("Router $host: Found ".scalar(%physical_entity)." physical entities\n");
+
+    my %power_supplies = ();
+    foreach my $index (sort keys %physical_entity) {
+        my $ent = $physical_entity{$index};
+        next unless $ent->{class} == 6;
+        $power_supplies{$index} = 1;
+    }
+
+    my %power_supplies_modules_closure = %power_supplies;
+
+    my $found_one = 0;
+    do {
+        foreach my $index (sort keys %physical_entity) {
+            my $ent = $physical_entity{$index};
+            my $contained_in = $ent->{contained_in};
+            next unless exists $power_supplies{$contained_in};
+            my $class = $ent->{class};
+            next unless $class == 9; # We're only interested in modules(9)
+            my $descr = $ent->{descr};
+            my $alias = $ent->{alias};
+            my $name = $ent->{name};
+            # warn "Found module child: $index (descr \"$descr\" alias \"$alias\" class $class parent $contained_in)\n";
+        }
+    } while ($found_one);
+
+    my $total_watts = 0.0;
+
     foreach my $index (sort keys %physical_entity) {
         my $ent = $physical_entity{$index};
         my $contained_in = $ent->{contained_in};
-        next unless exists $power_supplies{$contained_in};
+        next unless exists $power_supplies_modules_closure{$contained_in};
         my $class = $ent->{class};
-        next unless $class == 9; # We're only interested in modules(9)
+        next unless $class == 8; # We're only interested in sensors(8)
+        my $sensor_type = $ent->{sensor_type};
+        next unless $sensor_type == 6; # We're only interested in watts(6)
+        my $name = $ent->{name};
+        next if ($name =~ /output power/i);
         my $descr = $ent->{descr};
         my $alias = $ent->{alias};
-        my $name = $ent->{name};
-        #warn "Found module child: $index (descr \"$descr\" alias \"$alias\" class $class parent $contained_in)\n";
+        my $sensor_scale = $ent->{sensor_scale};
+        my $sensor_precision = $ent->{sensor_precision};
+        my $sensor_value = $ent->{sensor_value};
+        my $sensor_status = $ent->{sensor_status};
+        my $value = $sensor_value * 10.0**(($sensor_scale-9) * 3);
+        $total_watts += $value;
+        # warn "Found sensor child: $index (descr \"$descr\" name \"$name\" alias \"$alias\" class $class parent $contained_in sensor_type sensor: [type $sensor_type value $value scale $sensor_scale precision $sensor_precision value $sensor_value status $sensor_status)\n";
     }
-} while ($found_one);
-
-my $total_watts = 0.0;
-
-foreach my $index (sort keys %physical_entity) {
-    my $ent = $physical_entity{$index};
-    my $contained_in = $ent->{contained_in};
-    next unless exists $power_supplies_modules_closure{$contained_in};
-    my $class = $ent->{class};
-    next unless $class == 8; # We're only interested in sensors(8)
-    my $sensor_type = $ent->{sensor_type};
-    next unless $sensor_type == 6; # We're only interested in watts(6)
-    my $name = $ent->{name};
-    next if ($name =~ /output power/i);
-    my $descr = $ent->{descr};
-    my $alias = $ent->{alias};
-    my $sensor_scale = $ent->{sensor_scale};
-    my $sensor_precision = $ent->{sensor_precision};
-    my $sensor_value = $ent->{sensor_value};
-    my $sensor_status = $ent->{sensor_status};
-    my $value = $sensor_value * 10.0**(($sensor_scale-9) * 3);
-    $total_watts += $value;
-    #warn "Found sensor child: $index (descr \"$descr\" name \"$name\" alias \"$alias\" class $class parent $contained_in sensor_type sensor: [type $sensor_type value $value scale $sensor_scale precision $sensor_precision value $sensor_value status $sensor_status)\n";
+    printf STDOUT ("router %s %6.1f\n", $host, $total_watts);
+    return $total_watts;
 }
-
 printf STDOUT ("Total intput power: %6.1fW\n", $total_watts);
 1;
 
 
 sub usage ($) {
     warn <<EOM;
-Usage: $0 [-t secs] [-v (1|2c)] [-c] [-l] [-m max] [-4] [-p port] host [community]
+Usage: $0 [-t secs] [-v (1|2c)] [-c] [-l] [-m max] [-4] [-p port] [-c community] host...
        $0 -h
 
   TODO: Add missing options
@@ -273,14 +291,14 @@ Usage: $0 [-t secs] [-v (1|2c)] [-c] [-l] [-m max] [-4] [-p port] host [communit
 
   -4           use only IPv4 addresses, even if host also has an IPv6
                address.  Use this for devices that are IPv6-capable
-               but whose SNMP agent doesn\'t listen to IPv6 requests.
+               but whose SNMP agent does not listen to IPv6 requests.
 
   -m port      can be used to specify a non-standard UDP port of the SNMP
                agent (the default is UDP port 161).
 
-  host         hostname or IP address of a router
+  -c community SNMP community string to use.  Defaults to "public".
 
-  community    SNMP community string to use.  Defaults to "public".
+  host         hostname or IP address of a router
 EOM
     exit (1) if $_[0];
 }
