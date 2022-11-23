@@ -256,7 +256,7 @@ sub get_power_usage ($$) {
     printf STDOUT ("router %s %6.1f\n", $host, $total_watts);
     return $total_watts;
 }
-printf STDOUT ("Total intput power: %6.1fW\n", $total_watts);
+printf STDOUT ("Total input power: %6.1fW\n", $total_watts);
 1;
 
 
