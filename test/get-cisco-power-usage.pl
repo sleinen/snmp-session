@@ -99,6 +99,8 @@ while (defined $ARGV[0]) {
 	}
     } elsif ($ARGV[0] eq '-B') {
 	$use_getbulk_p = 0;
+    } elsif ($ARGV[0] eq '-d') {
+	$debug = 1;
     } elsif ($ARGV[0] eq '-4') {
 	$ipv4_only_p = 1;
     } elsif ($ARGV[0] =~ /^-c/) {
@@ -198,7 +200,8 @@ sub get_power_usage ($$) {
                 'sensor_value' => $sensor_value,
                 'sensor_status' => $sensor_status,
         };
-        # warn("index: $index descr $descr alias $alias class $class\n");
+        # warn("index: $index descr $descr alias $alias class $class\n")
+        #     if $debug;
     }
 
     %physical_entity = ();
@@ -227,7 +230,8 @@ sub get_power_usage ($$) {
             my $descr = $ent->{descr};
             my $alias = $ent->{alias};
             my $name = $ent->{name};
-            # warn "Found module child: $index (descr \"$descr\" alias \"$alias\" class $class parent $contained_in)\n";
+            warn "Found module child: $index (descr \"$descr\" name \"$name\" alias \"$alias\" class $class parent $contained_in)\n"
+                if $debug;
         }
     } while ($found_one);
 
@@ -251,7 +255,8 @@ sub get_power_usage ($$) {
         my $sensor_status = $ent->{sensor_status};
         my $value = $sensor_value * 10.0**(($sensor_scale-9) * 3);
         $total_watts += $value;
-        # warn "Found sensor child: $index (descr \"$descr\" name \"$name\" alias \"$alias\" class $class parent $contained_in sensor_type sensor: [type $sensor_type value $value scale $sensor_scale precision $sensor_precision value $sensor_value status $sensor_status)\n";
+        warn "Found sensor child: $index (descr \"$descr\" name \"$name\" alias \"$alias\" class $class parent $contained_in sensor_type sensor: [type $sensor_type value $value scale $sensor_scale precision $sensor_precision value $sensor_value status $sensor_status)\n"
+            if $debug;
     }
     printf STDOUT ("router %s %6.1f\n", $host, $total_watts);
     return $total_watts;
@@ -262,10 +267,12 @@ printf STDOUT ("Total input power: %6.1fW\n", $total_watts);
 
 sub usage ($) {
     warn <<EOM;
-Usage: $0 [-t secs] [-v (1|2c)] [-c] [-l] [-m max] [-4] [-p port] [-c community] host...
+Usage: $0 [-d] [-v (1|2c)] [-c] [-l] [-m max] [-4] [-p port] [-c community] host...
        $0 -h
 
   -c community SNMP community string to use.  Defaults to "public".
+
+  -d           enable debugging output.
 
   -h           print this usage message and exit.
 
