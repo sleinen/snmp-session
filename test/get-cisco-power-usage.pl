@@ -278,8 +278,14 @@ sub get_power_usage ($$) {
     my %power_supplies = ();
     foreach my $index (sort keys %physical_entity) {
         my $ent = $physical_entity{$index};
-        next unless $ent->{class} == 6;
+        my $class = $ent->{class};
+        next unless $class == 6;
         $power_supplies{$index} = 1;
+        my $descr = $ent->{descr};
+        my $alias = $ent->{alias};
+        my $name = $ent->{name};
+        warn "Found power supply: $index (descr \"$descr\" name \"$name\" alias \"$alias\" class $class)\n"
+            if $debug;
     }
 
     my %power_supplies_modules_closure = %power_supplies;
