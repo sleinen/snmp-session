@@ -139,15 +139,6 @@ sub get_power_usage ($$) {
          : die "Unknown SNMP version $version")
         || die "Opening SNMP_Session";
 
-    ### max_repetitions:
-    ###
-    ### We try to be smart about the value of $max_repetitions.  Starting
-    ### with the session default, we use the number of rows in the table
-    ### (returned from map_table_4) to compute the next value.  It should
-    ### be one more than the number of rows in the table, because
-    ### map_table needs an extra set of bindings to detect the end of the
-    ### table.
-    ###
     $max_repetitions = $session->default_max_repetitions
         unless $max_repetitions;
 
