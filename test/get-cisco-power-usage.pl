@@ -1,5 +1,70 @@
 #!/usr/bin/perl -w
+######################################################################
+### Get (Cisco) Router Power Usage
+######################################################################
+### Copyright (c) 2022, Simon Leinen.
+###
+### This program is free software; you can redistribute it under the
+### "Artistic License" included in this distribution (file "Artistic").
+######################################################################
+### Author:       Simon Leinen  <simon.leinen@switch.ch>
+### Date Created: 23-Nov-2022
+###
+### Compute total power draw from sensor readings.
+###
+### Description:
+###
+### Call this script with "-h" to learn about command usage.
+###
+### Basically you call this with a list of routers (hostnames or IP
+### addresses), and the script will output the total power draw for
+### each router (across all its power supplies), and then the total
+### sum of those for gross total power usage.
+###
+### Method:
+###
+### Walk the entPhysicalTable augmented with columns from
+### entitySensorValueTable.  Find the sensors pertaining to power
+### usage, and add up consumption.
+###
+### Sounds easy, right? Except it isn't.  Cisco routers have many
+### sensors that can be read in this way.  Their relationship to
+### components ("physical entities") can be found in the
+### entPhysicalTable, by means of the "entPhysicalContainedIn" column.
+###
+### What we typically want are sensors that measure the input power at
+### the power supplies.  Power supplies can be found reliably(?) by
+### looking for entPhysicalClass values of powerSupply(6).
+###
+### But then the complications start:
+###
+### Sensors may not be found *directly* under the power supply.  In
+### some routers, the sensors are found inside modules inside the
+### power supply.  We fix this by building the "transitive closure" of
+### power supplies and their (recursive) submodules, and look at all
+### sensors we found in all of those entities.
+###
+### There may be *more than one* power sensor.  Some routers expose
+### both input and output power sensors for each power supply.  We're
+### only interested in the input power, so we simply ignore the other
+### ones.  The problem is to recognize them.  So far the best I have
+### found is to look for the string "output power" in the name.
+###
+### There may be *no* power sensor, but separate current and voltage
+### sensors.  It should be easy enough to multiply them together, but
+### this doesn't quite fit with the current structure of the code.
+### TODO!
+###
+### There may be no power sensor and no subsitute sensors accessible
+### over the ENTITY-MIB and CISCO-ENTITY-SENSOR-MIB.  So far this
+### seems to be the case for (ancient) Cisco Catalyst 6500 routers and
+### (brand new) Cisco 8000 series routers (to be confirmed).  It's
+### possible we find usable sensors in some other MIB.  Or not at all,
+### which means we'll have a hard time getting at this data via SNMP.
+###
+### For patches and suggestions, please create issues on GitHub.
 
+###
 use strict;
 use warnings;
 
