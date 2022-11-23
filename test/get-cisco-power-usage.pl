@@ -265,7 +265,7 @@ sub usage ($) {
 Usage: $0 [-t secs] [-v (1|2c)] [-c] [-l] [-m max] [-4] [-p port] [-c community] host...
        $0 -h
 
-  TODO: Add missing options
+  -c community SNMP community string to use.  Defaults to "public".
 
   -h           print this usage message and exit.
 
@@ -284,10 +284,8 @@ Usage: $0 [-t secs] [-v (1|2c)] [-c] [-l] [-m max] [-4] [-p port] [-c community]
                address.  Use this for devices that are IPv6-capable
                but whose SNMP agent does not listen to IPv6 requests.
 
-  -m port      can be used to specify a non-standard UDP port of the SNMP
+  -p port      can be used to specify a non-standard UDP port of the SNMP
                agent (the default is UDP port 161).
-
-  -c community SNMP community string to use.  Defaults to "public".
 
   host         hostname or IP address of a router
 EOM
