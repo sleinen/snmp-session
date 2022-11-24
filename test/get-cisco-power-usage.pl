@@ -55,13 +55,25 @@
 ### this doesn't quite fit with the current structure of the code.
 ### TODO!
 ###
+### Some router/OS combinations have bugs (surprise!); for example on
+### a rather new Cisco 8201 under IOS-XR 7.7.1, I couldn't find the
+### power sensors at first, which I found odd.  My error was that I
+### was looking for sensors with the "watts" data type.  But on those
+### routers, the power supplies' power sensors are exposed with a data
+### type of "dBm".  This unit is customary for monitoring optical
+### modules such as transceivers.  Theoretically it would be possible,
+### but very unconventional, to use dBm for measuring mains power
+### usage.  But looking at the actual values, it is clear that those
+### values must actually be in Watts, and the MIB implementation just
+### wrongly marks them as "dBm".  Yay, another workaround reuqired!
+###
 ### There may be no power sensor and no subsitute sensors accessible
 ### over the ENTITY-MIB and CISCO-ENTITY-SENSOR-MIB.  So far this
-### seems to be the case for (ancient) Cisco Catalyst 6500 routers and
-### (brand new) Cisco 8000 series routers (to be confirmed).  It's
+### seems to be the case for (ancient) Cisco Catalyst 6500 routers,
+### and small management routers (e.g. Cisco 890 series).  It's
 ### possible we find usable sensors in some other MIB.  Or not at all,
 ### which means we'll have a hard time getting at this data via SNMP.
-###
+######################################################################
 ### For patches and suggestions, please create issues on GitHub.
 
 ###
@@ -91,6 +103,14 @@ my $community;
 
 my $use_getbulk_p = 1;
 
+# When we only have ampere/volt sensors, and the voltage value is low,
+# we assume that these reflect *output* power.  In this case, we
+# multiply the power by a factor >1 to reflect the (in)efficiency of
+# the power supply.
+my $ampere_volt_overhead = 1.15;
+
+my $low_volt_threshold = 100.0;
+
 my $entPhysicalIndex = [1,3,6,1,2,1,47,1,1,1,1,1];
 my $entPhysicalDescr = [1,3,6,1,2,1,47,1,1,1,1,2];
 my $entPhysicalVendorType = [1,3,6,1,2,1,47,1,1,1,1,3];
@@ -118,6 +138,21 @@ my $entSensorStatus = [1,3,6,1,4,1,9,9,91,1,1,1,1,5];
 my $entSensorValueTimeStamp = [1,3,6,1,4,1,9,9,91,1,1,1,1,6];
 my $entSensorValueUpdateRate = [1,3,6,1,4,1,9,9,91,1,1,1,1,7];
 my $entSensorMeasuredEntity = [1,3,6,1,4,1,9,9,91,1,1,1,1,8];
+
+my $SENSOR_DATA_TYPE_other = 1;
+my $SENSOR_DATA_TYPE_unknown = 2;
+my $SENSOR_DATA_TYPE_volts_AC = 3;
+my $SENSOR_DATA_TYPE_volts_DC = 4;
+my $SENSOR_DATA_TYPE_amperes = 5;
+my $SENSOR_DATA_TYPE_watts = 6;
+my $SENSOR_DATA_TYPE_hertz = 7;
+my $SENSOR_DATA_TYPE_celsius = 8;
+my $SENSOR_DATA_TYPE_percent_RH = 9;
+my $SENSOR_DATA_TYPE_rpm = 10;
+my $SENSOR_DATA_TYPE_cmm = 11;
+my $SENSOR_DATA_TYPE_truthvalue = 12;
+my $SENSOR_DATA_TYPE_special_enum = 13;
+my $SENSOR_DATA_TYPE_dBm = 14;
 
 # : leinen@asama[leinen]; snmptable -v 2c -c hctiws -Ci -Cb ls1 entSensorValueTable | grep -E '\b(4367|8463)\b'
 #    4367   watts milli         0   196419     ok   0:0:00:00.00      10 seconds                4097
@@ -248,23 +283,31 @@ sub get_power_usage ($$) {
             $sensor_measured_entity) = @_;
 
         grep (defined $_ && ($_=pretty_print $_),
-              ($descr, $class, $name, $alias, $contained_in,
+              ($descr, $contained_in, $class, $parent_rel_pos, $name, $alias,
                $sensor_type, $sensor_scale, $sensor_precision,
                $sensor_value, $sensor_status));
 
-        $physical_entity{$index} = {
+        my (%ent);
+        %ent = (
             'index' => $index,
-                'descr' => $descr,
-                'class' => $class,
-                'name' => $name,
-                'alias' => $alias,
-                'contained_in' => $contained_in,
-                'sensor_type' => $sensor_type,
-                'sensor_scale' => $sensor_scale,
-                'sensor_precision' => $sensor_precision,
-                'sensor_value' => $sensor_value,
-                'sensor_status' => $sensor_status,
+            'descr' => $descr,
+            'class' => $class,
+            'name' => $name,
+            'alias' => $alias,
+            'children' => {},
+            'contained_in' => $contained_in,
+            'parent_rel_pos' => $parent_rel_pos,
+            );
+        if ($class == 8) {
+            $ent{'sensor_type'} = $sensor_type;
+            $ent{'sensor_scale'} = $sensor_scale;
+            $ent{'sensor_precision'} = $sensor_precision;
+            $ent{'sensor_value'} = $sensor_value;
+            $ent{'sensor_status'} = $sensor_status;
         };
+
+        $physical_entity{$index} = \%ent;
+
         # warn("index: $index descr $descr alias $alias class $class\n")
         #     if $debug;
     }
@@ -273,7 +316,15 @@ sub get_power_usage ($$) {
     my $calls = $session->map_table_4 (\@entity_oids, \&collect_physical_entity, $max_repetitions);
     $session->close();
 
-    # warn("Router $host: Found ".scalar(%physical_entity)." physical entities\n");
+    foreach my $index (keys %physical_entity) {
+        my $ent = $physical_entity{$index};
+        my $parent_index = $ent->{contained_in};
+        if (exists $physical_entity{$parent_index}) {
+            my $parent = $physical_entity{$parent_index};
+            my $parent_rel_pos = $ent->{'parent_rel_pos'};
+            $parent->{'children'}->{$parent_rel_pos} = $index;
+        }
+    }
 
     my %power_supplies = ();
     foreach my $index (sort keys %physical_entity) {
@@ -295,7 +346,7 @@ sub get_power_usage ($$) {
         foreach my $index (sort keys %physical_entity) {
             my $ent = $physical_entity{$index};
             my $contained_in = $ent->{contained_in};
-            next unless exists $power_supplies{$contained_in};
+            next unless exists $power_supplies_modules_closure{$contained_in};
             my $class = $ent->{class};
             next unless $class == 9; # We're only interested in modules(9)
             my $descr = $ent->{descr};
@@ -303,31 +354,65 @@ sub get_power_usage ($$) {
             my $name = $ent->{name};
             warn "Found module child: $index (descr \"$descr\" name \"$name\" alias \"$alias\" class $class parent $contained_in)\n"
                 if $debug;
+            $power_supplies_modules_closure{$index} = 1;
         }
     } while ($found_one);
 
     my $total_watts = 0.0;
 
-    foreach my $index (sort keys %physical_entity) {
-        my $ent = $physical_entity{$index};
-        my $contained_in = $ent->{contained_in};
-        next unless exists $power_supplies_modules_closure{$contained_in};
-        my $class = $ent->{class};
-        next unless $class == 8; # We're only interested in sensors(8)
-        my $sensor_type = $ent->{sensor_type};
-        next unless $sensor_type == 6; # We're only interested in watts(6)
-        my $name = $ent->{name};
-        next if ($name =~ /output power/i);
-        my $descr = $ent->{descr};
-        my $alias = $ent->{alias};
-        my $sensor_scale = $ent->{sensor_scale};
-        my $sensor_precision = $ent->{sensor_precision};
-        my $sensor_value = $ent->{sensor_value};
-        my $sensor_status = $ent->{sensor_status};
-        my $value = $sensor_value * 10.0**(($sensor_scale-9) * 3);
-        $total_watts += $value;
-        warn "Found sensor child: $index (descr \"$descr\" name \"$name\" alias \"$alias\" class $class parent $contained_in sensor_type sensor: [type $sensor_type value $value scale $sensor_scale precision $sensor_precision value $sensor_value status $sensor_status)\n"
-            if $debug;
+    foreach my $index (sort keys %power_supplies_modules_closure) {
+        my $ps_ent = $physical_entity{$index};
+
+        my ($amperes, $volts, $watts);
+
+        foreach my $sub_pos (keys %{$ps_ent->{'children'}}) {
+            my $sub_index = $ps_ent->{'children'}->{$sub_pos};
+            my $ent = $physical_entity{$sub_index};
+            my $class = $ent->{class};
+            next unless $class == 8; # We're only interested in sensors(8)
+            my $descr = $ent->{descr};
+            my $name = $ent->{name};
+            my $alias = $ent->{alias};
+            my $sensor_type = $ent->{sensor_type};
+            my $sensor_scale = $ent->{sensor_scale};
+            my $sensor_precision = $ent->{sensor_precision};
+            my $sensor_value = $ent->{sensor_value};
+            my $sensor_status = $ent->{sensor_status};
+            if ($sensor_type == $SENSOR_DATA_TYPE_watts
+                and (! ($ent->{name} =~ /output power/i))
+                and (! ($ent->{name} =~ /capacity/i))) {
+                $watts = $sensor_value * 10.0**(($sensor_scale-9) * 3);
+            } elsif ($sensor_type == $SENSOR_DATA_TYPE_dBm
+                     and ($ent->{name} =~ //) # BUG BUG BUG: On Cisco 8201 under IOS-XR 7.7.1 report "dBm" (units) for the power supply power sensors.  But the values look like they are in Watts.
+                and (! ($ent->{name} =~ /output power/i))
+                and (! ($ent->{name} =~ /capacity/i))) {
+                $watts = $sensor_value * 10.0**(($sensor_scale-9) * 3);
+            } elsif (($sensor_type == $SENSOR_DATA_TYPE_volts_AC
+                     or $sensor_type == $SENSOR_DATA_TYPE_volts_DC)
+                     and !($name =~ /-Output_/)) {
+                warn "already have volts!\n" if defined $volts and $debug;
+                $volts = $sensor_value * 10.0**(($sensor_scale-9) * 3);
+            } elsif ($sensor_type == $SENSOR_DATA_TYPE_amperes) {
+                if ($name =~ /-Output_/) {
+                    warn "IGNORING sensor child: $sub_index (descr \"$descr\" name \"$name\" alias \"$alias\" class $class parent $index sensor_type sensor: [type $sensor_type value $sensor_value scale $sensor_scale precision $sensor_precision value $sensor_value status $sensor_status)\n" if $debug;
+                } else {
+                    warn "already have amperes!\n" if defined $amperes and $debug;
+                    $amperes = $sensor_value * 10.0**(($sensor_scale-9) * 3);
+                }
+            }
+            warn "Found sensor child: $sub_index (descr \"$descr\" name \"$name\" alias \"$alias\" class $class parent $index sensor_type sensor: [type $sensor_type value $sensor_value scale $sensor_scale precision $sensor_precision value $sensor_value status $sensor_status)\n"
+                if $debug;
+        }
+        if (defined $watts) {
+            $total_watts += $watts;
+        } elsif (defined $amperes and defined $volts) {
+            warn "  computing watts from amperes ($amperes) and volts ($volts)\n"
+                if $debug;
+            my $watts += $amperes * $volts;
+            $watts *= $ampere_volt_overhead
+                if $volts < $low_volt_threshold;
+            $total_watts += $watts;
+        }
     }
     printf STDOUT ("router %s %6.1f\n", $host, $total_watts);
     return $total_watts;
