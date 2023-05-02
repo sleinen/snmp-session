@@ -29,6 +29,8 @@ use Exporter;
 
 use SNMP_util;
 
+$VERSION = '1.16';
+
 @ISA = qw(Exporter);
 
 @EXPORT = qw(snmp_rows_to_objects snmp_row_to_object snmp_map_row_objects);

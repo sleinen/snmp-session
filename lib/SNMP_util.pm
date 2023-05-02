@@ -46,7 +46,7 @@ use BER "1.02";
 use SNMP_Session "1.00";
 use Socket;
 
-$VERSION = '1.15';
+$VERSION = '1.16';
 
 @ISA = qw(Exporter);
 

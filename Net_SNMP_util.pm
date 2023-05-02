@@ -82,7 +82,7 @@ our @EXPORT = qw(
 
 ## Version of the Net_SNMP_util module
 
-our $VERSION = v1.0.20;
+our $VERSION = 1.16;
 
 use Carp;
 

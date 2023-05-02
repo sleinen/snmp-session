@@ -45,7 +45,7 @@ use vars qw(@ISA @EXPORT $VERSION $pretty_print_timeticks
 	    %pretty_printer %default_printer $errmsg);
 use Exporter;
 
-$VERSION = '1.14';
+$VERSION = '1.16';
 
 @ISA = qw(Exporter);
 
