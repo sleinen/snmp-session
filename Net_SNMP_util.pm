@@ -59,6 +59,7 @@ routines are provided, hiding all the details of a SNMP query.
 # ==========================================================================
 
 use strict;
+use warnings;
 
 ## Validate the version of Perl
 

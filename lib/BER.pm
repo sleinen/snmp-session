@@ -43,6 +43,7 @@ require 5.002;
 use strict;
 use vars qw(@ISA @EXPORT $VERSION $pretty_print_timeticks
 	    %pretty_printer %default_printer $errmsg);
+use warnings;
 use Exporter;
 
 $VERSION = '1.16';

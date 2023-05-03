@@ -25,6 +25,7 @@ require 5.004;
 
 use strict;
 use vars qw(@ISA @EXPORT $VERSION);
+use warnings;
 use Exporter;
 
 use SNMP_util;
