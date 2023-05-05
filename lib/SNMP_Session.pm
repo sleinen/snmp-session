@@ -684,9 +684,6 @@ sub pretty_address {
     my($addr) = shift;
     my($port, $addrunpack, $addrstr);
 
-    # Disable strict subs to stop old versions of perl from
-    # complaining about AF_INET6 when Socket6 is not available
-
     if( (defined $ipv6_addr_len) && (length $addr == $ipv6_addr_len)) {
 	($port,$addrunpack) = unpack_sockaddr_in6 ($addr);
 	$addrstr = inet_ntop (AF_INET6(), $addrunpack);
