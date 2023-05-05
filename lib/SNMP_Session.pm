@@ -136,13 +136,19 @@ my $dont_wait_flags;
 BEGIN {
     $ipv6_addr_len = undef;
     $SNMP_Session::ipv6available = 0;
+    $SNMP_Session::old_ipv6_networking = 0;
     $dont_wait_flags = 0;
 
-    if (eval {local $SIG{__DIE__};require Socket6;} &&
+    if (eval {local $SIG{__DIE__};Socket->VERSION("2.000");}) {
+	Socket->import(qw(inet_pton inet_ntop getaddrinfo unpack_sockaddr_in6));
+	$ipv6_addr_len = length(pack_sockaddr_in6(161, inet_pton(AF_INET6(), "::1")));
+	$SNMP_Session::ipv6available = 1;
+    } elsif (eval {local $SIG{__DIE__};require Socket6;} &&
        eval {local $SIG{__DIE__};require IO::Socket::INET6; IO::Socket::INET6->VERSION("1.26");}) {
 	Socket6->import(qw(inet_pton inet_ntop getaddrinfo unpack_sockaddr_in6));
 	$ipv6_addr_len = length(pack_sockaddr_in6(161, inet_pton(AF_INET6(), "::1")));
 	$SNMP_Session::ipv6available = 1;
+	$SNMP_Session::old_ipv6_networking = 1;
     }
     eval 'local $SIG{__DIE__};local $SIG{__WARN__};$dont_wait_flags = MSG_DONTWAIT();';
 }
@@ -846,8 +852,16 @@ use Carp;
 
 BEGIN {
     if($SNMP_Session::ipv6available) {
-	import IO::Socket::INET6;
-	Socket6->import(qw(inet_pton inet_ntop getaddrinfo));
+	if (! $SNMP_Session::old_ipv6_networking
+	    && eval{local $SIG{__DIE__}; require IO::Socket::IP; IO::Socket::IP->VERSION('0.25');}) {
+
+	    import IO::Socket::IP;
+	    Socket->import(qw(inet_pton inet_ntop getaddrinfo));
+	} elsif (eval{local $SIG{__DIE__}; require IO::Socket::INET6;}) {
+	    import IO::Socket::INET6;
+	    Socket6->import(qw(inet_pton inet_ntop getaddrinfo));
+	    $SNMP_Session::old_ipv6_networking = 1;
+	}
     }
 }
 
@@ -937,11 +951,22 @@ sub open {
 		$remote_hostname = $1;
 	    }
 	    my (@res, $socktype_tmp, $proto_tmp, $canonname_tmp);
-	    @res = getaddrinfo($remote_hostname, $port, AF_UNSPEC, SOCK_DGRAM);
-	    ($sockfamily, $socktype_tmp, $proto_tmp, $remote_addr, $canonname_tmp) = @res;
-	    if (scalar(@res) < 5) {
-		return $this->error_return ("can't resolve \"$remote_hostname\" to IPv6 address");
-	    }
+            if ($SNMP_Session::old_ipv6_networking) {
+		@res = getaddrinfo($remote_hostname, $port, AF_UNSPEC, SOCK_DGRAM);
+	        ($sockfamily, $socktype_tmp, $proto_tmp, $remote_addr, $canonname_tmp) = @res;
+		if (scalar(@res) < 5) {
+		    return $this->error_return ("can't resolve \"$remote_hostname\" to IPv6 address");
+		}
+	    } else {
+		my ($err, $result) = getaddrinfo($remote_hostname, $port,
+		    {'family' => AF_UNSPEC, 'socktype' => SOCK_DGRAM});
+		($sockfamily, $socktype_tmp, $proto_tmp, $remote_addr, $canonname_tmp)
+			= ($result->{'family'}, $result->{'socktype'}, $result->{'protocol'},
+			$result->{'addr'}, $result->{'canonname'});
+		if ($err) {
+		    return $this->error_return ("can't resolve \"$remote_hostname\" to IPv6 address");
+		}
+            }
 	} else {
 	    $sockfamily = AF_INET6;
 	}
@@ -955,12 +980,20 @@ sub open {
 					    LocalPort => $local_port)
 	         || return $this->error_return ("creating socket: $!");
 	} else {
-	    $socket = IO::Socket::INET6->new(Domain => AF_INET6,
-					     Proto => 17,
-					     Type => SOCK_DGRAM,
-					     LocalAddr => $local_hostname,
-					     LocalPort => $local_port)
-	         || return $this->error_return ("creating socket: $!");
+	    my %net_setting = (
+		Domain => AF_INET6,
+		Proto => 17,
+		Type => SOCK_DGRAM,
+		LocalAddr => $local_hostname,
+		LocalPort => $local_port,
+	    );
+            if ($SNMP_Session::old_ipv6_networking) {
+		$socket = IO::Socket::INET6->new(%net_setting)
+		    || return $this->error_return ("creating socket: $!");
+            } else {
+		$socket = IO::Socket::IP->new(%net_setting)
+		    || return $this->error_return ("creating socket: $!");
+            }
 	    $the_socket{$sockfamily} = $socket
 	        if $SNMP_Session::recycle_socket;
 	}
