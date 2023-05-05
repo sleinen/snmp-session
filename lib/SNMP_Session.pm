@@ -140,8 +140,8 @@ BEGIN {
 
     if (eval {local $SIG{__DIE__};require Socket6;} &&
        eval {local $SIG{__DIE__};require IO::Socket::INET6; IO::Socket::INET6->VERSION("1.26");}) {
-	Socket6->import(qw(inet_pton inet_ntop getaddrinfo));
-	$ipv6_addr_len = length(Socket6::pack_sockaddr_in6(161, inet_pton(AF_INET6(), "::1")));
+	Socket6->import(qw(inet_pton inet_ntop getaddrinfo unpack_sockaddr_in6));
+	$ipv6_addr_len = length(pack_sockaddr_in6(161, inet_pton(AF_INET6(), "::1")));
 	$SNMP_Session::ipv6available = 1;
     }
     eval 'local $SIG{__DIE__};local $SIG{__WARN__};$dont_wait_flags = MSG_DONTWAIT();';
@@ -688,7 +688,7 @@ sub pretty_address {
     # complaining about AF_INET6 when Socket6 is not available
 
     if( (defined $ipv6_addr_len) && (length $addr == $ipv6_addr_len)) {
-	($port,$addrunpack) = Socket6::unpack_sockaddr_in6 ($addr);
+	($port,$addrunpack) = unpack_sockaddr_in6 ($addr);
 	$addrstr = inet_ntop (AF_INET6(), $addrunpack);
     } else {
 	($port,$addrunpack) = unpack_sockaddr_in ($addr);
@@ -774,7 +774,7 @@ sub receive_trap ($ ) {
 
     my ($iaddr, $port, $af);
     if ((defined $ipv6_addr_len) && (length $remote_addr == $ipv6_addr_len)) {
-	($port, $iaddr) = Socket6::unpack_sockaddr_in6 ($remote_addr);
+	($port, $iaddr) = unpack_sockaddr_in6 ($remote_addr);
 	$af = AF_INET6;
     } else {
 	($port, $iaddr) = unpack_sockaddr_in ($remote_addr);
@@ -1125,8 +1125,8 @@ sub sa_equal_p ($$$) {
 	($p2,$a2) = unpack_sockaddr_in ($sa2);
     } elsif($this->{'sockfamily'} == AF_INET6()) {
 	# IPv6 addresses
-	($p1,$a1) = Socket6::unpack_sockaddr_in6 ($sa1);
-	($p2,$a2) = Socket6::unpack_sockaddr_in6 ($sa2);
+	($p1,$a1) = unpack_sockaddr_in6 ($sa1);
+	($p2,$a2) = unpack_sockaddr_in6 ($sa2);
     } else {
 	return 0;
     }
