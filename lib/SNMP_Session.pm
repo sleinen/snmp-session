@@ -902,7 +902,7 @@ sub open {
        $local_hostname,$ipv4only) = @_;
     my($remote_addr,$socket,$sockfamily);
 
-    $ipv4only = 1 unless defined $ipv4only;
+    $ipv4only = 1 if defined $ipv4only;
     $sockfamily = AF_INET;
 
     $community = 'public' unless defined $community;
