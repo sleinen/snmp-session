@@ -65,7 +65,7 @@
 ### but very unconventional, to use dBm for measuring mains power
 ### usage.  But looking at the actual values, it is clear that those
 ### values must actually be in Watts, and the MIB implementation just
-### wrongly marks them as "dBm".  Yay, another workaround reuqired!
+### wrongly marks them as "dBm".  Yay, another workaround required!
 ###
 ### There may be no power sensor and no subsitute sensors accessible
 ### over the ENTITY-MIB and CISCO-ENTITY-SENSOR-MIB.  So far this
