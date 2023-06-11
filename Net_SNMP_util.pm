@@ -59,6 +59,7 @@ routines are provided, hiding all the details of a SNMP query.
 # ==========================================================================
 
 use strict;
+use warnings;
 
 ## Validate the version of Perl
 
@@ -82,7 +83,7 @@ our @EXPORT = qw(
 
 ## Version of the Net_SNMP_util module
 
-our $VERSION = v1.0.20;
+our $VERSION = 1.16;
 
 use Carp;
 
