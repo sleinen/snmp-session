@@ -1036,7 +1036,7 @@ sub close {
     ## objects.
     if (! exists $the_socket{$this->{sockfamily}}
 	or $this->sock ne $the_socket{$this->{sockfamily}}) {
-	close ($this->sock) || $this->error ("close: $!");
+	CORE::close ($this->sock) || $this->error ("close: $!");
     }
 }
 
