@@ -1,4 +1,13 @@
+2023-06-11  Michal Josef Špaček  <michal.josef.spacek@gmail.com>
+
+	* Makefile.PL, MANIFEST, ...: Packaging improvements
+
+2022-11-23  Simon Leinen  <simon.leinen@switch.ch>
+
+	* test/get-cisco-power-usage.pl: New demo script
+
 2017-06-24  Allan Jude  <allanjude@freebsd.org>
+
 	* lib/SNMP_Session.pm: Apply Socket6 patch from FreeBSD ports
 
 2008-03-19  Simon Leinen  <simon.leinen@switch.ch>
