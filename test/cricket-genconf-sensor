@@ -23,6 +23,8 @@ use warnings;
 
 use Cisco::Abbrev;
 
+my $COMMUNITY = 'your-secret-community-string';
+
 my $testing = 0;
 
 ### Prototypes
@@ -54,7 +56,7 @@ foreach my $router (@routers) {
     next unless has_sensors_p ($router);
     my $rdir = $new_config_dir.'/'.$routername;
     -d $rdir or mkdir $rdir or die "cannot create directory $rdir: $!";
-    my $retval = system ('perl -Ilib test/entls -t hctiws@'
+    my $retval = system ('perl -Ilib test/entls -t '.$COMMUNITY."@'
 			 .$routername.':::::2:v4only > '
 			 .$rdir.'/'.$routername);
     if ($retval) {

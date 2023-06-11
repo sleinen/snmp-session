@@ -154,7 +154,7 @@ my $SENSOR_DATA_TYPE_truthvalue = 12;
 my $SENSOR_DATA_TYPE_special_enum = 13;
 my $SENSOR_DATA_TYPE_dBm = 14;
 
-# : leinen@asama[leinen]; snmptable -v 2c -c hctiws -Ci -Cb ls1 entSensorValueTable | grep -E '\b(4367|8463)\b'
+# : leinen@asama[leinen]; snmptable -v 2c -c $SECRET -Ci -Cb ls1 entSensorValueTable | grep -E '\b(4367|8463)\b'
 #    4367   watts milli         0   196419     ok   0:0:00:00.00      10 seconds                4097
 #    8463   watts milli         0   166576     ok   0:0:00:00.00      10 seconds                8193
 
